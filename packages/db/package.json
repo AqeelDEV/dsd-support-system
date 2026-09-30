@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "default": "./dist/schema/index.js"
     }
   },
   "files": [
@@ -18,9 +22,11 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\""
+    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\"",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@dsd/shared": "workspace:*",
     "drizzle-orm": "catalog:",
     "pg": "catalog:"
   },
@@ -28,6 +34,7 @@
     "@dsd/config": "workspace:*",
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
+    "drizzle-kit": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
