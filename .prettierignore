@@ -1,0 +1,4 @@
+pnpm-lock.yaml
+
+# The SRS is the client's source document and is kept exactly as received.
+docs/SRS.md
