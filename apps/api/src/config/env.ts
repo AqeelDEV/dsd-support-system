@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 
+import { logLevelSchema, nodeEnvSchema, parseEnvironment } from "@dsd/shared";
 import { z } from "zod";
 
 const commaSeparated = z
@@ -36,14 +37,10 @@ const ipOrCidr = z.string().refine(
 );
 
 export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
+  NODE_ENV: nodeEnvSchema,
   HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
-  LOG_LEVEL: z
-    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
-    .default("info"),
+  LOG_LEVEL: logLevelSchema,
   DATABASE_URL: postgresUrl,
   REDIS_URL: redisUrl,
   /** Browser origins allowed to call the API directly. The web apps use their own proxy and need no entry. */
@@ -58,30 +55,9 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-/** Thrown for invalid configuration. Its message names keys, never values. */
-export class ConfigError extends Error {
-  constructor(readonly problems: readonly string[]) {
-    super(
-      `Invalid configuration:\n${problems.map((problem) => `  - ${problem}`).join("\n")}`,
-    );
-    this.name = "ConfigError";
-  }
-}
+export { ConfigError } from "@dsd/shared";
 
-/**
- * Parses the environment, or throws a ConfigError listing every problem.
- * Values are never echoed, because they include database passwords.
- */
+/** Parses the API's environment, or throws a ConfigError listing every problem. */
 export function parseEnv(source: Record<string, string | undefined>): Env {
-  const result = envSchema.safeParse(source);
-  if (result.success) return result.data;
-  throw new ConfigError(
-    result.error.issues.map((issue) => {
-      const key = issue.path.map(String).join(".") || "(root)";
-      // Environment variables are strings or absent, so a type error means absent.
-      const reason =
-        issue.code === "invalid_type" ? "is required" : issue.message;
-      return `${key}: ${reason}`;
-    }),
-  );
+  return parseEnvironment(envSchema, source);
 }
