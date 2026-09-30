@@ -4,9 +4,10 @@ This folder records the significant design decisions for the DSD Unified Custome
 
 ## Index
 
-| ADR                              | Title            | Status   |
-| -------------------------------- | ---------------- | -------- |
-| [0001](0001-technology-stack.md) | Technology stack | Proposed |
+| ADR                              | Title                                 | Status   |
+| -------------------------------- | ------------------------------------- | -------- |
+| [0001](0001-technology-stack.md) | Technology stack                      | Proposed |
+| [0002](0002-monorepo-layout.md)  | Monorepo layout and module boundaries | Proposed |
 
 ## Conventions
 
