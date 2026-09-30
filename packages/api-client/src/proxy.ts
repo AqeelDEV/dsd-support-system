@@ -16,6 +16,16 @@
  * request bodies at 10 MB, below what attachment uploads need.
  */
 
+/**
+ * The API route prefixes each app may forward, by realm (ADR-0003). The
+ * customer app never forwards staff routes, and the agent app never
+ * forwards customer or public ones.
+ */
+export const REALM_PREFIXES = {
+  customer: ["/api/v1/public/", "/api/v1/auth/customer/", "/api/v1/customer/"],
+  staff: ["/api/v1/auth/staff/", "/api/v1/staff/"],
+} as const satisfies Record<string, readonly string[]>;
+
 export interface ApiProxyOptions {
   /** Base URL of the API on the internal network, for example `http://api:4000`. */
   upstream: string;

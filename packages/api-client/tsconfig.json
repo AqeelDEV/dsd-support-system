@@ -2,7 +2,9 @@
   "extends": "@dsd/config/tsconfig/base.json",
   "compilerOptions": {
     "noEmit": true,
-    "lib": ["es2024", "dom"]
+    "lib": ["es2024", "dom"],
+    "module": "esnext",
+    "moduleResolution": "bundler"
   },
   "include": ["src", "vitest.config.ts"]
 }

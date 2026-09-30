@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApiProxy } from "./proxy.js";
+import { createApiProxy, REALM_PREFIXES } from "./proxy";
 
 interface SeenRequest {
   method: string | undefined;
@@ -40,11 +40,7 @@ function startUpstream() {
   return { server, seen };
 }
 
-const CUSTOMER_PREFIXES = [
-  "/api/v1/public/",
-  "/api/v1/auth/customer/",
-  "/api/v1/customer/",
-];
+const CUSTOMER_PREFIXES = REALM_PREFIXES.customer;
 const APP = "https://support.dsd.example";
 
 describe("createApiProxy", () => {
@@ -208,5 +204,32 @@ describe("createApiProxy", () => {
     };
     expect(body.status).toBe(502);
     expect(body.requestId).toBe(response.headers.get("x-request-id"));
+  });
+});
+
+describe("REALM_PREFIXES", () => {
+  const staffProxy = createApiProxy({
+    upstream: "http://127.0.0.1:1",
+    allowedPrefixes: REALM_PREFIXES.staff,
+  });
+
+  it.each([
+    "/api/v1/customer/tickets",
+    "/api/v1/auth/customer/login",
+    "/api/v1/public/tickets",
+  ])("keeps the agent app from forwarding %s", async (path) => {
+    const response = await staffProxy(
+      new Request(`https://desk.dsd.example${path}`),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("keeps the two realms disjoint", () => {
+    const overlap = REALM_PREFIXES.customer.filter((customer) =>
+      REALM_PREFIXES.staff.some(
+        (staff) => customer.startsWith(staff) || staff.startsWith(customer),
+      ),
+    );
+    expect(overlap).toEqual([]);
   });
 });

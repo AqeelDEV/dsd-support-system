@@ -1,6 +1,6 @@
 import createClient, { type ClientOptions } from "openapi-fetch";
 
-import type { paths } from "./schema.js";
+import type { paths } from "./schema";
 
 /**
  * A client whose paths, parameters and response bodies are all typed from
