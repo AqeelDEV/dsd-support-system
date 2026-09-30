@@ -1,0 +1,79 @@
+# DSD Unified Customer Support System
+
+Customers raise support tickets and follow them through to resolution. Agents, supervisors and admins work those tickets from one shared queue. AI-drafted replies are grounded in a knowledge base, and nothing an AI writes reaches a customer until an agent sends it.
+
+The system is being built in phases. [docs/TRACEABILITY.md](docs/TRACEABILITY.md) shows which requirements are built and which tests prove them.
+
+## Quick start
+
+You need Docker with Compose v2. Nothing else: no Node.js, no API keys, no `.env` file.
+
+```bash
+docker compose up --build --wait
+```
+
+The command returns once every service reports healthy. The first build takes a few minutes.
+
+| What                  | Where                                                     |
+| --------------------- | --------------------------------------------------------- |
+| Customer app          | http://localhost:3000                                     |
+| Agent app             | http://localhost:3001                                     |
+| API docs (Swagger UI) | http://localhost:4000/api/docs                            |
+| OpenAPI document      | http://localhost:4000/api/docs/openapi.json               |
+| Sent emails (Mailpit) | http://localhost:8025                                     |
+| API health            | http://localhost:4000/health, http://localhost:4000/ready |
+
+To check the running stack from the outside, run `scripts/smoke.sh` (bash and curl). Stop everything with `docker compose down`, and add `-v` to delete the data too.
+
+The defaults are for local development only. To change a password or a port, copy `.env.example` to `.env` and edit it.
+
+## Development
+
+You need Node.js 24 and pnpm 12. The exact versions are pinned in `.nvmrc` and in `package.json` under `packageManager`.
+
+```bash
+pnpm install
+docker compose up --detach --wait postgres redis
+pnpm test
+```
+
+The tests run against real PostgreSQL and Redis, started from the same `compose.yaml`, because the design depends on database constraints, triggers and privileges that a mock would hide.
+
+| Command                 | What it does                                                           |
+| ----------------------- | ---------------------------------------------------------------------- |
+| `pnpm build`            | Builds every package and app                                           |
+| `pnpm lint`             | ESLint, including the rules that enforce the workspace boundaries      |
+| `pnpm typecheck`        | TypeScript in strict mode                                              |
+| `pnpm test`             | Unit and integration tests                                             |
+| `pnpm test:unit`        | Tests that need no running services                                    |
+| `pnpm format`           | Formats everything with Prettier                                       |
+| `pnpm openapi:generate` | Regenerates `apps/api/openapi.json` and the typed client from the code |
+| `pnpm openapi:check`    | Fails if the committed OpenAPI document or client is out of date       |
+| `pnpm dev`              | Runs the web apps in development mode                                  |
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Git hooks format and lint staged files and check commit messages, and CI checks the same rules on every push.
+
+## Repository layout
+
+```text
+apps/
+  api/            NestJS API on Fastify: every business rule, authentication and authorisation
+  worker/         Background jobs: notifications, knowledge-base indexing, AI drafts
+  customer-web/   Next.js app for customers
+  agent-web/      Next.js app for agents, supervisors and admins
+packages/
+  shared/         zod schemas and types used by the API, the worker and both apps
+  api-client/     Typed client generated from the OpenAPI document, and the apps' API proxy
+  db/             Database access (server only)
+  ui/             Shared React components and theme
+  config/         TypeScript, ESLint and Next.js presets
+docs/             Requirements, architecture, data model and decision records
+```
+
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md): components, request flows, events and failure behaviour
+- [Data model](docs/DATA_MODEL.md): tables, constraints, indexes and database roles
+- [Decision records](docs/adr/README.md): what was decided, why, and what was rejected
+- [Traceability](docs/TRACEABILITY.md): every requirement, where it lives and what proves it
+- [Requirements](docs/SRS.md): the specification this system is built against
