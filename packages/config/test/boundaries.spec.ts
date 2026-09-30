@@ -129,6 +129,35 @@ describe("workspace boundaries (ADR-0002)", () => {
   });
 });
 
+describe("the worker and the messages table (ADR-0006, layer 1)", () => {
+  it.each([
+    'import { messages } from "@dsd/db/schema";',
+    'import { messages as history } from "@dsd/db/schema";',
+    'import * as schema from "@dsd/db/schema";',
+    'export { messages } from "@dsd/db/schema";',
+    'import { messages } from "@dsd/db";',
+  ])("rejects %s in the worker", async (code) => {
+    expect(
+      await lint("@dsd/worker", code, "src/jobs/ai-suggestions.ts"),
+    ).toContain("no-restricted-imports");
+  });
+
+  it("lets the worker import the tables it writes", async () => {
+    expect(
+      await lint(
+        "@dsd/worker",
+        'import { aiSuggestions, kbChunks } from "@dsd/db/schema";',
+      ),
+    ).toEqual([]);
+  });
+
+  it("lets the API import the messages table", async () => {
+    expect(
+      await lint("@dsd/api", 'import { messages } from "@dsd/db/schema";'),
+    ).toEqual([]);
+  });
+});
+
 describe("output encoding (NFR-7)", () => {
   it("bans dangerouslySetInnerHTML", async () => {
     const code =

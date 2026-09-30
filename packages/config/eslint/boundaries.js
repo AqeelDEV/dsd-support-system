@@ -61,12 +61,43 @@ export function boundaryRules(packageName) {
     "no-restricted-imports": [
       "error",
       {
-        paths: forbidden.map((name) => ({ name, message: reason(name) })),
+        paths: [
+          ...forbidden.map((name) => ({ name, message: reason(name) })),
+          ...(RESTRICTED_NAMES[packageName] ?? []),
+        ],
         patterns,
       },
     ],
   };
 }
+
+/**
+ * Names a workspace may not import even from a package it depends on.
+ *
+ * The worker runs the AI pipeline, which must have no code path that
+ * creates a customer-visible message (ADR-0006, first guardrail layer). So
+ * it may not import the `messages` table. Namespace imports are reported
+ * too, because they would expose the table under another name. The worker's
+ * database role backs this up by having no INSERT on `messages`.
+ */
+const WORKER_MESSAGES_MESSAGE =
+  "The worker must never write customer-visible messages (ADR-0006). If it needs to read them, add a read-only query to @dsd/db.";
+
+/** @type {Readonly<Record<string, Array<{ name: string, importNames: string[], message: string }>>>} */
+const RESTRICTED_NAMES = Object.freeze({
+  "@dsd/worker": [
+    {
+      name: "@dsd/db",
+      importNames: ["messages"],
+      message: WORKER_MESSAGES_MESSAGE,
+    },
+    {
+      name: "@dsd/db/schema",
+      importNames: ["messages"],
+      message: WORKER_MESSAGES_MESSAGE,
+    },
+  ],
+});
 
 /**
  * Everything that enforces one workspace's boundaries, as a config object.
