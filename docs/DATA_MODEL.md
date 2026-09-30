@@ -532,7 +532,7 @@ S = SELECT, I = INSERT, U = UPDATE, D = DELETE. Anything not listed is not grant
 | `ai_suggestion_sources`   | S         | S I                                    |
 | `ai_suggestion_feedback`  | S I U     | none                                   |
 
-`dsd_api` also gets USAGE on `ticket_number_seq`. `dsd_migrator` owns every object and is used only by migrations and seeding.
+`dsd_api` also gets USAGE on `ticket_number_seq`. The worker's expiry columns are `expires_at` and `idle_expires_at` on `sessions`, and `expires_at` on `auth_tokens`: enough to find and delete expired rows, and nothing that identifies a session or its owner. `dsd_migrator` owns every object and is used only by migrations and seeding.
 
 ## Data lifecycle
 
@@ -557,4 +557,4 @@ The SRS asks that v1 doesn't make multi-brand support (§11.1) or new intake cha
 
 ## Seed data
 
-The seed is deterministic (a fixed faker seed) and clearly synthetic: no real people or companies. It includes one brand (`DSD`); demo accounts for a customer, an agent, a supervisor and an admin, with credentials listed in the README; customers with tickets in every status and priority; public replies, internal notes and attachments; canned responses; and, from Phase 9, 30 to 40 knowledge-base articles for a fictional DSD product line. Phase 10 adds a larger generator for 5,000+ tickets to measure performance.
+The seed is deterministic (a fixed faker seed) and clearly synthetic: no real people or companies. It includes one brand (`DSD`); demo accounts for a customer, an agent, a supervisor and an admin, with credentials listed in the README; customers with tickets in every status and priority; public replies and internal notes, with attachments once file storage exists (Phase 4); canned responses; and, from Phase 9, 30 to 40 knowledge-base articles for a fictional DSD product line. Phase 10 adds a larger generator for 5,000+ tickets to measure performance.
