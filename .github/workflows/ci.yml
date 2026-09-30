@@ -65,6 +65,9 @@ jobs:
       - name: OpenAPI document and client are up to date
         run: pnpm openapi:check
 
+      - name: Database schema and migrations agree
+        run: pnpm db:check
+
       - name: Start PostgreSQL and Redis
         run: docker compose up --detach --wait postgres redis
 

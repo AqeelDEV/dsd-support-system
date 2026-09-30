@@ -18,6 +18,7 @@
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "openapi:generate": "turbo run openapi:generate",
     "openapi:check": "turbo run openapi:generate && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/schema.d.ts",
+    "db:check": "pnpm --filter @dsd/db db:check",
     "prepare": "husky"
   },
   "devDependencies": {

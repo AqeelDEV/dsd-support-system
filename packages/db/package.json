@@ -30,7 +30,8 @@
     "test:unit": "vitest run --exclude \"**/*.int.spec.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node dist/cli/migrate.js",
-    "db:seed": "node dist/cli/seed.js"
+    "db:seed": "node dist/cli/seed.js",
+    "db:check": "node scripts/check-migrations.js"
   },
   "dependencies": {
     "@dsd/shared": "workspace:*",
