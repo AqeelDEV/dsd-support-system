@@ -4,9 +4,12 @@
   "private": true,
   "description": "HTTP API: every business rule, authentication, authorisation and the audit trail",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
     "openapi:generate": "node dist/openapi/generate.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

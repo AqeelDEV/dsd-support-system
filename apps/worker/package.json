@@ -4,9 +4,12 @@
   "private": true,
   "description": "Background worker: outbox dispatch, notifications, knowledge-base indexing and AI suggestion drafts",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/main.js",
+    "start": "node --env-file-if-exists=../../.env dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

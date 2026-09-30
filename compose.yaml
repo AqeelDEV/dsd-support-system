@@ -1,0 +1,185 @@
+# The whole stack for local use, review and CI:
+#
+#   docker compose up --build --wait
+#
+# Every ${VAR:-default} below is a development-only default, so the stack
+# runs on a clean machine with no .env file. Override any of them in a .env
+# file next to this one (see .env.example). Never reuse these values in a
+# real deployment.
+#
+# Data stores publish uncommon host ports (55432, 56379) so they don't clash
+# with a PostgreSQL or Redis already installed on the machine. Everything is
+# bound to 127.0.0.1 only.
+
+name: dsd-support
+
+x-db-passwords: &db-passwords
+  DSD_MIGRATOR_PASSWORD: ${DSD_MIGRATOR_PASSWORD:-migrator-dev-password}
+  DSD_API_PASSWORD: ${DSD_API_PASSWORD:-api-dev-password}
+  DSD_WORKER_PASSWORD: ${DSD_WORKER_PASSWORD:-worker-dev-password}
+
+x-node-healthcheck: &node-healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 20
+  start_period: 10s
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18-trixie
+    environment:
+      <<: *db-passwords
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres-dev-password}
+      DSD_DATABASE: dsd
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker,
+      # so the volume is mounted one level up.
+      - postgres-data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - 127.0.0.1:${POSTGRES_PORT:-55432}:5432
+    healthcheck:
+      # TCP, not the socket: during first-time initialisation the server
+      # listens only on the socket, so this stays unhealthy until the init
+      # scripts have finished.
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, postgres, -d, dsd]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:8.10.2
+    # Queues need durability and must never have keys evicted.
+    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    volumes:
+      - redis-data:/data
+    ports:
+      - 127.0.0.1:${REDIS_PORT:-56379}:6379
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # S3-compatible object store for attachments (ADR-0001, ADR-0009). It is
+  # reachable only on the compose network; browsers never talk to it. The
+  # access key becomes its only identity, so anonymous requests are refused.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    command:
+      - mini
+      - -dir=/data
+      - -bucket=dsd-attachments
+      - -admin.ui=false
+      - -master.telemetry=false
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-dsd-dev-access-key}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-dsd-dev-secret-key}
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8333/healthz]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  # Catches every email the system sends. Web UI on http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - 127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025
+      - 127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025
+    healthcheck:
+      test: [CMD, /mailpit, readyz]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      target: api
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://dsd_api:${DSD_API_PASSWORD:-api-dev-password}@postgres:5432/dsd
+      REDIS_URL: redis://redis:6379
+    ports:
+      # Published for Swagger UI at http://localhost:4000/api/docs. The web
+      # apps reach the API over the compose network.
+      - 127.0.0.1:${API_PORT:-4000}:4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+
+  worker:
+    build:
+      context: .
+      target: worker
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://dsd_worker:${DSD_WORKER_PASSWORD:-worker-dev-password}@postgres:5432/dsd
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  customer-web:
+    build:
+      context: .
+      target: customer-web
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    ports:
+      - 127.0.0.1:${CUSTOMER_WEB_PORT:-3000}:3000
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+
+  agent-web:
+    build:
+      context: .
+      target: agent-web
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    ports:
+      - 127.0.0.1:${AGENT_WEB_PORT:-3001}:3001
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+
+volumes:
+  postgres-data:
+  redis-data:
+  seaweedfs-data:

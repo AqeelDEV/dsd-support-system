@@ -1,0 +1,17 @@
+# Allowlist: only what the image build needs is sent to Docker.
+*
+!apps/
+!packages/
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!turbo.json
+
+# Build output and dependencies are always recreated inside the image.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+**/next-env.d.ts
