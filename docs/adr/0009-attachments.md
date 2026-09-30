@@ -1,6 +1,6 @@
 # ADR-0009: Attachment validation, storage and download
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-1, FR-10, FR-19, NFR-7, NFR-8
 

@@ -1,6 +1,6 @@
 # ADR-0001: Technology stack
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-0, NFR-0, NFR-2, NFR-4, NFR-12, NFR-13
 

@@ -1,6 +1,6 @@
 # ADR-0006: Grounded AI reply suggestions and the human-approval guardrail
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-21, FR-22, FR-23, FR-24, NFR-4, NFR-7, NFR-10
 

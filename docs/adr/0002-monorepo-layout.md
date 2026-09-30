@@ -1,6 +1,6 @@
 # ADR-0002: Monorepo layout and module boundaries
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-16, NFR-12, API-1
 

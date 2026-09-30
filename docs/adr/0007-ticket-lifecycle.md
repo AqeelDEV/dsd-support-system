@@ -1,6 +1,6 @@
 # ADR-0007: Ticket lifecycle, assignment, escalation and reporting definitions
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-1, FR-3, FR-7, FR-8, FR-9, FR-11, FR-13
 

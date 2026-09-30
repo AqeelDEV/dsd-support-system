@@ -6,15 +6,15 @@ This folder records the significant design decisions for the DSD Unified Custome
 
 | ADR                                          | Title                                                              | Status   |
 | -------------------------------------------- | ------------------------------------------------------------------ | -------- |
-| [0001](0001-technology-stack.md)             | Technology stack                                                   | Proposed |
-| [0002](0002-monorepo-layout.md)              | Monorepo layout and module boundaries                              | Proposed |
-| [0003](0003-authentication-and-sessions.md)  | Authentication, sessions and the customer and staff realms         | Proposed |
-| [0004](0004-authorization-rbac.md)           | Permission-based RBAC with resource-level checks                   | Proposed |
-| [0005](0005-outbox-queues-notifications.md)  | Transactional outbox, job queues and notifications                 | Proposed |
-| [0006](0006-ai-suggestions-and-guardrail.md) | Grounded AI reply suggestions and the human-approval guardrail     | Proposed |
-| [0007](0007-ticket-lifecycle.md)             | Ticket lifecycle, assignment, escalation and reporting definitions | Proposed |
-| [0008](0008-data-integrity-and-db-roles.md)  | Append-only history and least-privilege database roles             | Proposed |
-| [0009](0009-attachments.md)                  | Attachment validation, storage and download                        | Proposed |
+| [0001](0001-technology-stack.md)             | Technology stack                                                   | Accepted |
+| [0002](0002-monorepo-layout.md)              | Monorepo layout and module boundaries                              | Accepted |
+| [0003](0003-authentication-and-sessions.md)  | Authentication, sessions and the customer and staff realms         | Accepted |
+| [0004](0004-authorization-rbac.md)           | Permission-based RBAC with resource-level checks                   | Accepted |
+| [0005](0005-outbox-queues-notifications.md)  | Transactional outbox, job queues and notifications                 | Accepted |
+| [0006](0006-ai-suggestions-and-guardrail.md) | Grounded AI reply suggestions and the human-approval guardrail     | Accepted |
+| [0007](0007-ticket-lifecycle.md)             | Ticket lifecycle, assignment, escalation and reporting definitions | Accepted |
+| [0008](0008-data-integrity-and-db-roles.md)  | Append-only history and least-privilege database roles             | Accepted |
+| [0009](0009-attachments.md)                  | Attachment validation, storage and download                        | Accepted |
 
 ## Conventions
 

@@ -1,6 +1,6 @@
 # ADR-0008: Append-only history and least-privilege database roles
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-10, FR-18, FR-21, NFR-6
 

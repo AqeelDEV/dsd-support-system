@@ -1,6 +1,6 @@
 # ADR-0005: Transactional outbox, job queues and notifications
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-5, FR-18, FR-20, FR-21, NFR-2, NFR-4, NFR-10
 

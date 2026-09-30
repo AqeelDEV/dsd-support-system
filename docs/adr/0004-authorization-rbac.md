@@ -1,6 +1,6 @@
 # ADR-0004: Permission-based RBAC with resource-level checks
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-11, FR-14, FR-17, NFR-6, NFR-11
 

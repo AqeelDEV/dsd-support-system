@@ -1,6 +1,6 @@
 # ADR-0003: Authentication, sessions and the customer and staff realms
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-30
 - Requirements: FR-2, FR-17, NFR-2, NFR-5, NFR-6, NFR-9
 
