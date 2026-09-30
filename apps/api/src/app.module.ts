@@ -1,9 +1,10 @@
 import { type DynamicModule, Module } from "@nestjs/common";
-import { APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { createZodValidationPipe, ZodSerializerInterceptor } from "nestjs-zod";
 import type { DestinationStream } from "pino";
 
 import { loggingModule } from "./common/logging.js";
+import { ProblemDetailsFilter } from "./common/problem-details.js";
 import type { Env } from "./config/env.js";
 import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
@@ -35,6 +36,7 @@ export class AppModule {
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },
         { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+        { provide: APP_FILTER, useClass: ProblemDetailsFilter },
       ],
     };
   }
