@@ -4,10 +4,11 @@ This folder records the significant design decisions for the DSD Unified Custome
 
 ## Index
 
-| ADR                              | Title                                 | Status   |
-| -------------------------------- | ------------------------------------- | -------- |
-| [0001](0001-technology-stack.md) | Technology stack                      | Proposed |
-| [0002](0002-monorepo-layout.md)  | Monorepo layout and module boundaries | Proposed |
+| ADR                                         | Title                                                      | Status   |
+| ------------------------------------------- | ---------------------------------------------------------- | -------- |
+| [0001](0001-technology-stack.md)            | Technology stack                                           | Proposed |
+| [0002](0002-monorepo-layout.md)             | Monorepo layout and module boundaries                      | Proposed |
+| [0003](0003-authentication-and-sessions.md) | Authentication, sessions and the customer and staff realms | Proposed |
 
 ## Conventions
 
