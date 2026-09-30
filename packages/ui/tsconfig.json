@@ -1,0 +1,7 @@
+{
+  "extends": "@dsd/config/tsconfig/nextjs.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": ["src", "vitest.config.ts"]
+}

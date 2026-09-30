@@ -1,0 +1,103 @@
+/*
+ * Design tokens shared by the customer app and the agent app. Components use
+ * the semantic names (bg-primary, text-muted-foreground, border-border), so
+ * the palette can change here without touching markup.
+ *
+ * Each app imports Tailwind first, then this file, and adds an @source for
+ * this package so the classes used by its components are generated.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Contrast pairs meet WCAG AA for body text (UI-2). */
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.99 0.002 247);
+  --foreground: oklch(0.21 0.03 264);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 264);
+  --muted: oklch(0.96 0.006 247);
+  --muted-foreground: oklch(0.45 0.03 257);
+  --primary: oklch(0.45 0.16 262);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0.02 255);
+  --secondary-foreground: oklch(0.27 0.06 262);
+  --accent: oklch(0.93 0.04 190);
+  --accent-foreground: oklch(0.3 0.06 200);
+  --destructive: oklch(0.52 0.2 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0.01 255);
+  --input: oklch(0.86 0.015 255);
+  --ring: oklch(0.55 0.16 262);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.17 0.02 265);
+    --foreground: oklch(0.96 0.005 250);
+    --card: oklch(0.21 0.025 265);
+    --card-foreground: oklch(0.96 0.005 250);
+    --muted: oklch(0.26 0.025 265);
+    --muted-foreground: oklch(0.74 0.02 255);
+    --primary: oklch(0.7 0.14 260);
+    --primary-foreground: oklch(0.18 0.03 265);
+    --secondary: oklch(0.29 0.04 262);
+    --secondary-foreground: oklch(0.94 0.01 250);
+    --accent: oklch(0.33 0.05 200);
+    --accent-foreground: oklch(0.94 0.02 190);
+    --destructive: oklch(0.64 0.19 25);
+    --destructive-foreground: oklch(0.99 0 0);
+    --border: oklch(0.32 0.025 265);
+    --input: oklch(0.36 0.03 265);
+    --ring: oklch(0.7 0.14 260);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: light dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Keyboard focus is always visible (UI-2). */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
