@@ -17,7 +17,7 @@
     "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
     "openapi:generate": "turbo run openapi:generate",
-    "openapi:check": "turbo run openapi:generate && git diff --exit-code -- apps/api/openapi.json",
+    "openapi:check": "turbo run openapi:generate && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/schema.d.ts",
     "prepare": "husky"
   },
   "devDependencies": {

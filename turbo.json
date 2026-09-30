@@ -31,6 +31,11 @@
       "dependsOn": ["build"],
       "outputs": ["openapi.json"],
       "cache": false
+    },
+    "@dsd/api-client#openapi:generate": {
+      "dependsOn": ["@dsd/api#openapi:generate"],
+      "outputs": ["src/schema.d.ts"],
+      "cache": false
     }
   }
 }

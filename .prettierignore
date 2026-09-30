@@ -5,3 +5,4 @@ docs/SRS.md
 
 # Generated, and checked for drift in CI instead.
 apps/api/openapi.json
+packages/api-client/src/schema.d.ts
