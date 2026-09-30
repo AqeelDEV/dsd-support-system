@@ -1,0 +1,29 @@
+{
+  "name": "@dsd/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Background worker: outbox dispatch, notifications, knowledge-base indexing and AI suggestion drafts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\""
+  },
+  "dependencies": {
+    "@dsd/db": "workspace:*",
+    "@dsd/shared": "workspace:*",
+    "ioredis": "catalog:",
+    "pino": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@dsd/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

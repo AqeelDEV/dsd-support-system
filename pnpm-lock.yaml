@@ -384,6 +384,40 @@ importers:
         specifier: 'catalog:'
         version: 5.0.2(@types/node@24.19.0)(vite@8.3.1(@types/node@24.19.0)(jiti@2.6.1)(yaml@2.9.1))
 
+  apps/worker:
+    dependencies:
+      '@dsd/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@dsd/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      ioredis:
+        specifier: 'catalog:'
+        version: 6.0.0(supports-color@10.2.2)
+      pino:
+        specifier: 'catalog:'
+        version: 10.3.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+    devDependencies:
+      '@dsd/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.0
+      eslint:
+        specifier: 'catalog:'
+        version: 10.11.0(jiti@2.6.1)(supports-color@10.2.2)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.2(@types/node@24.19.0)(vite@8.3.1(@types/node@24.19.0)(jiti@2.6.1)(yaml@2.9.1))
+
   packages/api-client:
     dependencies:
       openapi-fetch:
@@ -4809,6 +4843,17 @@ snapshots:
       es-errors: 1.3.0
       hasown: 2.0.4
       side-channel: 1.1.1
+
+  ioredis@6.0.0(supports-color@10.2.2):
+    dependencies:
+      '@ioredis/commands': 2.0.0
+      cluster-key-slot: 1.1.1
+      debug: 4.4.3(supports-color@10.2.2)
+      denque: 2.1.0
+      redis-errors: 1.2.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
 
   ioredis@6.0.0(supports-color@7.2.0):
     dependencies:
