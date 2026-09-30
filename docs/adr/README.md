@@ -13,6 +13,7 @@ This folder records the significant design decisions for the DSD Unified Custome
 | [0005](0005-outbox-queues-notifications.md)  | Transactional outbox, job queues and notifications                 | Proposed |
 | [0006](0006-ai-suggestions-and-guardrail.md) | Grounded AI reply suggestions and the human-approval guardrail     | Proposed |
 | [0007](0007-ticket-lifecycle.md)             | Ticket lifecycle, assignment, escalation and reporting definitions | Proposed |
+| [0008](0008-data-integrity-and-db-roles.md)  | Append-only history and least-privilege database roles             | Proposed |
 
 ## Conventions
 
