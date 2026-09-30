@@ -27,7 +27,8 @@ RUN pnpm turbo run build
 # code, the workspace packages they use, and production dependencies only.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm --filter @dsd/api deploy --prod --store-dir /pnpm/store /out/api && \
-    pnpm --filter @dsd/worker deploy --prod --store-dir /pnpm/store /out/worker
+    pnpm --filter @dsd/worker deploy --prod --store-dir /pnpm/store /out/worker && \
+    pnpm --filter @dsd/db deploy --prod --store-dir /pnpm/store /out/db
 
 FROM ${NODE_IMAGE} AS runtime
 ENV NODE_ENV=production
@@ -38,6 +39,12 @@ FROM runtime AS api
 COPY --from=build --chown=node:node /out/api ./
 EXPOSE 4000
 CMD ["node", "dist/main.js"]
+
+# One-off: applies migrations as dsd_migrator, then loads the demo data into
+# an empty database. Seeding skips itself once the data is there.
+FROM runtime AS migrate
+COPY --from=build --chown=node:node /out/db ./
+CMD ["sh", "-c", "node dist/cli/migrate.js && node dist/cli/seed.js"]
 
 FROM runtime AS worker
 COPY --from=build --chown=node:node /out/worker ./

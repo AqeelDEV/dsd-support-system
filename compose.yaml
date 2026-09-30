@@ -98,6 +98,20 @@ services:
       timeout: 3s
       retries: 20
 
+  # Runs once per `up`: migrations as dsd_migrator (the only role that may
+  # change the schema), then the demo data if the database is empty. The API
+  # and worker start only after it succeeds.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgres://dsd_migrator:${DSD_MIGRATOR_PASSWORD:-migrator-dev-password}@postgres:5432/dsd
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
@@ -113,6 +127,8 @@ services:
       # apps reach the API over the compose network.
       - 127.0.0.1:${API_PORT:-4000}:4000
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -135,6 +151,8 @@ services:
       DATABASE_URL: postgres://dsd_worker:${DSD_WORKER_PASSWORD:-worker-dev-password}@postgres:5432/dsd
       REDIS_URL: redis://redis:6379
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:

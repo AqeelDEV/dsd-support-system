@@ -51,6 +51,10 @@ expect_status "healthcheck" 200 "$AGENT/healthz"
 expect_body "proxy reaches the API (problem details from the API)" '"detail":"Cannot GET /api/v1/staff/no-such-route"' "$AGENT/api/v1/staff/no-such-route"
 expect_body "proxy refuses customer routes itself" '"detail":"No such API route in this app\."' "$AGENT/api/v1/customer/tickets"
 
+echo "Database"
+tickets=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc "SELECT count(*) FROM tickets" 2>/dev/null | tr -d '[:space:]' || true)
+if [[ $tickets -gt 0 ]] 2>/dev/null; then pass "migrated and seeded ($tickets tickets)"; else fail "migrated and seeded (got '$tickets' tickets)"; fi
+
 echo "Supporting services"
 expect_status "Mailpit web UI" 200 "$MAILPIT/"
 # The object store has no published port, so ask from inside its container.
