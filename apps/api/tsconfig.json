@@ -1,0 +1,7 @@
+{
+  "extends": "@dsd/config/tsconfig/nestjs.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src", "test", "vitest.config.ts"]
+}

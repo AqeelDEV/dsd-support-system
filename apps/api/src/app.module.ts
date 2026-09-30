@@ -1,0 +1,41 @@
+import { type DynamicModule, Module } from "@nestjs/common";
+import { APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
+import { createZodValidationPipe, ZodSerializerInterceptor } from "nestjs-zod";
+import type { DestinationStream } from "pino";
+
+import { loggingModule } from "./common/logging.js";
+import type { Env } from "./config/env.js";
+import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
+import { HealthModule } from "./modules/health/health.module.js";
+
+/**
+ * Validates every body, query and path parameter against its zod schema.
+ * `strictSchemaDeclaration` makes an endpoint that forgets to declare a
+ * schema fail loudly instead of accepting unvalidated input.
+ */
+const ValidationPipe = createZodValidationPipe({
+  strictSchemaDeclaration: true,
+});
+
+export interface AppModuleOptions {
+  /** Where logs go. Tests pass a stream to inspect them; the default is stdout. */
+  logDestination?: DestinationStream;
+}
+
+@Module({})
+export class AppModule {
+  static forRoot(env: Env, options: AppModuleOptions = {}): DynamicModule {
+    return {
+      module: AppModule,
+      imports: [
+        loggingModule(env, options.logDestination),
+        InfrastructureModule.forRoot(env),
+        HealthModule,
+      ],
+      providers: [
+        { provide: APP_PIPE, useClass: ValidationPipe },
+        { provide: APP_INTERCEPTOR, useClass: ZodSerializerInterceptor },
+      ],
+    };
+  }
+}
