@@ -1,0 +1,28 @@
+import "reflect-metadata";
+
+import { writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
+import { createApp } from "../app.factory.js";
+import { parseEnv } from "../config/env.js";
+import { buildOpenApiDocument } from "./document.js";
+
+/**
+ * Writes openapi.json at the package root. The document depends only on
+ * the code, so placeholder connection settings are used; the app is built
+ * but never initialised, so nothing connects to them.
+ */
+const OUTPUT = fileURLToPath(new URL("../../openapi.json", import.meta.url));
+
+const app = await createApp(
+  parseEnv({
+    NODE_ENV: "test",
+    LOG_LEVEL: "silent",
+    DATABASE_URL: "postgres://openapi@127.0.0.1:1/openapi",
+    REDIS_URL: "redis://127.0.0.1:1",
+  }),
+);
+const document = buildOpenApiDocument(app);
+await writeFile(OUTPUT, `${JSON.stringify(document, null, 2)}\n`);
+await app.close();
+process.stdout.write(`Wrote ${OUTPUT}\n`);

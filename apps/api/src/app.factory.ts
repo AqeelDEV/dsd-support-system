@@ -9,6 +9,7 @@ import { Logger } from "nestjs-pino";
 import { AppModule, type AppModuleOptions } from "./app.module.js";
 import { assignRequestId, REQUEST_ID_HEADER } from "./common/request-id.js";
 import type { Env } from "./config/env.js";
+import { buildOpenApiDocument, serveApiDocs } from "./openapi/document.js";
 
 export const API_PREFIX = "api/v1";
 
@@ -17,8 +18,8 @@ export const UNVERSIONED_ROUTES = ["health", "ready"];
 
 /**
  * Builds the whole HTTP application: the server, its security headers and
- * error handling, and the routes. `main.ts` and the integration tests both
- * use this, so tests exercise the real pipeline.
+ * error handling, and the routes. `main.ts`, the integration tests and the
+ * OpenAPI generator all use this, so tests exercise the real pipeline.
  */
 export async function createApp(
   env: Env,
@@ -75,6 +76,7 @@ export async function createApp(
   });
 
   app.setGlobalPrefix(API_PREFIX, { exclude: UNVERSIONED_ROUTES });
+  serveApiDocs(app, buildOpenApiDocument(app));
 
   return app;
 }

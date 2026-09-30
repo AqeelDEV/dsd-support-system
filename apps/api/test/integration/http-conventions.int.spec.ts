@@ -115,4 +115,25 @@ describe("HTTP conventions", () => {
       expect(response.headers["access-control-allow-origin"]).toBeUndefined();
     });
   });
+
+  describe("API documentation (API-1)", () => {
+    it("serves Swagger UI", async () => {
+      const response = await http().get("/api/docs").expect(200);
+      expect(response.headers["content-type"]).toContain("text/html");
+    });
+
+    it("serves the OpenAPI 3.1 document", async () => {
+      const response = await http().get("/api/docs/openapi.json").expect(200);
+      const document = response.body as {
+        openapi: string;
+        paths: Record<string, unknown>;
+        components: { schemas: Record<string, unknown> };
+      };
+      expect(document.openapi).toBe("3.1.0");
+      expect(Object.keys(document.paths)).toEqual(
+        expect.arrayContaining(["/health", "/ready"]),
+      );
+      expect(document.components.schemas).toHaveProperty("ProblemDetails");
+    });
+  });
 });

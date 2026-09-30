@@ -1,0 +1,184 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "The process is running and can answer. Checks no dependencies.",
+        "operationId": "HealthController_liveness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Alive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Liveness_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness",
+        "tags": [
+          "Operations"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "description": "Checks PostgreSQL and Redis. Returns 503 only when PostgreSQL is unreachable. With only Redis down it returns 200 and `degraded`, so a Redis outage doesn't take every instance out of service.",
+        "operationId": "HealthController_readiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Ready, or degraded without Redis",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness_Output"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "PostgreSQL is unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Readiness",
+        "tags": [
+          "Operations"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "DSD Unified Customer Support API",
+    "description": "The API behind the DSD customer app and the DSD agent app.\n\nAll routes except `/health` and `/ready` live under `/api/v1`. Errors use RFC 9457 problem details (`application/problem+json`); every response carries an `X-Request-Id` header that matches the `requestId` in an error body and the server logs.",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "Liveness_Output": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Readiness_Output": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "unavailable"
+            ]
+          },
+          "checks": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              },
+              "redis": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              }
+            },
+            "required": [
+              "database",
+              "redis"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ],
+        "additionalProperties": false
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI; `about:blank` when the HTTP status says it all"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short summary of the problem type"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "description": "Explanation specific to this occurrence",
+            "type": "string"
+          },
+          "instance": {
+            "description": "The request path that produced the problem",
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Matches the X-Request-Id response header and the server logs"
+          },
+          "errors": {
+            "description": "Present on validation problems: one entry per invalid field",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Dot-separated path to the invalid field; empty for the whole body"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "requestId"
+        ]
+      }
+    }
+  }
+}

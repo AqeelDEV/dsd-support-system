@@ -2,3 +2,6 @@ pnpm-lock.yaml
 
 # The SRS is the client's source document and is kept exactly as received.
 docs/SRS.md
+
+# Generated, and checked for drift in CI instead.
+apps/api/openapi.json
