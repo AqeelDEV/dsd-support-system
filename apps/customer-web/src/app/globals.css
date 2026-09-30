@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@dsd/ui/styles.css";
+
+/* Generate the classes used by the shared components too. */
+@source "../../node_modules/@dsd/ui/src";
