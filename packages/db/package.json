@@ -29,10 +29,13 @@
     "test": "vitest run",
     "test:unit": "vitest run --exclude \"**/*.int.spec.ts\"",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node dist/cli/migrate.js"
+    "db:migrate": "node dist/cli/migrate.js",
+    "db:seed": "node dist/cli/seed.js"
   },
   "dependencies": {
     "@dsd/shared": "workspace:*",
+    "@faker-js/faker": "catalog:",
+    "@node-rs/argon2": "catalog:",
     "drizzle-orm": "catalog:",
     "pg": "catalog:",
     "zod": "catalog:"
