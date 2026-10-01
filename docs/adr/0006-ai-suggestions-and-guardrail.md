@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-02 (see [Amendments](#amendments))
 - Requirements: FR-21, FR-22, FR-23, FR-24, NFR-4, NFR-7, NFR-10
 
 ## Context
@@ -185,3 +186,15 @@ Ticket text leaves the system only when a real provider is configured, and the d
 - Integration, guardrail: every bypass test in the table in section 8.
 - Integration, degradation: with the LLM failing, ticket submission and agent replies still work, the job retries, and after the last attempt it lands in `dead-letter` with the suggestion marked `failed`.
 - Evaluation script: hit rate, citation validity and abstention accuracy are reported for the mock, and for a real provider when a key is present.
+
+## Amendments
+
+### 2026-10-02, Phase 6
+
+1. **A new guardrail layer: the worker can't read messages (section 8).** Notification emails quote an agent's public reply, and nothing else in the worker needs message text, so `dsd_worker` lost SELECT on `messages` (migration 0004). It reads reply text only through the view `public_reply_bodies`: public, agent-written messages (ID, ticket, body, time and, from migration 0005, author). The view is owned by the migrator, so the worker can neither see past its filter nor change it. Internal notes and customers' own messages therefore can't reach the worker, or any prompt or email it builds, by any query. The lint rule against importing `messages` in the worker stays as it is.
+
+| Layer          | Mechanism                                                                                   | Test that tries to bypass it                                                                                                                                                                                                                                                                               |
+| -------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No read access | The worker has no privilege on `messages`; reply text comes from `public_reply_bodies` only | db: `privileges` (the worker's SELECT on `messages` is refused, internal notes and customer messages never appear in the view, the worker can't replace the view); worker int: `notifications` (a forged event claiming an internal note is public sends nothing, and the note's text appears in no email) |
+
+2. **Consequence for Phase 9.** Retrieval needs the customer's messages as its query. They will come through a second narrow view (public customer messages, for example), with the same rule: no internal note ever reaches the AI pipeline.

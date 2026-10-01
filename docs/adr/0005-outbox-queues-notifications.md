@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
-- Amended: 2026-10-01 (see [Amendments](#amendments))
+- Amended: 2026-10-01 and 2026-10-02 (see [Amendments](#amendments))
 - Requirements: FR-5, FR-18, FR-20, FR-21, NFR-2, NFR-4, NFR-10
 
 ## Context
@@ -128,3 +128,14 @@ interface NotificationChannel {
 ### 2026-10-01, Phase 5
 
 1. **Payloads for the events Phase 5 writes (section 2).** `agent.invited { agentId }`, written when an agent is invited and when an invite is sent again; `kb.article_published { articleId, version }`, the version to index; and `kb.article_unpublished { articleId }`, written when a published article is unpublished or archived. Archiving a draft writes none, because nothing public changed ([ADR-0012](0012-knowledge-base-canned-responses-reports-and-agents.md), section 1).
+
+### 2026-10-02, Phase 6
+
+2. **Job IDs (section 3)** are `<eventId>.<queue>`: BullMQ refuses `:` in a custom job ID. Adding the same ID twice is still a no-op.
+3. **Only queues with a consumer are routed to (section 2).** In Phase 6 that is `notifications`, for `ticket.created`, `message.created`, `ticket.status_changed`, `customer.signup_requested`, `guest_access.requested`, `agent.invited` and the new `customer.password_reset_requested`. An event nobody consumes yet is marked dispatched without a job, so the outbox doesn't keep it and Redis holds no jobs no worker will take. `ai-suggestions` and `kb-indexing` are added with their workers in Phase 9, with a one-off backfill of the articles published before then.
+4. **Fail-fast producer connection.** Jobs are added on a Redis connection with no offline queue, so during an outage a dispatch fails at once and rolls back instead of hanging with its rows locked. Queue consumers use a second connection whose commands wait for Redis to return, as BullMQ needs.
+5. **Dead letters (section 4).** The job's own processor handles its last attempt: it marks the event's unsent deliveries `failed` with the error, copies the job (queue, ID, name, data, error, attempts, time) to `dead-letter` under the same ID, then fails. Doing it in the processor rather than in a `failed` listener means a process that stops right after still has the copy. A payload that can never succeed (it doesn't match its event's schema) is dead-lettered at once. `pnpm --filter @dsd/worker dead-letter list | replay <job ID> | replay --all` lists and replays them; a replayed job goes back on its queue under a new ID with its attempts reset. Notification retries use exponential backoff from 10 s with 50% jitter.
+6. **One email per reply (section 7).** The handler for a public agent reply reads the `ticket.status_changed` row written in the same transaction (same `messageId`) and mentions the new status; the status event itself sends nothing when it carries a `messageId`. A customer's reply that reopens their ticket carries its `messageId` too, so it sends nothing. Status changes made on their own, which only staff make, send a status email.
+7. **Notification data is built only when sending.** `NotificationService` creates or loads the delivery row first and skips one already sent; only then does it build the template's data, so a repeated job doesn't create a token that no email carries.
+8. **Notification channels** have `kind`, `addressOf(recipient)` and `send(to, from, message)`; templates render once (subject, text and HTML) and each channel uses what suits it. Adding SMS means a channel, a value in the `notification_channel` enum and short-text templates.
+9. **Nightly clean-up (section 3).** A BullMQ job scheduler runs it at 03:00 UTC on a `maintenance` queue: expired sessions, tokens a week past expiry, outbox rows dispatched a week ago and the orphaned-file sweep ([ADR-0009](0009-attachments.md)). Dispatched rows older than a week are gone, so replaying a reply's dead letter after that sends the reply without its status line.

@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
-- Amended: 2026-10-01 (see [Amendments](#amendments))
+- Amended: 2026-10-01 and 2026-10-02 (see [Amendments](#amendments))
 - Requirements: FR-2, FR-17, NFR-2, NFR-5, NFR-6, NFR-9
 
 ## Context
@@ -173,3 +173,8 @@ Counters live in Redis, so every API instance shares the same limits. Initial va
 4. **Rate limits (section 10).** Sign-up completion and invite acceptance are limited like the guest token exchange: 20 per 15 minutes per IP. Counters are keyed by an HMAC of the email or address, so Redis holds no personal data. The global guards run in this order: session, then CSRF and origin, then rate limit, then permissions. The origin check comes before the rate limit so a forged cross-site request never uses up anyone's allowance.
 5. **Invalid emailed links** answer 400 with the problem type `invalid-token`, whether the token is unknown, expired, already used, meant for something else, or its account no longer fits (for example, a sign-up link for an account that already has a password).
 6. **Password reset (section 7)** moves to Phase 6, when the worker sends emails, so it can be built and tested end to end. It is scheduled work, not a known gap.
+
+### 2026-10-02, Phase 6
+
+1. **Password reset (section 7) is built**, for customers. `POST /api/v1/auth/customer/password-reset/request` takes an email and always answers 202; for a known address it writes `customer.password_reset_requested { customerId }`, rate limited like sign-up (10 an hour per address, 3 per email). The worker emails a link to `/reset-password#token=…` that works once and lasts **one hour**, or, for an address without a password, points to sign-up instead: a reset never creates an account. `POST .../password-reset/complete` spends the token, sets the new password only on an account that has one, deletes the customer's other reset tokens, revokes every session they had (guest sessions included), and signs this browser in; it is limited like the other token exchanges. Staff password reset isn't built: `auth_tokens_subject_ck` allows reset tokens for customers only, and an admin can deactivate and re-invite a colleague instead.
+2. **The emails behind links are sent (sections 6 to 8).** The worker creates each token as it sends its email: guest links last 7 days, sign-up links 24 hours, invites 72 hours. A notification about a ticket carries a fresh guest link when the customer has no account, and links to the signed-in ticket page when they do. A job that is retried creates a new token each attempt; tokens whose email was never sent reach nobody and expire like any other.
