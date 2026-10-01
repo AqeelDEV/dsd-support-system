@@ -104,6 +104,10 @@ export function ApiMultipartBody(fields: z.ZodObject) {
             type: "array",
             maxItems: ATTACHMENT_LIMITS.maxFiles,
             items: { type: "string", format: "binary" },
+            // Without a default, Swagger UI fills an unused file slot with
+            // the sample text "string"; with it, it sends an empty value,
+            // which the API reads as no file chosen.
+            default: [],
             description: `Up to ${ATTACHMENT_LIMITS.maxFiles} files`,
           },
         },

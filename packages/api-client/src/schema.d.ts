@@ -1651,7 +1651,10 @@ export interface operations {
                     subject: string;
                     /** @description What happened, up to 20,000 characters */
                     description: string;
-                    /** @description Up to 5 files */
+                    /**
+                     * @description Up to 5 files
+                     * @default []
+                     */
                     attachments?: string[];
                 };
             };
@@ -1778,7 +1781,10 @@ export interface operations {
                     subject: string;
                     /** @description What happened, up to 20,000 characters */
                     description: string;
-                    /** @description Up to 5 files */
+                    /**
+                     * @description Up to 5 files
+                     * @default []
+                     */
                     attachments?: string[];
                 };
             };
@@ -1915,7 +1921,10 @@ export interface operations {
                 "multipart/form-data": {
                     /** @description Up to 20,000 characters */
                     body: string;
-                    /** @description Up to 5 files */
+                    /**
+                     * @description Up to 5 files
+                     * @default []
+                     */
                     attachments?: string[];
                 };
             };
@@ -2182,7 +2191,10 @@ export interface operations {
                      * @enum {string}
                      */
                     status?: "open" | "pending_customer" | "resolved" | "closed";
-                    /** @description Up to 5 files */
+                    /**
+                     * @description Up to 5 files
+                     * @default []
+                     */
                     attachments?: string[];
                 };
             };
@@ -2289,7 +2301,10 @@ export interface operations {
                 "multipart/form-data": {
                     /** @description Up to 20,000 characters */
                     body: string;
-                    /** @description Up to 5 files */
+                    /**
+                     * @description Up to 5 files
+                     * @default []
+                     */
                     attachments?: string[];
                 };
             };

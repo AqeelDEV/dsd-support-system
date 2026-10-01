@@ -1,4 +1,8 @@
-import type { Multipart, MultipartFile } from "@fastify/multipart";
+import type {
+  Multipart,
+  MultipartFile,
+  MultipartValue,
+} from "@fastify/multipart";
 import {
   ATTACHMENT_LIMITS,
   ATTACHMENTS_FIELD,
@@ -97,16 +101,20 @@ export async function readSubmission<Schema extends z.ZodType>(
   const values: Record<string, string> = {};
   let part = await next();
   while (part?.type === "field") {
-    if (part.fieldnameTruncated || part.valueTruncated) {
-      throw invalid(part.fieldname, "Too long");
+    if (part.fieldname === ATTACHMENTS_FIELD) {
+      assertNoFileChosen(part);
+    } else {
+      if (part.fieldnameTruncated || part.valueTruncated) {
+        throw invalid(part.fieldname, "Too long");
+      }
+      if (typeof part.value !== "string") {
+        throw invalid(part.fieldname, "Must be plain text");
+      }
+      if (Object.hasOwn(values, part.fieldname)) {
+        throw invalid(part.fieldname, "Sent more than once");
+      }
+      values[part.fieldname] = part.value;
     }
-    if (typeof part.value !== "string") {
-      throw invalid(part.fieldname, "Must be plain text");
-    }
-    if (Object.hasOwn(values, part.fieldname)) {
-      throw invalid(part.fieldname, "Sent more than once");
-    }
-    values[part.fieldname] = part.value;
     part = await next();
   }
 
@@ -119,32 +127,51 @@ export async function readSubmission<Schema extends z.ZodType>(
     let current: Multipart | undefined = first;
     while (current !== undefined) {
       if (current.type === "field") {
-        throw invalid(
-          current.fieldname,
-          "Send every field before the first file",
-        );
-      }
-      if (current.fieldname !== ATTACHMENTS_FIELD) {
-        throw invalid(
-          current.fieldname,
-          `Send files in the \`${ATTACHMENTS_FIELD}\` field`,
-        );
-      }
-      const file = current;
-      yield {
-        filename: file.filename,
-        read: async () => {
+        if (current.fieldname !== ATTACHMENTS_FIELD) {
+          throw invalid(
+            current.fieldname,
+            "Send every field before the first file",
+          );
+        }
+        assertNoFileChosen(current);
+      } else {
+        if (current.fieldname !== ATTACHMENTS_FIELD) {
+          throw invalid(
+            current.fieldname,
+            `Send files in the \`${ATTACHMENTS_FIELD}\` field`,
+          );
+        }
+        const file = current;
+        const read = async () => {
           try {
             return await file.toBuffer();
           } catch (error) {
             throw translate(error);
           }
-        },
-      };
+        };
+        // A file input left empty arrives as a nameless file with no bytes.
+        const unnamed = file.filename === "" ? await read() : undefined;
+        if (unnamed === undefined) {
+          yield { filename: file.filename, read };
+        } else if (unnamed.length > 0) {
+          yield { filename: "", read: () => Promise.resolve(unnamed) };
+        }
+      }
       current = await next();
     }
   }
   return { fields: parsed.data, files: files() };
+}
+
+/**
+ * An empty value in the file field means "no file chosen": Swagger UI and
+ * some form libraries send one for an unused file input. Text there is a
+ * mistake, not a file.
+ */
+function assertNoFileChosen(part: MultipartValue): void {
+  if (part.value !== "") {
+    throw invalid(ATTACHMENTS_FIELD, "Must be a file, not text");
+  }
 }
 
 /**

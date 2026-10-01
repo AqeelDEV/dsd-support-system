@@ -778,6 +778,7 @@
                       "type": "string",
                       "format": "binary"
                     },
+                    "default": [],
                     "description": "Up to 5 files"
                   }
                 }
@@ -968,6 +969,7 @@
                       "type": "string",
                       "format": "binary"
                     },
+                    "default": [],
                     "description": "Up to 5 files"
                   }
                 }
@@ -1168,6 +1170,7 @@
                       "type": "string",
                       "format": "binary"
                     },
+                    "default": [],
                     "description": "Up to 5 files"
                   }
                 }
@@ -1643,6 +1646,7 @@
                       "type": "string",
                       "format": "binary"
                     },
+                    "default": [],
                     "description": "Up to 5 files"
                   }
                 }
@@ -1794,6 +1798,7 @@
                       "type": "string",
                       "format": "binary"
                     },
+                    "default": [],
                     "description": "Up to 5 files"
                   }
                 }

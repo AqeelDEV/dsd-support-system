@@ -233,6 +233,65 @@ describe("ticket submission", () => {
       ]);
     });
 
+    const expectNoAttachments = async (response: request.Response) => {
+      expect(response.status).toBe(201);
+      const ticket = await ticketByReference(referenceOf(response));
+      expect(
+        await asOwner(
+          database,
+          "SELECT id FROM attachments WHERE ticket_id = $1",
+          [ticket.id],
+        ),
+      ).toEqual([]);
+    };
+
+    it("reads an empty value in the file field, as Swagger UI sends, as no file", async () => {
+      await expectNoAttachments(
+        await guestForm("swagger@example.com").field("attachments", ""),
+      );
+    });
+
+    it("reads a file input left empty, as a browser sends it, as no file", async () => {
+      // Exactly what Chrome and Firefox send for an empty file input.
+      const body = [
+        "--b0undary",
+        'Content-Disposition: form-data; name="email"',
+        "",
+        "empty-input@example.com",
+        "--b0undary",
+        'Content-Disposition: form-data; name="subject"',
+        "",
+        "Nothing attached",
+        "--b0undary",
+        'Content-Disposition: form-data; name="description"',
+        "",
+        "The file input was left empty.",
+        "--b0undary",
+        'Content-Disposition: form-data; name="attachments"; filename=""',
+        "Content-Type: application/octet-stream",
+        "",
+        "",
+        "--b0undary--",
+        "",
+      ].join("\r\n");
+      await expectNoAttachments(
+        await post("/api/v1/public/tickets")
+          .set("content-type", "multipart/form-data; boundary=b0undary")
+          .send(body),
+      );
+    });
+
+    it("refuses text in the file field", async () => {
+      const response = await guestForm("text@example.com").field(
+        "attachments",
+        "not a file",
+      );
+      expect(response.status).toBe(400);
+      expect((response.body as { errors: unknown[] }).errors).toEqual([
+        expect.objectContaining({ path: "attachments" }),
+      ]);
+    });
+
     it("refuses JSON, because the route takes files", async () => {
       const response = await post("/api/v1/public/tickets").send({
         email: "json@example.com",
