@@ -1,3 +1,6 @@
+export * from "./auth/email.js";
+export * from "./auth/permissions.js";
+export * from "./auth/schemas.js";
 export * from "./config/environment.js";
 export * from "./domain/audit.js";
 export * from "./domain/enums.js";

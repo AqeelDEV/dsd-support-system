@@ -12,6 +12,12 @@ export const PROBLEM_JSON = "application/problem+json";
 export const PROBLEM_TYPES = {
   blank: "about:blank",
   validation: "tag:dsd.example,2026:problems/validation-error",
+  /** Too many attempts; `Retry-After` says when to try again. */
+  rateLimited: "tag:dsd.example,2026:problems/rate-limited",
+  /** The CSRF token or the Origin was missing or wrong. Fetch `/me` for a fresh token. */
+  csrfRejected: "tag:dsd.example,2026:problems/csrf-rejected",
+  /** An emailed link's token is unknown, expired or already used. */
+  invalidToken: "tag:dsd.example,2026:problems/invalid-token",
 } as const;
 
 export const validationIssueSchema = z.object({

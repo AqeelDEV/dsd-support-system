@@ -20,3 +20,22 @@ export const DOMAIN_EVENTS = [
 ] as const;
 export const domainEventSchema = z.enum(DOMAIN_EVENTS);
 export type DomainEvent = z.infer<typeof domainEventSchema>;
+
+/**
+ * Someone asked to register this customer. The worker emails a
+ * verification link, or a sign-in reminder if the account already has a
+ * password; it reads which from the customer row.
+ */
+export const customerSignupRequestedSchema = z.object({
+  customerId: z.uuid(),
+});
+export type CustomerSignupRequested = z.infer<
+  typeof customerSignupRequestedSchema
+>;
+
+/** A guest asked for a fresh access link to one of their tickets. */
+export const guestAccessRequestedSchema = z.object({
+  ticketId: z.uuid(),
+  customerId: z.uuid(),
+});
+export type GuestAccessRequested = z.infer<typeof guestAccessRequestedSchema>;
