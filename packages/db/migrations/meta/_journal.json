@@ -29,6 +29,13 @@
       "when": 1790805448926,
       "tag": "0003_role_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790883621471,
+      "tag": "0004_public_reply_bodies",
+      "breakpoints": true
     }
   ]
 }

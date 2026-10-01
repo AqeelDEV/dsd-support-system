@@ -13,3 +13,4 @@ export * from "./messages.js";
 export * from "./outbox.js";
 export * from "./sessions.js";
 export * from "./tickets.js";
+export * from "./views.js";

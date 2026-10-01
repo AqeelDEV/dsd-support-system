@@ -7,7 +7,11 @@ import {
   SQLSTATE,
   type TestDatabase,
 } from "../src/testing/index.js";
-import { documentedPrivileges, documentedTables } from "./docs.js";
+import {
+  documentedPrivileges,
+  documentedTables,
+  documentedViews,
+} from "./docs.js";
 import * as fixture from "./fixtures.js";
 
 /**
@@ -85,6 +89,19 @@ describe("database roles and privileges", () => {
         worker: tableWide(cells.worker),
       });
     });
+
+    it.each([...documentedViews().entries()])(
+      "view %s",
+      async (view, cells) => {
+        expect({
+          api: await actualTableWide("dsd_api", view),
+          worker: await actualTableWide("dsd_worker", view),
+        }).toEqual({
+          api: tableWide(cells.api),
+          worker: tableWide(cells.worker),
+        });
+      },
+    );
 
     it("gives the worker SELECT on the expiry columns of sessions and auth tokens, and nothing else there", async () => {
       const { rows } = await db
@@ -193,6 +210,73 @@ describe("database roles and privileges", () => {
           [ticketId],
         );
       });
+    });
+  });
+
+  describe("the worker reads only reply text customers were sent (ADR-0006)", () => {
+    it("is refused every read of messages, internal notes included", async () => {
+      for (const statement of [
+        "SELECT body FROM messages",
+        "SELECT count(*) FROM messages WHERE visibility = 'internal'",
+      ]) {
+        const error = await inRolledBackTransaction(
+          db.pool("dsd_worker"),
+          (client) => expectPgError(client, statement),
+        );
+        expect(error.code).toBe(SQLSTATE.insufficientPrivilege);
+      }
+    });
+
+    it("sees public agent replies through the view, and never a note or a customer's message", async () => {
+      const owner = await db.pool("dsd_migrator").connect();
+      let ids: { reply: string; note: string; customer: string };
+      try {
+        // A brand of its own: the suggestion test above already used the default prefix.
+        const brandId = await fixture.brand(owner, "VIEW");
+        const customerId = await fixture.customer(owner);
+        const agentId = await fixture.agent(owner);
+        const ticketId = await fixture.ticket(owner, brandId, customerId);
+        const add = async (sql: string, values: unknown[]) =>
+          (await owner.query<{ id: string }>(sql, values)).rows[0]?.id ?? "";
+        ids = {
+          reply: await add(
+            "INSERT INTO messages (ticket_id, author_type, author_agent_id, visibility, body) VALUES ($1, 'agent', $2, 'public', 'Your refund is on its way.') RETURNING id",
+            [ticketId, agentId],
+          ),
+          note: await add(
+            "INSERT INTO messages (ticket_id, author_type, author_agent_id, visibility, body) VALUES ($1, 'agent', $2, 'internal', 'CANARY internal note') RETURNING id",
+            [ticketId, agentId],
+          ),
+          customer: await fixture.customerMessage(owner, ticketId, customerId),
+        };
+      } finally {
+        owner.release();
+      }
+      const { rows } = await db
+        .pool("dsd_worker")
+        .query<{ id: string; body: string }>(
+          "SELECT id, body FROM public_reply_bodies WHERE id = ANY($1)",
+          [[ids.reply, ids.note, ids.customer]],
+        );
+      expect(rows).toEqual([
+        { id: ids.reply, body: "Your refund is on its way." },
+      ]);
+      const notes = await db
+        .pool("dsd_worker")
+        .query("SELECT 1 FROM public_reply_bodies WHERE body LIKE '%CANARY%'");
+      expect(notes.rows).toEqual([]);
+    });
+
+    it("can't change what the view shows", async () => {
+      const error = await inRolledBackTransaction(
+        db.pool("dsd_worker"),
+        (client) =>
+          expectPgError(
+            client,
+            "CREATE OR REPLACE VIEW public_reply_bodies AS SELECT id, ticket_id, body, created_at FROM messages",
+          ),
+      );
+      expect(error.code).toBe(SQLSTATE.insufficientPrivilege);
     });
   });
 

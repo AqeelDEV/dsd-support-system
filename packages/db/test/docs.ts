@@ -66,3 +66,15 @@ export const documentedPrivileges = (): Map<
       { api: row[1] ?? "", worker: row[2] ?? "" },
     ]),
   );
+
+/** Every view, with what each role may do with it (the same letters as the matrix). */
+export const documentedViews = (): Map<
+  string,
+  { api: string; worker: string }
+> =>
+  new Map(
+    rows(section("## Views")).map((row) => [
+      backticked(row[0] ?? "")[0] ?? "",
+      { api: row[2] ?? "", worker: row[3] ?? "" },
+    ]),
+  );

@@ -6,6 +6,7 @@ import {
   documentedChecks,
   documentedTables,
   documentedTriggers,
+  documentedViews,
 } from "./docs.js";
 
 describe("migrations", () => {
@@ -33,7 +34,7 @@ describe("migrations", () => {
           .query("SELECT hash FROM drizzle.__drizzle_migrations")
       ).rowCount;
     const before = await applied();
-    expect(before).toBeGreaterThanOrEqual(4);
+    expect(before).toBeGreaterThanOrEqual(5);
 
     await runMigrations(db.pool("dsd_migrator"));
     expect(await applied()).toBe(before);
@@ -44,6 +45,13 @@ describe("migrations", () => {
       "SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public'",
     );
     expect(tables).toEqual(documentedTables().sort());
+  });
+
+  it("creates exactly the views in DATA_MODEL.md", async () => {
+    const views = await names(
+      "SELECT viewname AS name FROM pg_views WHERE schemaname = 'public'",
+    );
+    expect(views).toEqual([...documentedViews().keys()].sort());
   });
 
   it("creates exactly the CHECK constraints in DATA_MODEL.md, by name", async () => {
