@@ -13,3 +13,8 @@ export {
   SQLSTATE,
   type PgErrorFields,
 } from "./pg-errors.js";
+/**
+ * The demo data, for tests in other packages that need realistic rows:
+ * the API's auth and RBAC tests sign in as the seeded demo accounts.
+ */
+export { DEMO_PASSWORD, seedDatabase, type SeedResult } from "../seed/index.js";

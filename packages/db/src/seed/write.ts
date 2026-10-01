@@ -1,3 +1,5 @@
+import { normalizeEmail } from "@dsd/shared";
+
 import { createDb, type Pool } from "../client.js";
 import {
   agentBrandMemberships,
@@ -71,7 +73,7 @@ export async function writeSeedPlan(
         .insert(agents)
         .values({
           email: agent.email,
-          emailNormalized: agent.email.toLowerCase(),
+          emailNormalized: normalizeEmail(agent.email),
           displayName: agent.displayName,
           role: agent.role,
           passwordHash: agent.hasPassword ? passwordHash : null,
@@ -101,7 +103,7 @@ export async function writeSeedPlan(
         .insert(customers)
         .values({
           email: customer.email,
-          emailNormalized: customer.email.toLowerCase(),
+          emailNormalized: normalizeEmail(customer.email),
           displayName: customer.displayName,
           passwordHash: customer.registered ? passwordHash : null,
           emailVerifiedAt: customer.registered ? customer.createdAt : null,
