@@ -42,6 +42,7 @@ expect_body "unknown routes answer with problem details" '"status":404.*"request
 
 echo "Customer app"
 expect_status "home page" 200 "$CUSTOMER/"
+expect_body "pages send the app's security headers" "^[Cc]ontent-[Ss]ecurity-[Pp]olicy: frame-ancestors 'none'" "$CUSTOMER/" --dump-header - --output /dev/null
 expect_status "healthcheck" 200 "$CUSTOMER/healthz"
 expect_body "proxy reaches the API (problem details from the API)" '"detail":"Cannot GET /api/v1/customer/no-such-route"' "$CUSTOMER/api/v1/customer/no-such-route"
 expect_body "proxy refuses staff routes itself" '"detail":"No such API route in this app\."' "$CUSTOMER/api/v1/staff/tickets"
@@ -79,6 +80,40 @@ if [[ -n $ip && $ip != 203.0.113.99 ]]; then pass "a forged X-Forwarded-For is i
 status=$(sign_in "$AGENT" staff agent@dsd.example)
 if [[ $status == 200 ]]; then pass "demo agent signs in through the agent app"; else fail "demo agent signs in through the agent app (got $status)"; fi
 expect_body "the staff session works" '"role":"agent"' "$AGENT/api/v1/auth/staff/me" --cookie "$jar"
+
+echo "Tickets"
+# A guest submits a ticket with a file through the customer app, as its
+# form will (multipart, fields first). Each run uses a fresh address, so the
+# per-email limit never trips. The file comes from stdin.
+receipt=$(printf 'hub-01 lost Wi-Fi at 20:04\n' | curl --silent --max-time 15 \
+  -X POST "$CUSTOMER/api/v1/public/tickets" \
+  -H "Origin: $CUSTOMER" \
+  -F "email=smoke+$(date +%s)@example.com" \
+  -F "subject=Smoke test ticket" \
+  -F "description=Raised by scripts/smoke.sh" \
+  -F "attachments=@-;filename=smoke-log.txt;type=application/octet-stream" || true)
+reference=$(grep -oE '"reference":"[A-Z]+-[0-9]+"' <<<"$receipt" | cut -d'"' -f4 || true)
+if [[ -n $reference ]]; then pass "a guest submits a ticket with a file ($reference)"; else fail "a guest submits a ticket with a file (got ${receipt:0:200})"; fi
+
+queue=$(curl --silent --max-time 10 --cookie "$jar" "$AGENT/api/v1/staff/tickets?sort=newest&limit=20" || true)
+ticket_id=$(grep -oE "\"id\":\"[0-9a-f-]{36}\",\"reference\":\"$reference\"" <<<"$queue" | cut -d'"' -f4 || true)
+if [[ -n $reference && -n $ticket_id ]]; then pass "the agent finds it in the queue"; else fail "the agent finds it in the queue"; fi
+
+view=$(curl --silent --max-time 10 --cookie "$jar" "$AGENT/api/v1/staff/tickets/$ticket_id" || true)
+attachment_id=$(grep -oE '"id":"[0-9a-f-]{36}","filename":"smoke-log.txt","contentType":"text/plain; charset=utf-8"' <<<"$view" | cut -d'"' -f4 || true)
+if [[ -n $attachment_id ]]; then pass "the file was stored as plain text, typed by its content"; else fail "the file was stored as plain text, typed by its content (view: ${view:0:200})"; fi
+
+headers=$(curl --silent --max-time 10 --cookie "$jar" --dump-header - --output /dev/null \
+  "$AGENT/api/v1/staff/tickets/$ticket_id/attachments/$attachment_id" | tr -d '\r' || true)
+if grep -qi "^content-disposition: attachment; filename\*=UTF-8''smoke-log.txt" <<<"$headers" &&
+  grep -qi '^x-content-type-options: nosniff' <<<"$headers" &&
+  grep -qi "^content-security-policy: default-src 'none'; sandbox" <<<"$headers"; then
+  pass "the agent downloads it as an attachment, sandboxed"
+else
+  fail "the agent downloads it as an attachment, sandboxed (headers: ${headers:0:300})"
+fi
+expect_status "the customer app won't serve a staff download" 404 \
+  "$CUSTOMER/api/v1/staff/tickets/$ticket_id/attachments/$attachment_id"
 
 echo "Database"
 tickets=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc "SELECT count(*) FROM tickets" 2>/dev/null | tr -d '[:space:]' || true)
