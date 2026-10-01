@@ -352,7 +352,7 @@ erDiagram
 ```
 
 - **`kb_articles.search_vector`** is a stored generated column: the title weighted A, the summary weighted B and the body weighted C, using the `english` text search configuration. Tags are matched by filter (a GIN index on the array) rather than folded into the text search.
-- **`kb_articles.version`** increases each time the article is published. Editing a published article updates it in place, and republishing produces a new version.
+- **`kb_articles.version`** increases each time the article is published. Saving a published article publishes the saved text as the next version, so readers and the AI index always have the same text; drafts and archived articles are edited without a new version ([ADR-0012](adr/0012-knowledge-base-canned-responses-reports-and-agents.md)). `published_at` is the time of the latest publication.
 - **`kb_chunks`** holds the retrieval units. A new version of an article gets new chunks, and the old ones stay with `is_current = false` so stored suggestions can still show the exact text they used. `embedding` is empty when no embedding provider is configured, and `embedding_model` records which model produced each vector.
 - **`ai_suggestions`** is one row per suggestion attempt, with its full provenance ([ADR-0006](adr/0006-ai-suggestions-and-guardrail.md)). `kind` leaves room for triage and sentiment later (FR-23).
 - **`ai_suggestion_sources`** lists every chunk retrieved for a suggestion with its rank and scores, and flags the ones the draft cited.
@@ -557,4 +557,4 @@ The SRS asks that v1 doesn't make multi-brand support (§11.1) or new intake cha
 
 ## Seed data
 
-The seed is deterministic (a fixed faker seed) and clearly synthetic: no real people or companies. It includes one brand (`DSD`); demo accounts for a customer, an agent, a supervisor and an admin, with credentials listed in the README; customers with tickets in every status and priority; public replies and internal notes; canned responses; and, from Phase 9, 30 to 40 knowledge-base articles for a fictional DSD product line. Phase 10 adds attachments, which also have to be written to the object store, and a larger generator for 5,000+ tickets to measure performance.
+The seed is deterministic (a fixed faker seed) and clearly synthetic: no real people or companies. It includes one brand (`DSD`); demo accounts for a customer, an agent, a supervisor and an admin, with credentials listed in the README; customers with tickets in every status and priority; public replies and internal notes; canned responses; and a starter knowledge base for a fictional DSD product line: four categories and nine articles, eight of them published, which Phase 9 grows to 30 to 40. Phase 10 adds attachments, which also have to be written to the object store, and a larger generator for 5,000+ tickets to measure performance.

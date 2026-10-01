@@ -57,7 +57,7 @@ export const kbArticles = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     status: kbArticleStatus("status").notNull().default("draft"),
-    /** Incremented on each publish; editing a published article doesn't change it. */
+    /** Incremented on each publish; saving a published article publishes it again (ADR-0012). */
     version: integer("version").notNull().default(0),
     publishedAt: timestamptz("published_at"),
     /** Keyword search (FR-4): title weighted A, summary B, body C. */

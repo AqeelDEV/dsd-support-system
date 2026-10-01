@@ -40,7 +40,12 @@ The stack starts with synthetic demo data. Every demo account's password is `dsd
 
 Two more staff accounts exist for testing the edges: `former.agent@dsd.example` has been deactivated, and `new.starter@dsd.example` was invited but hasn't set a password. Neither can sign in.
 
-The apps' sign-in screens aren't built yet. Until they are, sign in from Swagger UI: open `POST /api/v1/auth/customer/login` or `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests, so `me`, `logout` and the ticket routes work from the same page. Routes that take files (raising a ticket, replies and internal notes) use a multipart form with the fields first and up to five files in `attachments`.
+The apps' sign-in screens aren't built yet. Until they are, sign in from Swagger UI: open `POST /api/v1/auth/customer/login` or `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests, so `me`, `logout` and every staff or customer route work from the same page. Routes that take files (raising a ticket, replies and internal notes) use a multipart form with the fields first and up to five files in `attachments`.
+
+Beyond tickets, the API serves:
+
+- **The help centre**, without signing in: `GET /api/v1/public/kb/articles` browses the published articles, and with `q` searches them (for example `q=refund`), each result with a snippet showing where the words matched.
+- **For staff:** knowledge-base authoring under `/api/v1/staff/kb`, canned responses filled in for a ticket under `/api/v1/staff/canned-responses`, reports under `/api/v1/staff/reports` (volume, response times, tickets per agent) and agent management under `/api/v1/staff/agents`. Agents can read and use these; writing, publishing, reporting and managing people need the supervisor or admin account.
 
 Customers and staff are separate realms: a customer session is refused by every staff route and the other way round ([ADR-0003](docs/adr/0003-authentication-and-sessions.md), [ADR-0004](docs/adr/0004-authorization-rbac.md)). Because this stack runs on plain `http://localhost`, its cookies leave out the `Secure` flag and the `__Host-` prefix, which browsers refuse there. A real deployment keeps both, and the API refuses to start without them unless every trusted origin is on localhost.
 
