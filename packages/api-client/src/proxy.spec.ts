@@ -25,6 +25,8 @@ function startUpstream() {
         headers: req.headers,
         body: Buffer.concat(chunks).toString("utf8"),
       });
+      // A download carries the API's own sandboxing headers (ADR-0009).
+      const download = req.url?.includes("/attachments/") === true;
       res.writeHead(201, {
         "content-type": "application/json",
         "set-cookie": [
@@ -33,6 +35,12 @@ function startUpstream() {
         ],
         connection: "keep-alive",
         "x-request-id": "0199a1b2-0000-7000-8000-0000000000ff",
+        ...(download
+          ? {
+              "content-security-policy": "default-src 'none'; sandbox",
+              "content-disposition": "attachment; filename*=UTF-8''log.txt",
+            }
+          : {}),
       });
       res.end(JSON.stringify({ ok: true }));
     });
@@ -158,6 +166,18 @@ describe("createApiProxy", () => {
     expect(seen[0]?.headers).not.toHaveProperty("trailer");
   });
 
+  it("passes the API's own security headers through untouched", async () => {
+    const response = await proxy(
+      new Request(`${APP}/api/v1/customer/tickets/x/attachments/y`),
+    );
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; sandbox",
+    );
+    expect(response.headers.get("content-disposition")).toBe(
+      "attachment; filename*=UTF-8''log.txt",
+    );
+  });
+
   it("keeps every Set-Cookie header and drops connection headers from the response", async () => {
     const response = await proxy(
       new Request(`${APP}/api/v1/auth/customer/login`, { method: "POST" }),
@@ -200,6 +220,7 @@ describe("createApiProxy", () => {
     expect(response.headers.get("content-type")).toBe(
       "application/problem+json",
     );
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(seen).toHaveLength(0);
   });
 

@@ -104,6 +104,9 @@ function problem(
       status,
       headers: {
         "content-type": "application/problem+json",
+        // The app's page headers don't cover /api/, so the proxy's own
+        // answers carry what matters for a JSON body themselves.
+        "x-content-type-options": "nosniff",
         "x-request-id": requestId,
       },
     },

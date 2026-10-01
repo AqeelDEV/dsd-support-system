@@ -36,8 +36,13 @@ export function createNextConfig({ appDir }) {
     transpilePackages: ["@dsd/ui", "@dsd/api-client"],
     poweredByHeader: false,
     reactStrictMode: true,
+    // Pages only. Responses under /api/ come from the API through the proxy
+    // and keep the API's own headers: a file download's sandboxing CSP
+    // (ADR-0009) must not be replaced by the page policy.
     headers() {
-      return Promise.resolve([{ source: "/:path*", headers: securityHeaders }]);
+      return Promise.resolve([
+        { source: "/:path((?!api/).*)", headers: securityHeaders },
+      ]);
     },
   };
 }
