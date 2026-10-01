@@ -25,15 +25,19 @@ import {
   type MatrixRow,
 } from "./matrix.js";
 
-/** The registered path with each `:name` replaced by the cell's value. */
+/** The registered path with each `:name` replaced by the cell's value, and its query. */
 function pathFor(row: MatrixRow, cell: Cell): string {
-  return row.path.replace(/:(\w+)/g, (_segment, name: string) => {
+  const query =
+    cell.query === undefined
+      ? ""
+      : `?${new URLSearchParams(cell.query).toString()}`;
+  return `${row.path.replace(/:(\w+)/g, (_segment, name: string) => {
     const value = cell.params?.[name];
     if (value === undefined) {
       throw new Error(`${row.method} ${row.path} needs a value for :${name}`);
     }
     return value;
-  });
+  })}${query}`;
 }
 
 const VERBS = {
@@ -82,6 +86,17 @@ describe("RBAC matrix", () => {
       newAgent: async (agent) => (await newAgent(database, agent)).id,
       newArticle: (article) => newArticle(database, article),
       newCategory: async () => (await newCategory(database)).id,
+      newCannedResponse: async () => {
+        const [row] = await asOwner<{ id: string }>(
+          database,
+          `INSERT INTO canned_responses (brand_id, title, body, created_by_agent_id, updated_by_agent_id)
+           SELECT b.id, $1, 'Hi {{customer.name}}', a.id, a.id
+             FROM brands b, agents a WHERE b.slug = 'dsd' AND a.email_normalized = 'supervisor@dsd.example'
+           RETURNING id`,
+          [`Matrix template ${randomUUID()}`],
+        );
+        return row?.id ?? "";
+      },
     };
   });
 

@@ -9,6 +9,7 @@ import { ProblemDetailsFilter } from "./common/problem-details.js";
 import type { Env } from "./config/env.js";
 import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
 import { AgentsModule } from "./modules/agents/agents.module.js";
+import { CannedResponsesModule } from "./modules/canned-responses/canned-responses.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { KbModule } from "./modules/kb/kb.module.js";
 import { TicketsModule } from "./modules/tickets/tickets.module.js";
@@ -40,6 +41,7 @@ export class AppModule {
         TicketsModule,
         AgentsModule,
         KbModule,
+        CannedResponsesModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },

@@ -914,6 +914,87 @@ export interface paths {
         patch: operations["KbStaffController_updateCategory"];
         trace?: never;
     };
+    "/api/v1/staff/canned-responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List templates
+         * @description Active templates by title; `includeRetired` adds the rest.
+         */
+        get: operations["CannedResponsesController_list"];
+        put?: never;
+        /**
+         * Add a template
+         * @description A placeholder that isn't a known variable is a 400.
+         */
+        post: operations["CannedResponsesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/canned-responses/{cannedResponseId}/render": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fill a template in for a ticket
+         * @description Plain text with every variable filled from the ticket as it is now. Put it in the composer, edit it, then send it as a reply: nothing is sent from here.
+         */
+        get: operations["CannedResponsesController_render"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/canned-responses/{cannedResponseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a template */
+        patch: operations["CannedResponsesController_update"];
+        trace?: never;
+    };
+    "/api/v1/staff/canned-responses/{cannedResponseId}/retire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retire a template
+         * @description Hides it from the composer without deleting it. Its title is free for a new template.
+         */
+        post: operations["CannedResponsesController_retire"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1598,6 +1679,81 @@ export interface components {
             /** @description Lowercase words joined by hyphens, like `reset-your-router` */
             slug?: string;
             position?: number;
+        };
+        TemplatePage_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                brandId: string;
+                title: string;
+                /** @description The template, with its variables */
+                body: string;
+                /** @description The variables the body uses, in order */
+                variables: string[];
+                retiredAt: string | null;
+                createdBy: {
+                    /** Format: uuid */
+                    id: string;
+                    displayName: string;
+                };
+                updatedBy: {
+                    /** Format: uuid */
+                    id: string;
+                    displayName: string;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description Pass as `cursor` for the next page; null on the last page */
+            nextCursor: string[];
+        };
+        Rendered_Output: {
+            /** @description The template filled in for the ticket: put it in the composer */
+            body: string;
+        };
+        TemplateCreate: {
+            /**
+             * Format: uuid
+             * @description Your brand; required only if you belong to more than one
+             */
+            brandId?: string;
+            title: string;
+            /** @description Plain text. Variables: {{customer.name}}, {{customer.email}}, {{ticket.reference}}, {{ticket.subject}}, {{agent.name}} */
+            body: string;
+        };
+        Template_Output: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            brandId: string;
+            title: string;
+            /** @description The template, with its variables */
+            body: string;
+            /** @description The variables the body uses, in order */
+            variables: string[];
+            retiredAt: string | null;
+            createdBy: {
+                /** Format: uuid */
+                id: string;
+                displayName: string;
+            };
+            updatedBy: {
+                /** Format: uuid */
+                id: string;
+                displayName: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        TemplateUpdate: {
+            title?: string;
+            /** @description Plain text. Variables: {{customer.name}}, {{customer.email}}, {{ticket.reference}}, {{ticket.subject}}, {{agent.name}} */
+            body?: string;
         };
         ProblemDetails: {
             /** @description Problem type URI; `about:blank` when the HTTP status says it all */
@@ -4712,6 +4868,328 @@ export interface operations {
             };
             /** @description The slug is taken in this brand (`already-exists`) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CannedResponsesController_list: {
+        parameters: {
+            query?: {
+                /** @description Part of the title */
+                q?: string;
+                /** @description Also list retired templates */
+                includeRetired?: string;
+                /** @description Items per page, 1 to 100 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplatePage_Output"];
+                };
+            };
+            /** @description A filter or the cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `canned:use` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CannedResponsesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template_Output"];
+                };
+            };
+            /** @description The body is invalid, or uses an unknown variable */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `canned:manage` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The brand isn't one of yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An active template has that title (`already-exists`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CannedResponsesController_render: {
+        parameters: {
+            query: {
+                /** @description The ticket the reply is for */
+                ticketId: string;
+            };
+            header?: never;
+            path: {
+                cannedResponseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rendered_Output"];
+                };
+            };
+            /** @description `ticketId` is missing or invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `canned:use` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such active template or ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The template belongs to another brand than the ticket */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CannedResponsesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cannedResponseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template_Output"];
+                };
+            };
+            /** @description The body is invalid, or uses an unknown variable */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `canned:manage` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such template in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An active template has that title (`already-exists`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CannedResponsesController_retire: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cannedResponseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Template_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `canned:manage` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such template in your brands */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

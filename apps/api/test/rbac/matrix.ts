@@ -53,12 +53,16 @@ export interface Fixtures {
   newArticle: (article?: NewArticle) => Promise<{ id: string; slug: string }>;
   /** A fresh, empty knowledge-base category. */
   newCategory: () => Promise<string>;
+  /** A fresh canned response in the actors' brand. */
+  newCannedResponse: () => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
 export interface Cell {
   /** Values for the `:name` segments of the row's path. */
   params?: Record<string, string>;
+  /** A query string, for routes that read one. */
+  query?: Record<string, string>;
   /** A JSON body. */
   body?: Record<string, unknown>;
   /** Multipart form fields, for routes that take files. */
@@ -67,7 +71,10 @@ export interface Cell {
   guestTicketId?: string;
 }
 
-export interface MatrixRow extends Omit<Cell, "params" | "guestTicketId"> {
+export interface MatrixRow extends Omit<
+  Cell,
+  "params" | "query" | "guestTicketId"
+> {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** The path as registered, with `:name` for each parameter. */
   path: string;
@@ -452,6 +459,60 @@ const KB_ROWS: MatrixRow[] = [
   },
 ];
 
+/**
+ * Canned responses (FR-12): every agent uses them (`canned:use`); only
+ * supervisors and admins write and retire them (`canned:manage`).
+ */
+const CANNED_ROWS: MatrixRow[] = [
+  {
+    method: "GET",
+    path: "/api/v1/staff/canned-responses",
+    rule: "Every agent lists templates (canned:use)",
+    expected: staffOnly(200),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/canned-responses/:cannedResponseId/render",
+    rule: "Every agent fills a template in for a ticket in their brand (canned:use)",
+    expected: staffOnly(200),
+    arrange: async ({ newCannedResponse, newTicket, seeded }) => ({
+      params: { cannedResponseId: await newCannedResponse() },
+      query: {
+        ticketId: await newTicket({ customerId: seeded.customerId }),
+      },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/canned-responses",
+    rule: "Writing a template needs canned:manage",
+    expected: managersOnly(201),
+    arrange: () =>
+      Promise.resolve({
+        body: { title: `Matrix ${randomUUID()}`, body: "Hi {{customer.name}}" },
+      }),
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/staff/canned-responses/:cannedResponseId",
+    body: { body: "Edited by the matrix" },
+    rule: "Editing a template needs canned:manage",
+    expected: managersOnly(200),
+    arrange: async ({ newCannedResponse }) => ({
+      params: { cannedResponseId: await newCannedResponse() },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/canned-responses/:cannedResponseId/retire",
+    rule: "Retiring a template needs canned:manage",
+    expected: managersOnly(200),
+    arrange: async ({ newCannedResponse }) => ({
+      params: { cannedResponseId: await newCannedResponse() },
+    }),
+  },
+];
+
 export const MATRIX: readonly MatrixRow[] = [
   {
     method: "GET",
@@ -649,4 +710,5 @@ export const MATRIX: readonly MatrixRow[] = [
   },
   ...AGENT_ROWS,
   ...KB_ROWS,
+  ...CANNED_ROWS,
 ];
