@@ -36,6 +36,13 @@
       "when": 1790883621471,
       "tag": "0004_public_reply_bodies",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790884459074,
+      "tag": "0005_reply_authors",
+      "breakpoints": true
     }
   ]
 }

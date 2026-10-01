@@ -508,11 +508,11 @@ Queue pagination is keyset-based (a cursor of the sort key plus `id`), so later 
 
 ## Views
 
-| View                  | Rows and columns                                                                                                | `dsd_api` | `dsd_worker` |
-| --------------------- | --------------------------------------------------------------------------------------------------------------- | --------- | ------------ |
-| `public_reply_bodies` | `id`, `ticket_id`, `body` and `created_at` of messages with `visibility = 'public'` and `author_type = 'agent'` | none      | S            |
+| View                  | Rows and columns                                                                                                                   | `dsd_api` | `dsd_worker` |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------ |
+| `public_reply_bodies` | `id`, `ticket_id`, `body`, `created_at` and `author_agent_id` of messages with `visibility = 'public'` and `author_type = 'agent'` | none      | S            |
 
-- **`public_reply_bodies`** is the only message text the worker can read: notification emails quote an agent's public reply. It is owned by `dsd_migrator` and isn't `security_invoker`, so it reads `messages` with its owner's rights while the worker has no privilege on `messages` at all. Internal notes and customers' own messages can't reach the worker by any query ([ADR-0006](adr/0006-ai-suggestions-and-guardrail.md), [ADR-0008](adr/0008-data-integrity-and-db-roles.md), amended).
+- **`public_reply_bodies`** is the only message text the worker can read: notification emails quote an agent's public reply and name its author. It is owned by `dsd_migrator` and isn't `security_invoker`, so it reads `messages` with its owner's rights while the worker has no privilege on `messages` at all. Internal notes and customers' own messages can't reach the worker by any query ([ADR-0006](adr/0006-ai-suggestions-and-guardrail.md), [ADR-0008](adr/0008-data-integrity-and-db-roles.md), amended).
 
 ## Database roles and privileges
 
