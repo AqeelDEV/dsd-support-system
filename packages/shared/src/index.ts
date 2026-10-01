@@ -1,3 +1,5 @@
+export * from "./agents/requests.js";
+export * from "./agents/responses.js";
 export * from "./auth/email.js";
 export * from "./auth/permissions.js";
 export * from "./auth/schemas.js";
@@ -6,6 +8,7 @@ export * from "./domain/audit.js";
 export * from "./domain/enums.js";
 export * from "./domain/events.js";
 export * from "./domain/password.js";
+export * from "./http/fields.js";
 export * from "./http/health.js";
 export * from "./http/problem-details.js";
 export * from "./tickets/attachments.js";

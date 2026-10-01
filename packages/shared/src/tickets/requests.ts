@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { emailSchema } from "../auth/schemas.js";
 import { ticketPrioritySchema, ticketStatusSchema } from "../domain/enums.js";
+import { pageFields, repeatable, text } from "../http/fields.js";
 
 /*
  * Ticket requests (ADR-0007, ADR-0011). Every object is strict: an unknown
@@ -11,22 +12,6 @@ import { ticketPrioritySchema, ticketStatusSchema } from "../domain/enums.js";
  * Routes that carry files take these fields as multipart/form-data parts,
  * sent before the files; the rest take JSON.
  */
-
-/**
- * Free text as PostgreSQL can store it: trimmed, within the column's CHECK
- * limit, and without NUL characters, which a `text` column can't hold.
- * zod counts UTF-16 units and the CHECK counts characters, so anything
- * zod accepts the database accepts too.
- */
-const text = (max: number) =>
-  z
-    .string()
-    .trim()
-    .min(1)
-    .max(max)
-    .refine((value) => !value.includes("\u0000"), {
-      message: "must not contain NUL characters",
-    });
 
 const subject = text(200).describe("A short summary, up to 200 characters");
 const description = text(20_000).describe(
@@ -111,30 +96,6 @@ export const escalationRequestSchema = z.strictObject({
       "A supervisor or admin in the ticket's brand to hand the ticket to",
     ),
 });
-
-/** `?status=open&status=resolved` arrives as an array, a single value as a string. */
-const repeatable = <Item extends z.ZodType>(item: Item) =>
-  z
-    .preprocess(
-      (value) => (typeof value === "string" ? [value] : value),
-      z.array(item).min(1),
-    )
-    .optional();
-
-const pageFields = {
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(100)
-    .default(25)
-    .describe("Items per page, 1 to 100"),
-  cursor: z
-    .string()
-    .max(512)
-    .optional()
-    .describe("`nextCursor` from the previous page"),
-};
 
 export const pageQuerySchema = z.strictObject(pageFields);
 

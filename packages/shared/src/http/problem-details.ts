@@ -27,6 +27,10 @@ export const PROBLEM_TYPES = {
   ticketClosed: "tag:dsd.example,2026:problems/ticket-closed",
   /** Someone else claimed the ticket first. */
   alreadyAssigned: "tag:dsd.example,2026:problems/already-assigned",
+  /** Something with that email, slug or title already exists. */
+  alreadyExists: "tag:dsd.example,2026:problems/already-exists",
+  /** The change would leave no active admin, so nobody could manage admins any more. */
+  lastAdmin: "tag:dsd.example,2026:problems/last-admin",
 } as const;
 
 export const validationIssueSchema = z.object({

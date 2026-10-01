@@ -98,3 +98,12 @@ export const ticketEscalatedSchema = z.object({
   assigneeAgentId: z.uuid().nullable(),
 });
 export type TicketEscalated = z.infer<typeof ticketEscalatedSchema>;
+
+/**
+ * A supervisor or admin invited an agent, or sent the invite again. The
+ * worker creates the invite token and emails the link (ADR-0003, section 8).
+ */
+export const agentInvitedSchema = z.object({
+  agentId: z.uuid(),
+});
+export type AgentInvited = z.infer<typeof agentInvitedSchema>;
