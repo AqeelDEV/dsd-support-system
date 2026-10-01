@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ORIGIN } from "../support/auth.js";
 import { createSeededDatabase, startAppOn } from "../support/database.js";
-import { newTicket } from "../support/tickets.js";
+import { newTicket, otherBrandId } from "../support/tickets.js";
 import { headersFor, identities } from "./actors.js";
 import {
   ACTORS,
@@ -54,6 +54,7 @@ describe("RBAC matrix", () => {
       database,
       seeded: await identities(database),
       newTicket: (ticket) => newTicket(database, ticket),
+      otherBrandId: () => otherBrandId(database),
     };
   });
 

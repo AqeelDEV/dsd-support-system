@@ -2,10 +2,20 @@ import type {
   Attachment,
   CustomerMessage,
   CustomerTicket,
+  StaffMessage,
+  StaffTicket,
+  StaffTicketSummary,
+  TicketChannel,
+  TicketPriority,
   TicketStatus,
 } from "@dsd/shared";
 
 import type { AttachmentRow } from "../attachments/attachments.repository.js";
+import {
+  allowedActions,
+  allowedTransitionsFor,
+  type StaffView,
+} from "./domain/ticket-actions.js";
 import type { ThreadMessage } from "./messages.repository.js";
 
 /*
@@ -86,5 +96,96 @@ export function toCustomerTicket(
         at: iso(change.at),
       })),
     ],
+  };
+}
+
+/** A queue row, as the repository's summary columns return it. */
+export interface SummaryRow {
+  id: string;
+  reference: string;
+  subject: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  channel: TicketChannel;
+  customer: { id: string; email: string; displayName: string | null };
+  assignee: { id: string; displayName: string } | null;
+  contactVerifiedAt: Date | null;
+  escalatedAt: Date | null;
+  firstResponseAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export function toStaffSummary(row: SummaryRow): StaffTicketSummary {
+  return {
+    id: row.id,
+    reference: row.reference,
+    subject: row.subject,
+    status: row.status,
+    priority: row.priority,
+    channel: row.channel,
+    customer: row.customer,
+    assignee: row.assignee,
+    contactVerified: row.contactVerifiedAt !== null,
+    escalatedAt: isoOrNull(row.escalatedAt),
+    firstResponseAt: isoOrNull(row.firstResponseAt),
+    createdAt: iso(row.createdAt),
+    updatedAt: iso(row.updatedAt),
+  };
+}
+
+export function toStaffMessage(
+  message: ThreadMessage,
+  attachments: Attachment[],
+): StaffMessage {
+  return {
+    id: message.id,
+    visibility: message.visibility,
+    author: {
+      type: message.authorType,
+      id: message.authorId,
+      name: message.authorName,
+    },
+    body: message.body,
+    attachments,
+    createdAt: iso(message.createdAt),
+  };
+}
+
+/**
+ * The whole ticket for staff, with what this agent may do to it now
+ * (ADR-0004, section 5), so the agent app never works the rules out itself.
+ */
+export function toStaffTicket(
+  staff: StaffView,
+  ticket: SummaryRow & {
+    description: string;
+    hasAccount: boolean;
+    assigneeAgentId: string | null;
+    escalatedBy: { id: string; displayName: string } | null;
+    resolvedAt: Date | null;
+    closedAt: Date | null;
+  },
+  thread: readonly ThreadMessage[],
+  attachments: readonly AttachmentRow[],
+): StaffTicket {
+  const filesOf = byMessage(attachments);
+  const state = {
+    status: ticket.status,
+    assigneeAgentId: ticket.assigneeAgentId,
+  };
+  return {
+    ...toStaffSummary(ticket),
+    description: ticket.description,
+    customer: { ...ticket.customer, hasAccount: ticket.hasAccount },
+    escalatedBy: ticket.escalatedBy,
+    resolvedAt: isoOrNull(ticket.resolvedAt),
+    closedAt: isoOrNull(ticket.closedAt),
+    attachments: filesOf(null),
+    messages: thread.map((message) =>
+      toStaffMessage(message, filesOf(message.id)),
+    ),
+    allowedTransitions: allowedTransitionsFor(staff, state),
+    allowedActions: allowedActions(staff, state),
   };
 }

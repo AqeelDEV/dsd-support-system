@@ -9,3 +9,7 @@ export class TicketParams extends createZodDto(
 export class AttachmentParams extends createZodDto(
   z.strictObject({ ticketId: z.uuid(), attachmentId: z.uuid() }),
 ) {}
+
+export class CustomerParams extends createZodDto(
+  z.strictObject({ customerId: z.uuid() }),
+) {}

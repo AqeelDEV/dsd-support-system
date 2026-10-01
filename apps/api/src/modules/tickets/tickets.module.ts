@@ -8,6 +8,8 @@ import { OutboxModule } from "../outbox/outbox.module.js";
 import { CustomerTicketsController } from "./customer-tickets.controller.js";
 import { MessagesRepository } from "./messages.repository.js";
 import { PublicTicketsController } from "./public-tickets.controller.js";
+import { StaffCustomersController } from "./staff-customers.controller.js";
+import { StaffTicketsController } from "./staff-tickets.controller.js";
 import { TicketChanges } from "./ticket-changes.js";
 import { TicketMessagesService } from "./ticket-messages.service.js";
 import { TicketQueriesService } from "./ticket-queries.service.js";
@@ -23,7 +25,12 @@ import { TicketsRepository } from "./tickets.repository.js";
     CustomersModule,
     OutboxModule,
   ],
-  controllers: [PublicTicketsController, CustomerTicketsController],
+  controllers: [
+    PublicTicketsController,
+    CustomerTicketsController,
+    StaffTicketsController,
+    StaffCustomersController,
+  ],
   providers: [
     TicketsRepository,
     MessagesRepository,

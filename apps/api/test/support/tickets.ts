@@ -1,5 +1,5 @@
 import type { TestDatabase } from "@dsd/db/testing";
-import type { TicketPriority, TicketStatus } from "@dsd/shared";
+import type { TicketChannel, TicketPriority, TicketStatus } from "@dsd/shared";
 
 import { asOwner } from "./database.js";
 
@@ -11,6 +11,7 @@ export interface NewTicket {
   priority?: TicketPriority;
   assigneeId?: string | null;
   subject?: string;
+  channel?: TicketChannel;
 }
 
 /** The seeded demo brand's ID. */
@@ -37,7 +38,7 @@ export async function newTicket(
     database,
     `INSERT INTO tickets (brand_id, customer_id, channel, subject, description,
                           status, priority, assignee_agent_id, resolved_at, closed_at)
-     VALUES ($1, $2, 'web', $3, 'Written by a test.', $4::ticket_status,
+     VALUES ($1, $2, $7::ticket_channel, $3, 'Written by a test.', $4::ticket_status,
              $5::ticket_priority, $6,
              CASE WHEN $4::ticket_status IN ('resolved', 'closed') THEN now() END,
              CASE WHEN $4::ticket_status = 'closed' THEN now() END)
@@ -49,8 +50,25 @@ export async function newTicket(
       status,
       ticket.priority ?? "normal",
       ticket.assigneeId ?? null,
+      ticket.channel ?? "web",
     ],
   );
   if (row === undefined) throw new Error("ticket insert returned nothing");
+  return row.id;
+}
+
+/**
+ * A second brand with no members, for brand-scope tests (ADR-0004, section
+ * 6). Created once per database.
+ */
+export async function otherBrandId(database: TestDatabase): Promise<string> {
+  const [row] = await asOwner<{ id: string }>(
+    database,
+    `INSERT INTO brands (slug, name, ticket_prefix, support_email)
+     VALUES ('other', 'Other Brand', 'OTH', 'support@other.example')
+     ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+     RETURNING id`,
+  );
+  if (row === undefined) throw new Error("brand insert returned nothing");
   return row.id;
 }

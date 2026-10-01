@@ -39,6 +39,8 @@ export interface Fixtures {
   seeded: SeededIdentities;
   /** A fresh ticket, so a cell that changes one can't affect the next cell. */
   newTicket: (ticket: NewTicket) => Promise<string>;
+  /** A second brand that no actor belongs to. */
+  otherBrandId: () => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
@@ -136,6 +138,42 @@ const onCustomerTickets = (route: RouteOnly, success: number): MatrixRow[] => [
   },
 ];
 
+/**
+ * The two rows every route on one staff ticket gets, each on a fresh
+ * ticket per cell: one in the actors' brand, where active staff get
+ * `success`, and one in a brand none of them belongs to, which is a 404
+ * for every role (ADR-0004, section 6). `ticket` sets up the ticket.
+ */
+const onStaffTickets = (
+  route: RouteOnly,
+  success: number,
+  ticket: (seeded: Fixtures["seeded"]) => NewTicket = (seeded) => ({
+    customerId: seeded.customerId,
+  }),
+): MatrixRow[] => [
+  {
+    ...route,
+    rule: "A ticket in the agents' brand: active staff of every role",
+    expected: staffOnly(success),
+    arrange: async ({ seeded, newTicket }) => ({
+      params: { ticketId: await newTicket(ticket(seeded)) },
+    }),
+  },
+  {
+    ...route,
+    rule: "A ticket in a brand none of them belongs to: 404, as if it didn't exist",
+    expected: staffOnly(404),
+    arrange: async ({ seeded, newTicket, otherBrandId }) => ({
+      params: {
+        ticketId: await newTicket({
+          ...ticket(seeded),
+          brandId: await otherBrandId(),
+        }),
+      },
+    }),
+  },
+];
+
 export const MATRIX: readonly MatrixRow[] = [
   {
     method: "GET",
@@ -227,4 +265,23 @@ export const MATRIX: readonly MatrixRow[] = [
     },
     201,
   ),
+
+  {
+    method: "GET",
+    path: "/api/v1/staff/tickets",
+    rule: "The queue: active staff of every role (ticket:read:any)",
+    expected: staffOnly(200),
+  },
+  ...onStaffTickets(
+    { method: "GET", path: "/api/v1/staff/tickets/:ticketId" },
+    200,
+  ),
+  {
+    method: "GET",
+    path: "/api/v1/staff/customers/:customerId",
+    rule: "A customer with tickets in the agents' brand (customer:read)",
+    expected: staffOnly(200),
+    arrange: ({ seeded }) =>
+      Promise.resolve({ params: { customerId: seeded.customerId } }),
+  },
 ];

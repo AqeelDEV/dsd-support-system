@@ -345,6 +345,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The queue
+         * @description Tickets from every channel, filtered by status (default `open`), priority, assignee and escalation, and sorted by priority then age, or by age alone. A page at a time.
+         */
+        get: operations["StaffTicketsController_queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{ticketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One ticket
+         * @description The whole thread, internal notes included, every file, the customer, and `allowedTransitions` and `allowedActions` for you: the agent app shows controls from these and the API enforces the same rules.
+         */
+        get: operations["StaffTicketsController_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/customers/{customerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A customer and their tickets
+         * @description Their profile and their tickets in your brands, newest first, a page at a time. A customer with no ticket in your brands is a 404.
+         */
+        get: operations["StaffCustomersController_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -515,6 +575,185 @@ export interface components {
             status: "open" | "pending_customer" | "resolved" | "closed";
             /** Format: date-time */
             createdAt: string;
+        };
+        StaffTicketPage_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                reference: string;
+                subject: string;
+                /** @enum {string} */
+                status: "open" | "pending_customer" | "resolved" | "closed";
+                /** @enum {string} */
+                priority: "low" | "normal" | "high" | "urgent";
+                /** @enum {string} */
+                channel: "web" | "email" | "chat" | "whatsapp";
+                customer: {
+                    /** Format: uuid */
+                    id: string;
+                    email: string;
+                    displayName: string | null;
+                };
+                assignee: {
+                    /** Format: uuid */
+                    id: string;
+                    displayName: string;
+                } | null;
+                /** @description False until the customer opens a link we emailed; don't discuss account details before */
+                contactVerified: boolean;
+                escalatedAt: string | null;
+                firstResponseAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            /** @description Pass as `cursor` for the next page; null on the last page */
+            nextCursor: string[];
+        };
+        StaffTicket_Output: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            subject: string;
+            /** @enum {string} */
+            status: "open" | "pending_customer" | "resolved" | "closed";
+            /** @enum {string} */
+            priority: "low" | "normal" | "high" | "urgent";
+            /** @enum {string} */
+            channel: "web" | "email" | "chat" | "whatsapp";
+            customer: {
+                /** Format: uuid */
+                id: string;
+                email: string;
+                displayName: string | null;
+                hasAccount: boolean;
+            };
+            assignee: {
+                /** Format: uuid */
+                id: string;
+                displayName: string;
+            } | null;
+            /** @description False until the customer opens a link we emailed; don't discuss account details before */
+            contactVerified: boolean;
+            escalatedAt: string | null;
+            firstResponseAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            description: string;
+            escalatedBy: {
+                /** Format: uuid */
+                id: string;
+                displayName: string;
+            } | null;
+            resolvedAt: string | null;
+            closedAt: string | null;
+            /** @description Files sent with the ticket itself */
+            attachments: {
+                /** Format: uuid */
+                id: string;
+                /** @description For display and as the download name; never part of a URL */
+                filename: string;
+                /** @enum {string} */
+                contentType: "image/png" | "image/jpeg" | "image/gif" | "image/webp" | "application/pdf" | "text/plain; charset=utf-8";
+                sizeBytes: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Replies and internal notes after the description, oldest first */
+            messages: {
+                /** Format: uuid */
+                id: string;
+                /**
+                 * @description `internal` is a note the customer never sees
+                 * @enum {string}
+                 */
+                visibility: "public" | "internal";
+                author: {
+                    /** @enum {string} */
+                    type: "customer" | "agent";
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                };
+                body: string;
+                attachments: {
+                    /** Format: uuid */
+                    id: string;
+                    /** @description For display and as the download name; never part of a URL */
+                    filename: string;
+                    /** @enum {string} */
+                    contentType: "image/png" | "image/jpeg" | "image/gif" | "image/webp" | "application/pdf" | "text/plain; charset=utf-8";
+                    sizeBytes: number;
+                    /** Format: date-time */
+                    createdAt: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Statuses this agent can move the ticket to now */
+            allowedTransitions: ("open" | "pending_customer" | "resolved" | "closed")[];
+            allowedActions: {
+                reply: boolean;
+                addNote: boolean;
+                changeStatus: boolean;
+                changePriority: boolean;
+                claim: boolean;
+                /** @description Hand the ticket to another agent, or take it from its holder */
+                assign: boolean;
+                unassign: boolean;
+                escalate: boolean;
+                viewAuditTrail: boolean;
+            };
+        };
+        StaffCustomer_Output: {
+            customer: {
+                /** Format: uuid */
+                id: string;
+                email: string;
+                displayName: string | null;
+                hasAccount: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            };
+            /** @description Their tickets in your brands, newest first */
+            tickets: {
+                items: {
+                    /** Format: uuid */
+                    id: string;
+                    reference: string;
+                    subject: string;
+                    /** @enum {string} */
+                    status: "open" | "pending_customer" | "resolved" | "closed";
+                    /** @enum {string} */
+                    priority: "low" | "normal" | "high" | "urgent";
+                    /** @enum {string} */
+                    channel: "web" | "email" | "chat" | "whatsapp";
+                    customer: {
+                        /** Format: uuid */
+                        id: string;
+                        email: string;
+                        displayName: string | null;
+                    };
+                    assignee: {
+                        /** Format: uuid */
+                        id: string;
+                        displayName: string;
+                    } | null;
+                    /** @description False until the customer opens a link we emailed; don't discuss account details before */
+                    contactVerified: boolean;
+                    escalatedAt: string | null;
+                    firstResponseAt: string | null;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                }[];
+                /** @description Pass as `cursor` for the next page; null on the last page */
+                nextCursor: string | null;
+            };
         };
         ProblemDetails: {
             /** @description Problem type URI; `about:blank` when the HTTP status says it all */
@@ -1516,6 +1755,177 @@ export interface operations {
             };
             /** @description File storage is unavailable; the same request without files still works */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_queue: {
+        parameters: {
+            query?: {
+                /** @description One or more statuses; defaults to `open` */
+                status?: ("open" | "pending_customer" | "resolved" | "closed")[];
+                /** @description One or more priorities */
+                priority?: ("low" | "normal" | "high" | "urgent")[];
+                /** @description `me`, `unassigned`, or an agent ID */
+                assignee?: ("me" | "unassigned") | string;
+                /** @description `true` for escalated tickets only, `false` for the rest */
+                escalated?: string;
+                /** @description `priority`: most urgent first, then oldest. `oldest` or `newest`: by age */
+                sort?: "priority" | "oldest" | "newest";
+                /** @description Items per page, 1 to 100 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTicketPage_Output"];
+                };
+            };
+            /** @description A filter or the cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `ticket:read:any` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTicket_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `ticket:read:any` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffCustomersController_view: {
+        parameters: {
+            query?: {
+                /** @description Items per page, 1 to 100 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                customerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffCustomer_Output"];
+                };
+            };
+            /** @description The cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `customer:read` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such customer in your brands */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
