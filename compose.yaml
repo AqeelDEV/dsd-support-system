@@ -175,12 +175,26 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://dsd_worker:${DSD_WORKER_PASSWORD:-worker-dev-password}@postgres:5432/dsd
       REDIS_URL: redis://redis:6379
+      # Every email goes to Mailpit; read them at http://localhost:8025.
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      # Links in emails open the apps as the browser reaches them.
+      CUSTOMER_APP_URL: http://localhost:${CUSTOMER_WEB_PORT:-3000}
+      AGENT_APP_URL: http://localhost:${AGENT_WEB_PORT:-3001}
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-dsd-dev-access-key}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-dsd-dev-secret-key}
     depends_on:
       migrate:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      # Not needed to start: an unreachable mail server only delays emails.
+      mailpit:
+        condition: service_started
+      seaweedfs:
         condition: service_healthy
     restart: unless-stopped
 
