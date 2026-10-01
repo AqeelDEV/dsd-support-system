@@ -25,6 +25,23 @@ The command returns once every service reports healthy. The first build takes a 
 
 To check the running stack from the outside, run `scripts/smoke.sh` (bash and curl). Stop everything with `docker compose down`, and add `-v` to delete the data too.
 
+### Demo accounts
+
+The stack starts with synthetic demo data. Every demo account's password is `dsd-demo-password`.
+
+| Role       | Email                    | Signs in through        |
+| ---------- | ------------------------ | ----------------------- |
+| Customer   | `customer@example.com`   | Customer app, port 3000 |
+| Agent      | `agent@dsd.example`      | Agent app, port 3001    |
+| Supervisor | `supervisor@dsd.example` | Agent app, port 3001    |
+| Admin      | `admin@dsd.example`      | Agent app, port 3001    |
+
+Two more staff accounts exist for testing the edges: `former.agent@dsd.example` has been deactivated, and `new.starter@dsd.example` was invited but hasn't set a password. Neither can sign in.
+
+The apps' sign-in screens aren't built yet. Until they are, sign in from Swagger UI: open `POST /api/v1/auth/customer/login` or `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests, so `me` and `logout` work from the same page.
+
+Customers and staff are separate realms: a customer session is refused by every staff route and the other way round ([ADR-0003](docs/adr/0003-authentication-and-sessions.md), [ADR-0004](docs/adr/0004-authorization-rbac.md)). Because this stack runs on plain `http://localhost`, its cookies leave out the `Secure` flag and the `__Host-` prefix, which browsers refuse there. A real deployment keeps both, and the API refuses to start without them unless every trusted origin is on localhost.
+
 The defaults are for local development only. To change a password or a port, copy `.env.example` to `.env` and edit it.
 
 ## Development
