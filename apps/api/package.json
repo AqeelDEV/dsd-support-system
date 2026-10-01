@@ -19,6 +19,7 @@
   "dependencies": {
     "@dsd/db": "workspace:*",
     "@dsd/shared": "workspace:*",
+    "@fastify/cookie": "catalog:",
     "@fastify/helmet": "catalog:",
     "@fastify/static": "catalog:",
     "@nestjs/common": "catalog:",

@@ -40,7 +40,9 @@ export function serveApiDocs(
 ): void {
   SwaggerModule.setup(API_DOCS_PATH, app, document, {
     jsonDocumentUrl: OPENAPI_JSON_PATH,
-    yamlDocumentUrl: "",
+    // JSON only. An empty yamlDocumentUrl doesn't turn YAML off; it falls
+    // back to serving it at /api/docs-yaml.
+    raw: ["json"],
     customSiteTitle: "DSD Support API",
   });
 }

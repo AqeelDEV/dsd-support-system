@@ -8,6 +8,7 @@ import { livenessSchema, readinessSchema } from "@dsd/shared";
 import type { FastifyReply } from "fastify";
 import { createZodDto, ZodResponse } from "nestjs-zod";
 
+import { Public } from "../../auth/decorators.js";
 import { HealthService } from "./health.service.js";
 
 class Liveness extends createZodDto(livenessSchema) {}
@@ -18,6 +19,7 @@ class Readiness extends createZodDto(readinessSchema) {}
  * balancers and orchestrators call them, not API clients.
  */
 @ApiTags("Operations")
+@Public()
 @Controller()
 export class HealthController {
   constructor(private readonly health: HealthService) {}

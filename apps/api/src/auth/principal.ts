@@ -21,3 +21,10 @@ export interface StaffPrincipal {
   /** Resolved from the agent's current role on every request, so a role change applies at once. */
   permissions: ReadonlySet<Permission>;
 }
+
+declare module "fastify" {
+  interface FastifyRequest {
+    /** Set by the auth guard on realm routes. */
+    principal?: Principal;
+  }
+}

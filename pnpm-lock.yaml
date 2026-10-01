@@ -176,6 +176,9 @@ catalogs:
     '@faker-js/faker':
       specifier: 10.6.0
       version: 10.6.0
+    '@fastify/cookie':
+      specifier: 11.1.0
+      version: 11.1.0
     '@fastify/helmet':
       specifier: 13.1.1
       version: 13.1.1
@@ -401,6 +404,9 @@ importers:
       '@dsd/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@fastify/cookie':
+        specifier: 'catalog:'
+        version: 11.1.0
       '@fastify/helmet':
         specifier: 'catalog:'
         version: 13.1.1
@@ -1426,6 +1432,9 @@ packages:
 
   '@fastify/ajv-compiler@4.0.6':
     resolution: {integrity: sha512-NtuzM0SfaMJbGlnjr9LWQUN5LzgSrbB8tf/wRZNas+4E1O/Nmzl53e7ruT61HDZyRCJGC6FxIogmNZO1c5ETBA==}
+
+  '@fastify/cookie@11.1.0':
+    resolution: {integrity: sha512-fMl7eBwKaSeY/5LFiapxyXRvJx/KqLOI+ytV/fyGhAK8UqpDuPFIV4JW9fhYrnISy3rdMhc+Lry0lmaQGqdHDw==}
 
   '@fastify/cors@11.3.0':
     resolution: {integrity: sha512-ggQGua+xHv1MvePbPr0v//xLYEsCXbWspquXCJS9Ot5YoRXq8J8ZWzHnxDBVnbtXosvistXo6LtNzOJswf64Fw==}
@@ -5044,6 +5053,11 @@ snapshots:
       ajv: 8.20.0
       ajv-formats: 3.0.1
       fast-uri: 4.2.1
+
+  '@fastify/cookie@11.1.0':
+    dependencies:
+      cookie: 1.1.1
+      fastify-plugin: 6.0.0
 
   '@fastify/cors@11.3.0':
     dependencies:

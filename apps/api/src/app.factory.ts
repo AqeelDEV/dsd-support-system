@@ -1,3 +1,4 @@
+import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import { NestFactory } from "@nestjs/core";
 import {
@@ -7,6 +8,7 @@ import {
 import { Logger } from "nestjs-pino";
 
 import { AppModule, type AppModuleOptions } from "./app.module.js";
+import { enforceRouteAccess } from "./auth/route-access.js";
 import { assignRequestId, REQUEST_ID_HEADER } from "./common/request-id.js";
 import type { Env } from "./config/env.js";
 import { buildOpenApiDocument, serveApiDocs } from "./openapi/document.js";
@@ -31,6 +33,8 @@ export async function createApp(
     // JSON bodies are small. File uploads get their own limits (ADR-0009).
     bodyLimit: 1024 * 1024,
   });
+  // Before anything registers a route, so every route is checked.
+  enforceRouteAccess(adapter.getInstance());
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot(env, options),
@@ -69,6 +73,8 @@ export async function createApp(
         ? { maxAge: 31_536_000, includeSubDomains: true }
         : false,
   });
+
+  await app.register(cookie);
 
   app.enableCors({
     origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : false,
