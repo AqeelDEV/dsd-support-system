@@ -3,6 +3,7 @@ import {
   type GuestAccessRequest,
   type InviteCompleteRequest,
   normalizeEmail,
+  type PasswordResetCompleteRequest,
   permissionsFor,
   PROBLEM_TYPES,
   type SignupCompleteRequest,
@@ -169,6 +170,71 @@ export class EmailedLinksService {
             sessionId: session.id,
             agent,
             permissions: new Set(permissionsFor(agent.role)),
+          },
+        };
+      }),
+    );
+  }
+
+  /**
+   * Asks the worker to email a reset link. It answers the same way whether
+   * or not the address has an account, so it can't be used to find out
+   * who does; the email itself says what to do. An unknown address gets
+   * nothing, because there is nobody to write to.
+   */
+  async requestPasswordReset(email: string): Promise<void> {
+    const customerId = await this.links.customerIdByEmail(
+      normalizeEmail(email),
+    );
+    if (customerId === undefined) return;
+    await this.db.transaction(async (tx) => {
+      await this.outbox.add(tx, {
+        type: "customer.password_reset_requested",
+        aggregateType: "customer",
+        aggregateId: customerId,
+        payload: { customerId },
+      });
+    });
+  }
+
+  /**
+   * Sets a new password from the emailed link (ADR-0003, amended). Every
+   * session the customer had is revoked, guest sessions included, other
+   * reset links stop working, and this browser is signed in afresh.
+   */
+  async completePasswordReset(
+    request: PasswordResetCompleteRequest,
+    client: ClientInfo,
+    replacing: string | undefined,
+  ): Promise<SignedIn<CustomerPrincipal>> {
+    const passwordHash = await this.hasher.hash(request.password);
+    return this.thenRevoke(replacing, () =>
+      this.db.transaction(async (tx) => {
+        const token = await this.links.consumeResetToken(
+          tx,
+          hashToken(request.token),
+        );
+        if (token === undefined) throw invalidLink();
+        const customer = await this.links.resetPassword(
+          tx,
+          token.customerId,
+          passwordHash,
+        );
+        if (customer === undefined) throw invalidLink();
+        await this.links.discardResetTokens(tx, customer.id);
+        await this.sessions.revokeAllFor(tx, { customerId: customer.id });
+        const session = await this.sessions.create(
+          { kind: "customer", customerId: customer.id },
+          client,
+          tx,
+        );
+        return {
+          session,
+          principal: {
+            realm: "customer",
+            sessionId: session.id,
+            customer,
+            guestTicketId: null,
           },
         };
       }),

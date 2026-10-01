@@ -64,6 +64,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/customer/password-reset/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a password reset link
+         * @description Always answers 202. An account gets a single-use link that lasts an hour; an address without a password is pointed to sign-up instead.
+         */
+        post: operations["CustomerAuthController_requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/customer/password-reset/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose a new password from the emailed link
+         * @description Sets the new password, signs the customer out everywhere else, and signs this browser in.
+         */
+        post: operations["CustomerAuthController_completePasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/customer/guest-access/request": {
         parameters: {
             query?: never;
@@ -1095,6 +1135,20 @@ export interface components {
             /** @description 12 to 128 characters */
             password: string;
         };
+        PasswordResetRequestBody: {
+            /**
+             * Format: email
+             * @description Compared case-insensitively
+             * @example customer@example.com
+             */
+            email: string;
+        };
+        PasswordResetCompleteBody: {
+            /** @description The token from the emailed link */
+            token: string;
+            /** @description 12 to 128 characters */
+            password: string;
+        };
         GuestAccessRequestBody: {
             /**
              * Format: email
@@ -2048,6 +2102,123 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SignupCompleteBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerMe_Output"];
+                };
+            };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CustomerAuthController_requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Check your inbox */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CustomerAuthController_completePasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetCompleteBody"];
             };
         };
         responses: {

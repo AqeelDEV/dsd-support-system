@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { agents, authTokens, customers, tickets } from "@dsd/db/schema";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 
 import type { Executor } from "../infrastructure/database.js";
 import { DB } from "../infrastructure/tokens.js";
@@ -173,5 +173,75 @@ export class EmailedLinksRepository {
         ),
       );
     return row;
+  }
+
+  /** The customer with this normalised email, if there is one. */
+  async customerIdByEmail(
+    emailNormalized: string,
+  ): Promise<string | undefined> {
+    const [row] = await this.db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.emailNormalized, emailNormalized));
+    return row?.id;
+  }
+
+  /** Spends a single-use password-reset token; undefined if it is unknown, expired or used. */
+  async consumeResetToken(
+    executor: Executor,
+    tokenHash: Buffer,
+  ): Promise<{ customerId: string } | undefined> {
+    const [row] = await executor
+      .update(authTokens)
+      .set({ consumedAt: sql`now()` })
+      .where(
+        and(
+          eq(authTokens.tokenHash, tokenHash),
+          eq(authTokens.purpose, "password_reset"),
+          isNull(authTokens.consumedAt),
+          gt(authTokens.expiresAt, sql`now()`),
+        ),
+      )
+      .returning({ customerId: authTokens.customerId });
+    return row?.customerId ? { customerId: row.customerId } : undefined;
+  }
+
+  /**
+   * Sets a new password on an account that already has one. A reset never
+   * creates an account: an address without a password registers through
+   * the sign-up link, which proves the inbox first.
+   */
+  async resetPassword(
+    executor: Executor,
+    customerId: string,
+    passwordHash: string,
+  ) {
+    const [row] = await executor
+      .update(customers)
+      .set({ passwordHash, lastLoginAt: sql`now()` })
+      .where(
+        and(eq(customers.id, customerId), isNotNull(customers.passwordHash)),
+      )
+      .returning({
+        id: customers.id,
+        email: customers.email,
+        displayName: customers.displayName,
+      });
+    return row;
+  }
+
+  /** Spends every other reset link the customer was sent, so only the one used ever worked. */
+  async discardResetTokens(
+    executor: Executor,
+    customerId: string,
+  ): Promise<void> {
+    await executor
+      .delete(authTokens)
+      .where(
+        and(
+          eq(authTokens.customerId, customerId),
+          eq(authTokens.purpose, "password_reset"),
+        ),
+      );
   }
 }

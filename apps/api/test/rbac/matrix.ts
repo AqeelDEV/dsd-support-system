@@ -530,6 +530,14 @@ export const MATRIX: readonly MatrixRow[] = [
   publicForm("/api/v1/auth/customer/login", "Sign-in needs no session"),
   publicForm("/api/v1/auth/customer/signup", "Sign-up needs no session"),
   publicForm(
+    "/api/v1/auth/customer/password-reset/request",
+    "Asking for a reset link needs no session",
+  ),
+  publicForm(
+    "/api/v1/auth/customer/password-reset/complete",
+    "A reset link is the only credential needed",
+  ),
+  publicForm(
     "/api/v1/auth/customer/signup/complete",
     "The emailed link is the credential",
   ),

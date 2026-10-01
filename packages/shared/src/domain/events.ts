@@ -24,6 +24,7 @@ export const DOMAIN_EVENTS = [
   "customer.signup_requested",
   "guest_access.requested",
   "agent.invited",
+  "customer.password_reset_requested",
 ] as const;
 export const domainEventSchema = z.enum(DOMAIN_EVENTS);
 export type DomainEvent = z.infer<typeof domainEventSchema>;
@@ -123,3 +124,15 @@ export const kbArticleUnpublishedSchema = z.object({
   articleId: z.uuid(),
 });
 export type KbArticleUnpublished = z.infer<typeof kbArticleUnpublishedSchema>;
+
+/**
+ * Someone asked to reset the password for this customer. The worker emails
+ * a single-use link that lasts an hour, or, for an address without a
+ * password, a pointer to sign-up instead (ADR-0003, amended).
+ */
+export const customerPasswordResetRequestedSchema = z.object({
+  customerId: z.uuid(),
+});
+export type CustomerPasswordResetRequested = z.infer<
+  typeof customerPasswordResetRequestedSchema
+>;

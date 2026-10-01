@@ -63,6 +63,15 @@ export const guestAccessExchangeRequestSchema = z.strictObject({
   token: emailedToken,
 });
 
+export const passwordResetRequestSchema = z.strictObject({
+  email: emailSchema,
+});
+
+export const passwordResetCompleteRequestSchema = z.strictObject({
+  token: emailedToken,
+  password: newPassword,
+});
+
 export const inviteCompleteRequestSchema = z.strictObject({
   token: emailedToken,
   password: newPassword,
@@ -112,5 +121,9 @@ export type GuestAccessExchangeRequest = z.infer<
   typeof guestAccessExchangeRequestSchema
 >;
 export type InviteCompleteRequest = z.infer<typeof inviteCompleteRequestSchema>;
+export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
+export type PasswordResetCompleteRequest = z.infer<
+  typeof passwordResetCompleteRequestSchema
+>;
 export type CustomerMe = z.infer<typeof customerMeSchema>;
 export type StaffMe = z.infer<typeof staffMeSchema>;

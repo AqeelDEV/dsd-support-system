@@ -54,10 +54,12 @@ export const RATE_LIMITS = {
   staffLogin: login("staff-login"),
   signup: emailedLinkRequest("signup"),
   guestLinkRequest: emailedLinkRequest("guest-link-request"),
+  passwordResetRequest: emailedLinkRequest("password-reset-request"),
   // A 256-bit token can't be guessed, but a cheap limit costs nothing.
   guestLinkExchange: tokenExchange("guest-link-exchange"),
   signupCompletion: tokenExchange("signup-completion"),
   inviteCompletion: tokenExchange("invite-completion"),
+  passwordResetCompletion: tokenExchange("password-reset-completion"),
   /**
    * Guest and signed-in submissions (NFR-9). The guard counts the address;
    * the email sits in a multipart body the guard can't read, so the

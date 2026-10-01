@@ -223,6 +223,145 @@
         ]
       }
     },
+    "/api/v1/auth/customer/password-reset/request": {
+      "post": {
+        "description": "Always answers 202. An account gets a single-use link that lasts an hour; an address without a password is pointed to sign-up instead.",
+        "operationId": "CustomerAuthController_requestPasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Check your inbox"
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Ask for a password reset link",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/customer/password-reset/complete": {
+      "post": {
+        "description": "Sets the new password, signs the customer out everywhere else, and signs this browser in.",
+        "operationId": "CustomerAuthController_completePasswordReset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetCompleteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMe_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Choose a new password from the emailed link",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
     "/api/v1/auth/customer/guest-access/request": {
       "post": {
         "description": "Always answers 202. If the email and ticket reference match, a fresh access link is emailed.",
@@ -5205,6 +5344,44 @@
         "required": [
           "token",
           "displayName",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "PasswordResetRequestBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Compared case-insensitively",
+            "example": "customer@example.com"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "PasswordResetCompleteBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "The token from the emailed link"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "description": "12 to 128 characters"
+          }
+        },
+        "required": [
+          "token",
           "password"
         ],
         "additionalProperties": false

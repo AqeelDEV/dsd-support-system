@@ -19,6 +19,8 @@ import {
   guestAccessExchangeRequestSchema,
   guestAccessRequestSchema,
   loginRequestSchema,
+  passwordResetCompleteRequestSchema,
+  passwordResetRequestSchema,
   signupCompleteRequestSchema,
   signupRequestSchema,
 } from "@dsd/shared";
@@ -48,6 +50,12 @@ class SignupCompleteBody extends createZodDto(signupCompleteRequestSchema) {}
 class GuestAccessRequestBody extends createZodDto(guestAccessRequestSchema) {}
 class GuestAccessExchangeBody extends createZodDto(
   guestAccessExchangeRequestSchema,
+) {}
+class PasswordResetRequestBody extends createZodDto(
+  passwordResetRequestSchema,
+) {}
+class PasswordResetCompleteBody extends createZodDto(
+  passwordResetCompleteRequestSchema,
 ) {}
 class CustomerMe extends createZodDto(customerMeSchema) {}
 
@@ -123,6 +131,49 @@ export class CustomerAuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const { session, principal } = await this.links.completeSignup(
+      body,
+      clientOf(request),
+      this.cookies.sessionToken(request, "customer"),
+    );
+    const csrfToken = this.csrf.tokenFor(session.id);
+    this.cookies.issue(reply, "customer", session, csrfToken);
+    return customerMe(principal, csrfToken);
+  }
+
+  @Post("password-reset/request")
+  @Public()
+  @RateLimit(RATE_LIMITS.passwordResetRequest)
+  @ApiPublicForm()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: "Ask for a password reset link",
+    description:
+      "Always answers 202. An account gets a single-use link that lasts an hour; an address without a password is pointed to sign-up instead.",
+  })
+  @ApiAcceptedResponse({ description: "Check your inbox" })
+  async requestPasswordReset(
+    @Body() body: PasswordResetRequestBody,
+  ): Promise<void> {
+    await this.links.requestPasswordReset(body.email);
+  }
+
+  @Post("password-reset/complete")
+  @Public()
+  @RateLimit(RATE_LIMITS.passwordResetCompletion)
+  @ApiPublicForm()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Choose a new password from the emailed link",
+    description:
+      "Sets the new password, signs the customer out everywhere else, and signs this browser in.",
+  })
+  @ZodResponse({ status: HttpStatus.OK, type: CustomerMe })
+  async completePasswordReset(
+    @Body() body: PasswordResetCompleteBody,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const { session, principal } = await this.links.completePasswordReset(
       body,
       clientOf(request),
       this.cookies.sessionToken(request, "customer"),
