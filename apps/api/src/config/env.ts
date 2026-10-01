@@ -114,6 +114,18 @@ export const envSchema = z
      * each intake (app, address or channel) would name its own.
      */
     TICKET_BRAND_SLUG: z.string().min(1).default("dsd"),
+    /**
+     * The time zone reporting days are counted in (ADR-0007, section 9).
+     * An IANA name; PostgreSQL knows the same set.
+     */
+    REPORTING_TIMEZONE: z
+      .string()
+      .default("UTC")
+      .refine(
+        (zone) =>
+          zone === "UTC" || Intl.supportedValuesOf("timeZone").includes(zone),
+        { message: "must be an IANA time zone, like Europe/London" },
+      ),
   })
   .superRefine((env, context) => {
     for (const realm of ["STAFF", "CUSTOMER", "GUEST"] as const) {

@@ -711,4 +711,12 @@ export const MATRIX: readonly MatrixRow[] = [
   ...AGENT_ROWS,
   ...KB_ROWS,
   ...CANNED_ROWS,
+  ...(["volume", "response-times", "agents"] as const).map(
+    (report): MatrixRow => ({
+      method: "GET",
+      path: `/api/v1/staff/reports/${report}`,
+      rule: "Reporting needs report:view (supervisors, admins) (FR-13)",
+      expected: managersOnly(200),
+    }),
+  ),
 ];

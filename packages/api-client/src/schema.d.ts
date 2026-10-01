@@ -995,6 +995,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/reports/volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ticket volume over time
+         * @description Tickets created per day or per week (weeks start on Monday). Whole days in the reporting time zone, `from` and `to` included; the last 30 days by default, at most 366. Calendar time, over your brands.
+         */
+        get: operations["ReportsController_volume"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reports/response-times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Time to first response and to resolution
+         * @description Mean and median, in seconds. First responses cover tickets created in the range, with a count of those still waiting; resolutions cover tickets whose latest resolution is in the range. Whole days in the reporting time zone, `from` and `to` included; the last 30 days by default, at most 366. Calendar time, over your brands.
+         */
+        get: operations["ReportsController_responseTimes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/reports/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tickets per agent
+         * @description For each colleague: the open and pending tickets they hold now, and the tickets they hold that were resolved in the range. Whole days in the reporting time zone, `from` and `to` included; the last 30 days by default, at most 366. Calendar time, over your brands.
+         */
+        get: operations["ReportsController_agents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1754,6 +1814,73 @@ export interface components {
             title?: string;
             /** @description Plain text. Variables: {{customer.name}}, {{customer.email}}, {{ticket.reference}}, {{ticket.subject}}, {{agent.name}} */
             body?: string;
+        };
+        VolumeReport_Output: {
+            /** @description The reporting time zone the days are in */
+            timeZone: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @enum {string} */
+            interval: "day" | "week";
+            total: number;
+            /** @description Every day or week in the range, empty ones included */
+            buckets: {
+                /** Format: date */
+                start: string;
+                count: number;
+            }[];
+        };
+        ResponseTimesReport_Output: {
+            /** @description The reporting time zone the days are in */
+            timeZone: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @description Tickets created in the range that have had a first reply */
+            firstResponse: {
+                /** @description Tickets the averages are taken over */
+                ticketCount: number;
+                /** @description Null when there are none */
+                meanSeconds: number | null;
+                /** @description Shown beside the mean, which a few slow tickets can drag */
+                medianSeconds: number | null;
+                /** @description Tickets created in the range, not closed, with no reply yet: they can't be in the average, so they are counted here */
+                awaitingFirstResponse: number;
+            };
+            /** @description Tickets whose latest resolution falls in the range */
+            resolution: {
+                /** @description Tickets the averages are taken over */
+                ticketCount: number;
+                /** @description Null when there are none */
+                meanSeconds: number | null;
+                /** @description Shown beside the mean, which a few slow tickets can drag */
+                medianSeconds: number | null;
+            };
+        };
+        AgentsReport_Output: {
+            /** @description The reporting time zone the days are in */
+            timeZone: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            agents: {
+                agent: {
+                    /** Format: uuid */
+                    id: string;
+                    displayName: string;
+                    /** @enum {string} */
+                    role: "agent" | "supervisor" | "admin";
+                    active: boolean;
+                };
+                /** @description `open` and `pending_customer` tickets they hold now */
+                openAssigned: number;
+                /** @description Tickets they hold whose latest resolution falls in the range */
+                resolvedInRange: number;
+            }[];
         };
         ProblemDetails: {
             /** @description Problem type URI; `about:blank` when the HTTP status says it all */
@@ -5190,6 +5317,161 @@ export interface operations {
             };
             /** @description No such template in your brands */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReportsController_volume: {
+        parameters: {
+            query?: {
+                /** @description First day; defaults to 29 days before `to` */
+                from?: string;
+                /** @description Last day, included; defaults to today */
+                to?: string;
+                /** @description `week` buckets start on Mondays */
+                interval?: "day" | "week";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VolumeReport_Output"];
+                };
+            };
+            /** @description A date is invalid, `from` is after `to`, or the range is too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `report:view` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReportsController_responseTimes: {
+        parameters: {
+            query?: {
+                /** @description First day; defaults to 29 days before `to` */
+                from?: string;
+                /** @description Last day, included; defaults to today */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResponseTimesReport_Output"];
+                };
+            };
+            /** @description A date is invalid, `from` is after `to`, or the range is too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `report:view` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReportsController_agents: {
+        parameters: {
+            query?: {
+                /** @description First day; defaults to 29 days before `to` */
+                from?: string;
+                /** @description Last day, included; defaults to today */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentsReport_Output"];
+                };
+            };
+            /** @description A date is invalid, `from` is after `to`, or the range is too long */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `report:view` permission */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

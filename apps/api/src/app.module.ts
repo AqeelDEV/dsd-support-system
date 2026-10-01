@@ -12,6 +12,7 @@ import { AgentsModule } from "./modules/agents/agents.module.js";
 import { CannedResponsesModule } from "./modules/canned-responses/canned-responses.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { KbModule } from "./modules/kb/kb.module.js";
+import { ReportsModule } from "./modules/reports/reports.module.js";
 import { TicketsModule } from "./modules/tickets/tickets.module.js";
 
 /**
@@ -42,6 +43,7 @@ export class AppModule {
         AgentsModule,
         KbModule,
         CannedResponsesModule,
+        ReportsModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },

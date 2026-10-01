@@ -45,7 +45,18 @@ describe("parseEnv", () => {
       S3_BUCKET: "dsd-attachments",
       S3_FORCE_PATH_STYLE: true,
       TICKET_BRAND_SLUG: "dsd",
+      REPORTING_TIMEZONE: "UTC",
     });
+  });
+
+  it("takes an IANA reporting time zone and refuses anything else", () => {
+    expect(
+      parseEnv({ ...valid, REPORTING_TIMEZONE: "Europe/London" })
+        .REPORTING_TIMEZONE,
+    ).toBe("Europe/London");
+    expect(() =>
+      parseEnv({ ...valid, REPORTING_TIMEZONE: "Mars/Olympus_Mons" }),
+    ).toThrow(/REPORTING_TIMEZONE/);
   });
 
   it("parses comma-separated lists", () => {
