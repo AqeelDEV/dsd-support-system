@@ -107,3 +107,19 @@ export const agentInvitedSchema = z.object({
   agentId: z.uuid(),
 });
 export type AgentInvited = z.infer<typeof agentInvitedSchema>;
+
+/**
+ * An article was published, or saved again while published. Its `version`
+ * is the one to index (ADR-0006, section 3).
+ */
+export const kbArticlePublishedSchema = z.object({
+  articleId: z.uuid(),
+  version: z.int(),
+});
+export type KbArticlePublished = z.infer<typeof kbArticlePublishedSchema>;
+
+/** A published article was unpublished or archived: its chunks leave retrieval. */
+export const kbArticleUnpublishedSchema = z.object({
+  articleId: z.uuid(),
+});
+export type KbArticleUnpublished = z.infer<typeof kbArticleUnpublishedSchema>;

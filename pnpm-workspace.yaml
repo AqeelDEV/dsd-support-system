@@ -29,6 +29,7 @@ catalog:
   "@node-rs/argon2": 2.2.1
   "@tailwindcss/postcss": 4.3.3
   "@types/eslint-plugin-jsx-a11y": 6.10.1
+  "@types/mdast": 4.0.4
   "@types/node": 24.19.0
   "@types/pg": 8.23.1
   "@types/react": 19.3.0
@@ -47,6 +48,9 @@ catalog:
   husky: 9.1.7
   ioredis: 6.0.0
   lint-staged: 17.6.0
+  mdast-util-from-markdown: 2.0.3
+  mdast-util-gfm: 3.1.0
+  micromark-extension-gfm: 3.0.0
   nestjs-pino: 5.2.1
   nestjs-zod: 5.5.0
   next: 16.3.7

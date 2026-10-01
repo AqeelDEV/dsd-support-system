@@ -21,10 +21,14 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "mdast-util-from-markdown": "catalog:",
+    "mdast-util-gfm": "catalog:",
+    "micromark-extension-gfm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@dsd/config": "workspace:*",
+    "@types/mdast": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
