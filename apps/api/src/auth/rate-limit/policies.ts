@@ -12,7 +12,7 @@ export interface RateLimitPolicy {
   /**
    * What happens when Redis can't be reached. Sign-in refuses (503), so an
    * outage can't be used to guess passwords without limits; ticket
-   * submission (Phase 4) allows, so customers can still reach support.
+   * submission allows, so customers can still reach support.
    */
   whenRedisIsDown: "refuse" | "allow";
 }
@@ -58,4 +58,17 @@ export const RATE_LIMITS = {
   guestLinkExchange: tokenExchange("guest-link-exchange"),
   signupCompletion: tokenExchange("signup-completion"),
   inviteCompletion: tokenExchange("invite-completion"),
+  /**
+   * Guest and signed-in submissions (NFR-9). The guard counts the address;
+   * the email sits in a multipart body the guard can't read, so the
+   * submission service counts it once the fields are valid.
+   */
+  ticketSubmission: {
+    name: "ticket-submission",
+    limits: [
+      { by: "ip", max: 10, windowSeconds: HOUR },
+      { by: "email", max: 5, windowSeconds: HOUR },
+    ],
+    whenRedisIsDown: "allow",
+  },
 } as const satisfies Record<string, RateLimitPolicy>;

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 
+import { CustomersModule } from "../modules/customers/customers.module.js";
 import { OutboxModule } from "../modules/outbox/outbox.module.js";
 import { AccountsRepository } from "./accounts.repository.js";
 import { SessionCookies } from "./cookies.js";
@@ -25,7 +26,7 @@ import { StaffAuthController } from "./staff-auth.controller.js";
  * enforce them on every route. Global guards run in the order listed.
  */
 @Module({
-  imports: [OutboxModule],
+  imports: [CustomersModule, OutboxModule],
   controllers: [CustomerAuthController, StaffAuthController],
   providers: [
     AccountsRepository,

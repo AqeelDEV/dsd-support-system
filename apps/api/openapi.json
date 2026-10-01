@@ -732,6 +732,273 @@
           "Operations"
         ]
       }
+    },
+    "/api/v1/public/tickets": {
+      "post": {
+        "description": "Takes an email, a subject, a description and up to five files. It answers with the ticket reference and doesn't sign anyone in: the thread opens from the link emailed to that address, so only its owner can read the replies. Limited to 10 an hour per address and 5 an hour per email; it stays open if the rate-limit store is down.",
+        "operationId": "PublicTicketsController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Send every field before the first file. Files are judged by their content, not their name: PNG, JPEG, GIF, WebP, PDF or plain UTF-8 text, at most 10 MB each.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "subject",
+                  "description"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+                    "description": "Compared case-insensitively",
+                    "example": "customer@example.com"
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "A short summary, up to 200 characters"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000,
+                    "description": "What happened, up to 20,000 characters"
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Up to 5 files"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestTicketReceipt_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid (`validation-error`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A file is over 10 MB",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "A file isn't an accepted type, or the body isn't multipart/form-data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many tickets; `Retry-After` says when to try again",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is unavailable; the same request without files still works",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Raise a ticket as a guest",
+        "tags": [
+          "Tickets (public)"
+        ]
+      }
+    },
+    "/api/v1/customer/tickets": {
+      "post": {
+        "description": "For a signed-in customer: the account's email is the contact. A guest session (from an emailed link) can't raise tickets here and gets 403; it uses the public form instead. Limited like the public form.",
+        "operationId": "CustomerTicketsController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Send every field before the first file. Files are judged by their content, not their name: PNG, JPEG, GIF, WebP, PDF or plain UTF-8 text, at most 10 MB each.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subject",
+                  "description"
+                ],
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "A short summary, up to 200 characters"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000,
+                    "description": "What happened, up to 20,000 characters"
+                  },
+                  "attachments": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Up to 5 files"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerTicketSummary_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field is missing or invalid (`validation-error`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A guest session, or the Origin or CSRF token was wrong (`csrf-rejected`)\n\nThe Origin or the CSRF token was missing or wrong (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "A file is over 10 MB",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "A file isn't an accepted type, or the body isn't multipart/form-data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many tickets; `Retry-After` says when to try again",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is unavailable; the same request without files still works",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "customerSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Raise a ticket",
+        "tags": [
+          "Tickets (customer)"
+        ]
+      }
     }
   },
   "info": {
@@ -1073,6 +1340,57 @@
         ],
         "additionalProperties": false
       },
+      "GuestTicketReceipt_Output": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "For example DSD-000123"
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerTicketSummary_Output": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "pending_customer",
+              "resolved",
+              "closed"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "subject",
+          "status",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -1118,6 +1436,19 @@
               "required": [
                 "path",
                 "message"
+              ]
+            }
+          },
+          "allowedTransitions": {
+            "description": "Present on `invalid-status-transition`: the statuses the ticket can move to now",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "open",
+                "pending_customer",
+                "resolved",
+                "closed"
               ]
             }
           }

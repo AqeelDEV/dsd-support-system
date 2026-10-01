@@ -261,6 +261,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Raise a ticket as a guest
+         * @description Takes an email, a subject, a description and up to five files. It answers with the ticket reference and doesn't sign anyone in: the thread opens from the link emailed to that address, so only its owner can read the replies. Limited to 10 an hour per address and 5 an hour per email; it stays open if the rate-limit store is down.
+         */
+        post: operations["PublicTicketsController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Raise a ticket
+         * @description For a signed-in customer: the account's email is the contact. A guest session (from an emailed link) can't raise tickets here and gets 403; it uses the public form instead. Limited like the public form.
+         */
+        post: operations["CustomerTicketsController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -349,6 +389,20 @@ export interface components {
                 redis: "up" | "down";
             };
         };
+        GuestTicketReceipt_Output: {
+            /** @description For example DSD-000123 */
+            reference: string;
+        };
+        CustomerTicketSummary_Output: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            subject: string;
+            /** @enum {string} */
+            status: "open" | "pending_customer" | "resolved" | "closed";
+            /** Format: date-time */
+            createdAt: string;
+        };
         ProblemDetails: {
             /** @description Problem type URI; `about:blank` when the HTTP status says it all */
             type: string;
@@ -367,6 +421,8 @@ export interface components {
                 path: string;
                 message: string;
             }[];
+            /** @description Present on `invalid-status-transition`: the statuses the ticket can move to now */
+            allowedTransitions?: ("open" | "pending_customer" | "resolved" | "closed")[];
         };
     };
     responses: never;
@@ -979,6 +1035,195 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Readiness_Output"];
+                };
+            };
+        };
+    };
+    PublicTicketsController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Send every field before the first file. Files are judged by their content, not their name: PNG, JPEG, GIF, WebP, PDF or plain UTF-8 text, at most 10 MB each. */
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /**
+                     * Format: email
+                     * @description Compared case-insensitively
+                     * @example customer@example.com
+                     */
+                    email: string;
+                    /** @description A short summary, up to 200 characters */
+                    subject: string;
+                    /** @description What happened, up to 20,000 characters */
+                    description: string;
+                    /** @description Up to 5 files */
+                    attachments?: string[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuestTicketReceipt_Output"];
+                };
+            };
+            /** @description A field is missing or invalid (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description A file is over 10 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description A file isn't an accepted type, or the body isn't multipart/form-data */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many tickets; `Retry-After` says when to try again */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description File storage is unavailable; the same request without files still works */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CustomerTicketsController_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Send every field before the first file. Files are judged by their content, not their name: PNG, JPEG, GIF, WebP, PDF or plain UTF-8 text, at most 10 MB each. */
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @description A short summary, up to 200 characters */
+                    subject: string;
+                    /** @description What happened, up to 20,000 characters */
+                    description: string;
+                    /** @description Up to 5 files */
+                    attachments?: string[];
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerTicketSummary_Output"];
+                };
+            };
+            /** @description A field is missing or invalid (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description A guest session, or the Origin or CSRF token was wrong (`csrf-rejected`)
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description A file is over 10 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description A file isn't an accepted type, or the body isn't multipart/form-data */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many tickets; `Retry-After` says when to try again */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description File storage is unavailable; the same request without files still works */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

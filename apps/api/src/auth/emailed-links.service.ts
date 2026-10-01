@@ -11,6 +11,7 @@ import {
 import { ProblemException } from "../common/problem-details.js";
 import type { Executor } from "../infrastructure/database.js";
 import { DB } from "../infrastructure/tokens.js";
+import { CustomersRepository } from "../modules/customers/customers.repository.js";
 import { OutboxRepository } from "../modules/outbox/outbox.repository.js";
 import { EmailedLinksRepository } from "./emailed-links.repository.js";
 import { PasswordHasher } from "./password-hasher.js";
@@ -38,6 +39,7 @@ export class EmailedLinksService {
   constructor(
     @Inject(DB) private readonly db: Executor,
     private readonly links: EmailedLinksRepository,
+    private readonly customers: CustomersRepository,
     private readonly outbox: OutboxRepository,
     private readonly hasher: PasswordHasher,
     private readonly sessions: SessionService,
@@ -51,7 +53,7 @@ export class EmailedLinksService {
    */
   async requestSignup(email: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      const customerId = await this.links.findOrCreateCustomer(
+      const customerId = await this.customers.findOrCreate(
         tx,
         email.trim(),
         normalizeEmail(email),

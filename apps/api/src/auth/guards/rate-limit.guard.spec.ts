@@ -156,6 +156,13 @@ describe("rate-limit policies (ADR-0003, section 10)", () => {
     });
   });
 
+  it("limit ticket submission to 10 per IP and 5 per email an hour, and let it through without Redis", () => {
+    expect(summary(RATE_LIMITS.ticketSubmission)).toEqual({
+      limits: ["ip 10/3600s", "email 5/3600s"],
+      whenRedisIsDown: "allow",
+    });
+  });
+
   it("give every policy its own counters", () => {
     const names = Object.values(RATE_LIMITS).map((policy) => policy.name);
     expect(new Set(names).size).toBe(names.length);

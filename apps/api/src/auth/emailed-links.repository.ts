@@ -112,32 +112,6 @@ export class EmailedLinksRepository {
   }
 
   /**
-   * The customer for `emailNormalized`, created without a password if
-   * there isn't one yet: the same row a guest ticket would use, which is
-   * why earlier guest tickets appear once the account is registered.
-   */
-  async findOrCreateCustomer(
-    executor: Executor,
-    email: string,
-    emailNormalized: string,
-  ): Promise<string> {
-    const [created] = await executor
-      .insert(customers)
-      .values({ email, emailNormalized })
-      .onConflictDoNothing({ target: customers.emailNormalized })
-      .returning({ id: customers.id });
-    if (created !== undefined) return created.id;
-    const [existing] = await executor
-      .select({ id: customers.id })
-      .from(customers)
-      .where(eq(customers.emailNormalized, emailNormalized));
-    if (existing === undefined) {
-      throw new Error("customer vanished between insert and select");
-    }
-    return existing.id;
-  }
-
-  /**
    * Sets the first password, marks the email verified and stores the name.
    * Only for a customer without a password: an account that already has
    * one is never changed through a sign-up link.

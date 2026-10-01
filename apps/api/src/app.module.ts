@@ -9,6 +9,7 @@ import { ProblemDetailsFilter } from "./common/problem-details.js";
 import type { Env } from "./config/env.js";
 import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { TicketsModule } from "./modules/tickets/tickets.module.js";
 
 /**
  * Validates every body, query and path parameter against its zod schema.
@@ -34,6 +35,7 @@ export class AppModule {
         InfrastructureModule.forRoot(env),
         AuthModule,
         HealthModule,
+        TicketsModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },

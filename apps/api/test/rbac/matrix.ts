@@ -156,4 +156,19 @@ export const MATRIX: readonly MatrixRow[] = [
     rule: "Any active staff session; never a customer or a deactivated agent",
     expected: staffOnly(204),
   },
+
+  {
+    method: "POST",
+    path: "/api/v1/public/tickets",
+    form: { subject: "" },
+    rule: "Anyone may raise a ticket; the same invalid form gives every caller 400",
+    expected: forEveryone(400),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/customer/tickets",
+    form: { subject: "Raised by the matrix", description: "An RBAC check" },
+    rule: "Signed-in customers; a guest session sees one ticket and can't raise more",
+    expected: { ...customersOnly(201), guest: 403 },
+  },
 ];
