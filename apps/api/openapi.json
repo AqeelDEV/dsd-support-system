@@ -2015,6 +2015,116 @@
         ]
       }
     },
+    "/api/v1/staff/tickets/{ticketId}/assignment": {
+      "post": {
+        "description": "`claim` takes an unassigned ticket, and answers 409 if someone else got there first. `assign` hands the ticket to an active agent in its brand, and `unassign` returns it to the pool. Without `ticket:reassign:any` you may only move tickets that are unassigned or yours.",
+        "operationId": "StaffTicketsController_assign",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Assignment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffTicket_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not one of the three actions (`validation-error`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `ticket:assign`, or the ticket is someone else's and you lack `ticket:reassign:any`\n\nThe Origin or the CSRF token was missing or wrong (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket in your brands",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Someone else has it (`already-assigned`), or it is closed (`ticket-closed`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The agent is deactivated, doesn't exist, or isn't in the ticket's brand",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Claim, assign or unassign",
+        "tags": [
+          "Tickets (staff)"
+        ]
+      }
+    },
     "/api/v1/staff/customers/{customerId}": {
       "get": {
         "description": "Their profile and their tickets in your brands, newest first, a page at a time. A customer with no ticket in your brands is a 404.",
@@ -3415,6 +3525,30 @@
         },
         "required": [
           "priority"
+        ],
+        "additionalProperties": false
+      },
+      "Assignment": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "claim",
+              "assign",
+              "unassign"
+            ],
+            "description": "`claim`: take an unassigned ticket (409 if someone has it). `assign`: give it to an active agent in its brand. `unassign`: return it to the pool"
+          },
+          "agentId": {
+            "description": "The agent to assign; required with `assign`, and only then",
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "action"
         ],
         "additionalProperties": false
       },

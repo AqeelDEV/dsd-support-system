@@ -308,6 +308,29 @@ export const MATRIX: readonly MatrixRow[] = [
     },
     200,
   ),
+  ...onStaffTickets(
+    {
+      method: "POST",
+      path: "/api/v1/staff/tickets/:ticketId/assignment",
+      body: { action: "claim" },
+    },
+    200,
+  ),
+  {
+    method: "POST",
+    path: "/api/v1/staff/tickets/:ticketId/assignment",
+    body: { action: "unassign" },
+    rule: "A colleague's ticket: only ticket:reassign:any (supervisors, admins) may take it away (FR-11)",
+    expected: { ...staffOnly(200), agent: 403 },
+    arrange: async ({ seeded, newTicket }) => ({
+      params: {
+        ticketId: await newTicket({
+          customerId: seeded.customerId,
+          assigneeId: seeded.colleagueId,
+        }),
+      },
+    }),
+  },
   {
     method: "GET",
     path: "/api/v1/staff/customers/:customerId",

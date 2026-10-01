@@ -7,6 +7,7 @@ import {
   tickets,
 } from "@dsd/db/schema";
 import type {
+  AgentRole,
   QueueSort,
   TicketChannel,
   TicketPriority,
@@ -421,6 +422,40 @@ export class TicketsRepository {
       .update(tickets)
       .set({ priority })
       .where(eq(tickets.id, ticketId));
+  }
+
+  async setAssignee(
+    executor: Executor,
+    ticketId: string,
+    assigneeAgentId: string | null,
+  ): Promise<void> {
+    await executor
+      .update(tickets)
+      .set({ assigneeAgentId })
+      .where(eq(tickets.id, ticketId));
+  }
+
+  /**
+   * The agent, if they can be given tickets in `brandId`: active, and a
+   * member of the brand (ADR-0007, section 5).
+   */
+  async assignableAgent(
+    executor: Executor,
+    agentId: string,
+    brandId: string,
+  ): Promise<{ id: string; role: AgentRole } | undefined> {
+    const [row] = await executor
+      .select({ id: agents.id, role: agents.role })
+      .from(agents)
+      .innerJoin(
+        agentBrandMemberships,
+        and(
+          eq(agentBrandMemberships.agentId, agents.id),
+          eq(agentBrandMemberships.brandId, brandId),
+        ),
+      )
+      .where(and(eq(agents.id, agentId), isNull(agents.deactivatedAt)));
+    return row;
   }
 
   /** The new status, with the lifecycle timestamps it moves. */

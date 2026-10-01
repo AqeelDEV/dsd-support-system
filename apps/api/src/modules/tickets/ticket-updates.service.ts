@@ -1,19 +1,24 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type {
-  PriorityChangeRequest,
-  StaffTicket,
-  StatusChangeRequest,
+import {
+  type AssignmentRequest,
+  type PriorityChangeRequest,
+  PROBLEM_TYPES,
+  type StaffTicket,
+  type StatusChangeRequest,
 } from "@dsd/shared";
 
 import type { StaffPrincipal } from "../../auth/principal.js";
+import { ProblemException } from "../../common/problem-details.js";
 import type { Executor } from "../../infrastructure/database.js";
 import { DB } from "../../infrastructure/tokens.js";
+import { decideAssignment } from "./domain/ticket-actions.js";
 import {
   assertAgentTransition,
   assertNotClosed,
 } from "./domain/ticket-status.js";
 import { staffContext, TicketChanges } from "./ticket-changes.js";
 import {
+  staffViewOf,
   TicketQueriesService,
   ticketNotFound,
 } from "./ticket-queries.service.js";
@@ -73,6 +78,42 @@ export class TicketUpdatesService {
   }
 
   /**
+   * Claims, assigns or unassigns (ADR-0007, section 5). The rules about who
+   * may move whose ticket live in `decideAssignment`; the new assignee must
+   * be an active agent in the ticket's brand. Two simultaneous claims queue
+   * on the row lock, so the second finds the ticket taken and gets 409.
+   */
+  async assign(
+    principal: StaffPrincipal,
+    ticketId: string,
+    request: AssignmentRequest,
+    requestId: string,
+  ): Promise<StaffTicket> {
+    return this.underLock(principal, ticketId, async (tx, ticket) => {
+      const decision = decideAssignment(
+        staffViewOf(principal),
+        ticket,
+        request,
+      );
+      if (decision === "unchanged") return;
+      const to = decision.assigneeAgentId;
+      if (
+        to !== null &&
+        (await this.tickets.assignableAgent(tx, to, ticket.brandId)) ===
+          undefined
+      ) {
+        throw unusableAgent("That agent can't take tickets in this brand.");
+      }
+      await this.changes.assign(
+        tx,
+        staffContext(principal, requestId),
+        ticket,
+        to,
+      );
+    });
+  }
+
+  /**
    * Runs `change` on the locked ticket, in the agent's brands, and answers
    * with the ticket as it then stands.
    */
@@ -93,3 +134,7 @@ export class TicketUpdatesService {
     return this.queries.staffTicket(principal, ticketId);
   }
 }
+
+/** Well-formed, but names an agent who can't be used here (ARCHITECTURE, status codes). */
+export const unusableAgent = (detail: string) =>
+  new ProblemException(422, PROBLEM_TYPES.blank, detail);

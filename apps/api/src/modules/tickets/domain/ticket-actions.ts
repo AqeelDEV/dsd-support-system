@@ -80,12 +80,7 @@ export function decideAssignment(
   request: AssignmentRequest,
 ): { assigneeAgentId: string | null } | "unchanged" {
   if (ticket.status === "closed") throw ticketClosed();
-  const target =
-    request.action === "claim"
-      ? staff.agentId
-      : request.action === "assign"
-        ? request.agentId
-        : null;
+  const target = targetOf(staff, request);
   if (target === ticket.assigneeAgentId) return "unchanged";
 
   if (request.action === "claim" && ticket.assigneeAgentId !== null) {
@@ -106,4 +101,21 @@ export function decideAssignment(
     );
   }
   return { assigneeAgentId: target };
+}
+
+/** Who the ticket should go to. The request schema guarantees `assign` names an agent. */
+function targetOf(staff: StaffView, request: AssignmentRequest): string | null {
+  switch (request.action) {
+    case "claim":
+      return staff.agentId;
+    case "unassign":
+      return null;
+    case "assign":
+      if (request.agentId === undefined) {
+        throw new Error(
+          "An assign request without an agentId passed validation",
+        );
+      }
+      return request.agentId;
+  }
 }

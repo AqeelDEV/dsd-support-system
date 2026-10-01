@@ -68,22 +68,37 @@ export const priorityChangeRequestSchema = z.strictObject({
   priority: ticketPrioritySchema,
 });
 
+export const ASSIGNMENT_ACTIONS = ["claim", "assign", "unassign"] as const;
+
 /**
  * One endpoint, three intents (ADR-0007, section 5). A claim succeeds only
  * on an unassigned ticket; assigning and unassigning follow the holder
  * rules, and `ticket:reassign:any` lifts them.
  */
-export const assignmentRequestSchema = z.discriminatedUnion("action", [
-  z
-    .strictObject({ action: z.literal("claim") })
-    .describe("Take an unassigned ticket; 409 if someone else has it"),
-  z
-    .strictObject({ action: z.literal("assign"), agentId: z.uuid() })
-    .describe("Give the ticket to an active agent in its brand"),
-  z
-    .strictObject({ action: z.literal("unassign") })
-    .describe("Return the ticket to the unassigned pool"),
-]);
+export const assignmentRequestSchema = z
+  .strictObject({
+    action: z
+      .enum(ASSIGNMENT_ACTIONS)
+      .describe(
+        "`claim`: take an unassigned ticket (409 if someone has it). `assign`: give it to an active agent in its brand. `unassign`: return it to the pool",
+      ),
+    agentId: z
+      .uuid()
+      .optional()
+      .describe("The agent to assign; required with `assign`, and only then"),
+  })
+  .superRefine((request, context) => {
+    const assigning = request.action === "assign";
+    if (assigning !== (request.agentId !== undefined)) {
+      context.addIssue({
+        code: "custom",
+        path: ["agentId"],
+        message: assigning
+          ? "Required when assigning"
+          : "Only sent when assigning",
+      });
+    }
+  });
 
 export const escalationRequestSchema = z.strictObject({
   reason: text(2_000).describe(

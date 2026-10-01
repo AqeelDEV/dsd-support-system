@@ -194,4 +194,35 @@ export class TicketChanges {
       },
     });
   }
+
+  /** A new assignee, or none; the current one writes nothing. */
+  async assign(
+    tx: Executor,
+    context: ChangeContext,
+    ticket: { id: string; assigneeAgentId: string | null },
+    to: string | null,
+  ): Promise<void> {
+    if (to === ticket.assigneeAgentId) return;
+    await this.tickets.setAssignee(tx, ticket.id, to);
+    await this.audit.record(tx, context, [
+      {
+        ticketId: ticket.id,
+        entityType: "ticket",
+        entityId: ticket.id,
+        action: "ticket.assigned",
+        before: { assigneeAgentId: ticket.assigneeAgentId },
+        after: { assigneeAgentId: to },
+      },
+    ]);
+    await this.outbox.add(tx, {
+      type: "ticket.assigned",
+      aggregateType: "ticket",
+      aggregateId: ticket.id,
+      payload: {
+        ticketId: ticket.id,
+        fromAgentId: ticket.assigneeAgentId,
+        toAgentId: to,
+      },
+    });
+  }
 }

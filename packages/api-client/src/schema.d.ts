@@ -465,6 +465,26 @@ export interface paths {
         patch: operations["StaffTicketsController_changePriority"];
         trace?: never;
     };
+    "/api/v1/staff/tickets/{ticketId}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Claim, assign or unassign
+         * @description `claim` takes an unassigned ticket, and answers 409 if someone else got there first. `assign` hands the ticket to an active agent in its brand, and `unassign` returns it to the pool. Without `ticket:reassign:any` you may only move tickets that are unassigned or yours.
+         */
+        post: operations["StaffTicketsController_assign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/customers/{customerId}": {
         parameters: {
             query?: never;
@@ -795,6 +815,18 @@ export interface components {
         PriorityChange: {
             /** @enum {string} */
             priority: "low" | "normal" | "high" | "urgent";
+        };
+        Assignment: {
+            /**
+             * @description `claim`: take an unassigned ticket (409 if someone has it). `assign`: give it to an active agent in its brand. `unassign`: return it to the pool
+             * @enum {string}
+             */
+            action: "claim" | "assign" | "unassign";
+            /**
+             * Format: uuid
+             * @description The agent to assign; required with `assign`, and only then
+             */
+            agentId?: string;
         };
         StaffCustomer_Output: {
             customer: {
@@ -2310,6 +2342,89 @@ export interface operations {
             };
             /** @description The ticket is closed (`ticket-closed`) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_assign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Assignment"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTicket_Output"];
+                };
+            };
+            /** @description Not one of the three actions (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `ticket:assign`, or the ticket is someone else's and you lack `ticket:reassign:any`
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Someone else has it (`already-assigned`), or it is closed (`ticket-closed`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The agent is deactivated, doesn't exist, or isn't in the ticket's brand */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

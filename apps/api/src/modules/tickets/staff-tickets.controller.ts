@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
+  assignmentRequestSchema,
   internalNoteFieldsSchema,
   pageOf,
   priorityChangeRequestSchema,
@@ -43,6 +44,7 @@ class StaffTicketPage extends createZodDto(pageOf(staffTicketSummarySchema)) {}
 class StaffTicket extends createZodDto(staffTicketSchema) {}
 class StatusChange extends createZodDto(statusChangeRequestSchema) {}
 class PriorityChange extends createZodDto(priorityChangeRequestSchema) {}
+class Assignment extends createZodDto(assignmentRequestSchema) {}
 
 /**
  * Working tickets (FR-7 to FR-11). Every route needs a staff session and a
@@ -202,6 +204,43 @@ export class StaffTicketsController {
     @Req() request: FastifyRequest,
   ) {
     return this.updates.changePriority(
+      staffOf(request),
+      params.ticketId,
+      body,
+      request.id,
+    );
+  }
+
+  @Post(":ticketId/assignment")
+  @RequirePermissions("ticket:assign")
+  @HttpCode(HttpStatus.OK)
+  @ApiSession("staff", { changesState: true })
+  @ApiOperation({
+    summary: "Claim, assign or unassign",
+    description:
+      "`claim` takes an unassigned ticket, and answers 409 if someone else got there first. `assign` hands the ticket to an active agent in its brand, and `unassign` returns it to the pool. Without `ticket:reassign:any` you may only move tickets that are unassigned or yours.",
+  })
+  @ApiProblem(400, "Not one of the three actions (`validation-error`)")
+  @ApiProblem(
+    403,
+    "Missing `ticket:assign`, or the ticket is someone else's and you lack `ticket:reassign:any`",
+  )
+  @ApiProblem(404, "No such ticket in your brands")
+  @ApiProblem(
+    409,
+    "Someone else has it (`already-assigned`), or it is closed (`ticket-closed`)",
+  )
+  @ApiProblem(
+    422,
+    "The agent is deactivated, doesn't exist, or isn't in the ticket's brand",
+  )
+  @ZodResponse({ status: HttpStatus.OK, type: StaffTicket })
+  assign(
+    @Param() params: TicketParams,
+    @Body() body: Assignment,
+    @Req() request: FastifyRequest,
+  ) {
+    return this.updates.assign(
       staffOf(request),
       params.ticketId,
       body,
