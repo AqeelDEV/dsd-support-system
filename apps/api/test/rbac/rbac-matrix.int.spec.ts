@@ -5,8 +5,26 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ORIGIN } from "../support/auth.js";
 import { createSeededDatabase, startAppOn } from "../support/database.js";
+import { newTicket } from "../support/tickets.js";
 import { headersFor, identities } from "./actors.js";
-import { ACTORS, MATRIX, type MatrixRow } from "./matrix.js";
+import {
+  ACTORS,
+  type Cell,
+  type Fixtures,
+  MATRIX,
+  type MatrixRow,
+} from "./matrix.js";
+
+/** The registered path with each `:name` replaced by the cell's value. */
+function pathFor(row: MatrixRow, cell: Cell): string {
+  return row.path.replace(/:(\w+)/g, (_segment, name: string) => {
+    const value = cell.params?.[name];
+    if (value === undefined) {
+      throw new Error(`${row.method} ${row.path} needs a value for :${name}`);
+    }
+    return value;
+  });
+}
 
 const VERBS = {
   GET: "get",
@@ -24,7 +42,7 @@ const VERBS = {
 describe("RBAC matrix", () => {
   let database: TestDatabase;
   let app: NestFastifyApplication;
-  let seeded: Awaited<ReturnType<typeof identities>>;
+  let fixtures: Fixtures;
   let cell = 0;
 
   beforeAll(async () => {
@@ -32,7 +50,11 @@ describe("RBAC matrix", () => {
     // Each cell comes from its own client address, through a trusted
     // proxy, so the sign-in rate limits never decide a cell's outcome.
     app = await startAppOn(database, { TRUST_PROXY: "127.0.0.1,::1" });
-    seeded = await identities(database);
+    fixtures = {
+      database,
+      seeded: await identities(database),
+      newTicket: (ticket) => newTicket(database, ticket),
+    };
   });
 
   afterAll(async () => {
@@ -44,9 +66,15 @@ describe("RBAC matrix", () => {
     it.each(ACTORS)(
       `gives %s the status in the matrix (${row.rule})`,
       async (actor) => {
-        const caller = await headersFor(app, seeded, actor);
+        const arranged = (await row.arrange?.(fixtures)) ?? {};
+        const caller = await headersFor(
+          app,
+          fixtures.seeded,
+          actor,
+          arranged.guestTicketId,
+        );
         const http = request(app.getHttpServer());
-        const call = http[VERBS[row.method]](row.path)
+        const call = http[VERBS[row.method]](pathFor(row, arranged))
           .set("origin", ORIGIN)
           .set(
             "x-forwarded-for",
@@ -57,9 +85,12 @@ describe("RBAC matrix", () => {
         if (caller.csrfToken !== undefined) {
           void call.set("x-csrf-token", caller.csrfToken);
         }
-        const response = await (row.body === undefined
-          ? call
-          : call.send(row.body));
+        const form = arranged.form ?? row.form;
+        const body = arranged.body ?? row.body;
+        for (const [name, value] of Object.entries(form ?? {})) {
+          void call.field(name, value);
+        }
+        const response = await (body === undefined ? call : call.send(body));
         expect(response.status).toBe(row.expected[actor]);
       },
     );

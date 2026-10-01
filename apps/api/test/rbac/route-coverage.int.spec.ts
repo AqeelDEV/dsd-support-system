@@ -44,7 +44,8 @@ describe("route coverage", () => {
     );
 
   it("finds the routes it is checking", () => {
-    expect(apiRoutes().length).toBeGreaterThanOrEqual(MATRIX.length);
+    const rowRoutes = new Set(MATRIX.map((row) => `${row.method} ${row.path}`));
+    expect(apiRoutes().length).toBeGreaterThanOrEqual(rowRoutes.size);
   });
 
   it("has a matrix row for every registered route", () => {

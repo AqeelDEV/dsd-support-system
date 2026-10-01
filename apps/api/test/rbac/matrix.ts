@@ -6,8 +6,14 @@
  *
  * Every request is sent the way our own pages would send it (a trusted
  * Origin, and the caller's own CSRF token), so a cell tests authorisation
- * and nothing else. Each phase adds the rows for its routes.
+ * and nothing else. Each phase adds the rows for its routes. A route can
+ * have several rows, for example one per kind of resource it acts on.
  */
+
+import type { TestDatabase } from "@dsd/db/testing";
+
+import type { NewTicket } from "../support/tickets.js";
+import type { SeededIdentities } from "./actors.js";
 
 export const ACTORS = [
   "anonymous",
@@ -27,15 +33,35 @@ export const ACTORS = [
 
 export type Actor = (typeof ACTORS)[number];
 
-export interface MatrixRow {
-  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  /** The path as registered, which for now has no parameters. */
-  path: string;
-  /** Sent with every request in this row. */
+/** What a row's `arrange` step can use. */
+export interface Fixtures {
+  database: TestDatabase;
+  seeded: SeededIdentities;
+  /** A fresh ticket, so a cell that changes one can't affect the next cell. */
+  newTicket(ticket: NewTicket): Promise<string>;
+}
+
+/** What one cell sends, worked out by the row's `arrange` step. */
+export interface Cell {
+  /** Values for the `:name` segments of the row's path. */
+  params?: Record<string, string>;
+  /** A JSON body. */
   body?: Record<string, unknown>;
+  /** Multipart form fields, for routes that take files. */
+  form?: Record<string, string>;
+  /** The ticket the guest actor's session is scoped to in this cell. */
+  guestTicketId?: string;
+}
+
+export interface MatrixRow extends Omit<Cell, "params" | "guestTicketId"> {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** The path as registered, with `:name` for each parameter. */
+  path: string;
   /** Why this row expects what it does, for whoever reads a failure. */
   rule: string;
   expected: Record<Actor, number>;
+  /** Runs before every cell; what it returns overrides the row's own body or form. */
+  arrange?: (fixtures: Fixtures) => Promise<Cell>;
 }
 
 const forEveryone = (status: number): Record<Actor, number> =>
