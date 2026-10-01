@@ -115,6 +115,16 @@ fi
 expect_status "the customer app won't serve a staff download" 404 \
   "$CUSTOMER/api/v1/staff/tickets/$ticket_id/attachments/$attachment_id"
 
+echo "Knowledge base"
+expect_body "the help centre lists the seeded articles" '"slug":"reset-your-password"' \
+  "$CUSTOMER/api/v1/public/kb/articles?limit=100"
+expect_body "search ranks the article and marks the match" \
+  '"slug":"refund-timescales".*"text":"[Rr]efund[a-z]*","highlighted":true' \
+  "$CUSTOMER/api/v1/public/kb/articles?q=refund"
+expect_status "a draft isn't public" 404 "$CUSTOMER/api/v1/public/kb/articles/tempo-thermostat-firmware"
+expect_body "the agent reads drafts too" '"status":"draft"' \
+  "$AGENT/api/v1/staff/kb/articles?status=draft" --cookie "$jar"
+
 echo "Database"
 tickets=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc "SELECT count(*) FROM tickets" 2>/dev/null | tr -d '[:space:]' || true)
 if [[ $tickets -gt 0 ]] 2>/dev/null; then pass "migrated and seeded ($tickets tickets)"; else fail "migrated and seeded (got '$tickets' tickets)"; fi
