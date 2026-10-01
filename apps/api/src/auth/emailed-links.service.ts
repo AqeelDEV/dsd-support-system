@@ -77,36 +77,37 @@ export class EmailedLinksService {
   ): Promise<SignedIn<CustomerPrincipal>> {
     // Hashing is slow, so it happens before the transaction opens.
     const passwordHash = await this.hasher.hash(request.password);
-    if (replacing !== undefined) await this.sessions.revokeToken(replacing);
-    return this.db.transaction(async (tx) => {
-      const token = await this.links.consumeSignupToken(
-        tx,
-        hashToken(request.token),
-      );
-      if (token === undefined) throw invalidLink();
-      // An account that already has a password is never changed this way;
-      // the rollback also leaves the token as it was.
-      const customer = await this.links.completeRegistration(
-        tx,
-        token.customerId,
-        { passwordHash, displayName: request.displayName },
-      );
-      if (customer === undefined) throw invalidLink();
-      const session = await this.sessions.create(
-        { kind: "customer", customerId: customer.id },
-        client,
-        tx,
-      );
-      return {
-        session,
-        principal: {
-          realm: "customer",
-          sessionId: session.id,
-          customer,
-          guestTicketId: null,
-        },
-      };
-    });
+    return this.thenRevoke(replacing, () =>
+      this.db.transaction(async (tx) => {
+        const token = await this.links.consumeSignupToken(
+          tx,
+          hashToken(request.token),
+        );
+        if (token === undefined) throw invalidLink();
+        // An account that already has a password is never changed this way;
+        // the rollback also leaves the token as it was.
+        const customer = await this.links.completeRegistration(
+          tx,
+          token.customerId,
+          { passwordHash, displayName: request.displayName },
+        );
+        if (customer === undefined) throw invalidLink();
+        const session = await this.sessions.create(
+          { kind: "customer", customerId: customer.id },
+          client,
+          tx,
+        );
+        return {
+          session,
+          principal: {
+            realm: "customer",
+            sessionId: session.id,
+            customer,
+            guestTicketId: null,
+          },
+        };
+      }),
+    );
   }
 
   /**
@@ -141,34 +142,35 @@ export class EmailedLinksService {
     replacing: string | undefined,
   ): Promise<SignedIn<StaffPrincipal>> {
     const passwordHash = await this.hasher.hash(request.password);
-    if (replacing !== undefined) await this.sessions.revokeToken(replacing);
-    return this.db.transaction(async (tx) => {
-      const token = await this.links.consumeInviteToken(
-        tx,
-        hashToken(request.token),
-      );
-      if (token === undefined) throw invalidLink();
-      const agent = await this.links.acceptInvite(
-        tx,
-        token.agentId,
-        passwordHash,
-      );
-      if (agent === undefined) throw invalidLink();
-      const session = await this.sessions.create(
-        { kind: "staff", agentId: agent.id },
-        client,
-        tx,
-      );
-      return {
-        session,
-        principal: {
-          realm: "staff",
-          sessionId: session.id,
-          agent,
-          permissions: new Set(permissionsFor(agent.role)),
-        },
-      };
-    });
+    return this.thenRevoke(replacing, () =>
+      this.db.transaction(async (tx) => {
+        const token = await this.links.consumeInviteToken(
+          tx,
+          hashToken(request.token),
+        );
+        if (token === undefined) throw invalidLink();
+        const agent = await this.links.acceptInvite(
+          tx,
+          token.agentId,
+          passwordHash,
+        );
+        if (agent === undefined) throw invalidLink();
+        const session = await this.sessions.create(
+          { kind: "staff", agentId: agent.id },
+          client,
+          tx,
+        );
+        return {
+          session,
+          principal: {
+            realm: "staff",
+            sessionId: session.id,
+            agent,
+            permissions: new Set(permissionsFor(agent.role)),
+          },
+        };
+      }),
+    );
   }
 
   /**
@@ -181,27 +183,42 @@ export class EmailedLinksService {
     client: ClientInfo,
     replacing: string | undefined,
   ): Promise<SignedIn<CustomerPrincipal>> {
+    return this.thenRevoke(replacing, () =>
+      this.db.transaction(async (tx) => {
+        const link = await this.links.useGuestToken(tx, hashToken(token));
+        if (link === undefined) throw invalidLink();
+        await this.links.markContactVerified(tx, link.ticketId);
+        const customer = await this.links.customer(tx, link.customerId);
+        if (customer === undefined) throw invalidLink();
+        const session = await this.sessions.create(
+          { kind: "guest", customerId: customer.id, ticketId: link.ticketId },
+          client,
+          tx,
+        );
+        return {
+          session,
+          principal: {
+            realm: "customer",
+            sessionId: session.id,
+            customer,
+            guestTicketId: link.ticketId,
+          },
+        };
+      }),
+    );
+  }
+
+  /**
+   * Signs in through `signIn`, and only then revokes the session the
+   * browser already had. A failed attempt, such as an expired link, leaves
+   * that session alone.
+   */
+  private async thenRevoke<P>(
+    replacing: string | undefined,
+    signIn: () => Promise<SignedIn<P>>,
+  ): Promise<SignedIn<P>> {
+    const signedIn = await signIn();
     if (replacing !== undefined) await this.sessions.revokeToken(replacing);
-    return this.db.transaction(async (tx) => {
-      const link = await this.links.useGuestToken(tx, hashToken(token));
-      if (link === undefined) throw invalidLink();
-      await this.links.markContactVerified(tx, link.ticketId);
-      const customer = await this.links.customer(tx, link.customerId);
-      if (customer === undefined) throw invalidLink();
-      const session = await this.sessions.create(
-        { kind: "guest", customerId: customer.id, ticketId: link.ticketId },
-        client,
-        tx,
-      );
-      return {
-        session,
-        principal: {
-          realm: "customer",
-          sessionId: session.id,
-          customer,
-          guestTicketId: link.ticketId,
-        },
-      };
-    });
+    return signedIn;
   }
 }

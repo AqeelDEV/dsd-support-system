@@ -9,7 +9,7 @@ import {
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
-import { ORIGIN, resetRateLimits } from "../support/auth.js";
+import { ORIGIN, resetRateLimits, sessionFor } from "../support/auth.js";
 import {
   asOwner,
   createSeededDatabase,
@@ -218,6 +218,36 @@ describe("guest access links", () => {
         PROBLEM_TYPES.invalidToken,
       );
       expect(response.headers["set-cookie"]).toBeUndefined();
+    });
+
+    it("leaves the browser's session alone when a link fails, and replaces it when one works", async () => {
+      const current = await sessionFor(app, {
+        kind: "customer",
+        customerId: guest.customer_id,
+      });
+      const me = () =>
+        http().get("/api/v1/auth/customer/me").set("cookie", current.cookie);
+
+      await http()
+        .post("/api/v1/auth/customer/guest-access/exchange")
+        .set("origin", ORIGIN)
+        .set("cookie", current.cookie)
+        .send({ token: "E".repeat(43) })
+        .expect(400);
+      await me().expect(200);
+
+      const { token } = await issueLinkToken(database, {
+        purpose: "guest_ticket_access",
+        customerId: guest.customer_id,
+        ticketId: guest.ticket_id,
+      });
+      await http()
+        .post("/api/v1/auth/customer/guest-access/exchange")
+        .set("origin", ORIGIN)
+        .set("cookie", current.cookie)
+        .send({ token })
+        .expect(200);
+      await me().expect(401);
     });
 
     it("rejects something that isn't a token before looking it up", async () => {
