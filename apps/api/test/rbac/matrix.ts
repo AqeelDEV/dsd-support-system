@@ -41,6 +41,8 @@ export interface Fixtures {
   newTicket: (ticket: NewTicket) => Promise<string>;
   /** A second brand that no actor belongs to. */
   otherBrandId: () => Promise<string>;
+  /** A file on the ticket, stored for real, so a download can succeed. */
+  newAttachment: (ticketId: string) => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
@@ -174,6 +176,23 @@ const onStaffTickets = (
   },
 ];
 
+/** The same rows for a route on one of the ticket's files: every cell's ticket gets one. */
+const withFile = (rows: MatrixRow[]): MatrixRow[] =>
+  rows.map((row) => ({
+    ...row,
+    arrange: async (fixtures) => {
+      const cell = (await row.arrange?.(fixtures)) ?? {};
+      const ticketId = cell.params?.ticketId ?? "";
+      return {
+        ...cell,
+        params: {
+          ...cell.params,
+          attachmentId: await fixtures.newAttachment(ticketId),
+        },
+      };
+    },
+  }));
+
 export const MATRIX: readonly MatrixRow[] = [
   {
     method: "GET",
@@ -265,6 +284,15 @@ export const MATRIX: readonly MatrixRow[] = [
     },
     201,
   ),
+  ...withFile(
+    onCustomerTickets(
+      {
+        method: "GET",
+        path: "/api/v1/customer/tickets/:ticketId/attachments/:attachmentId",
+      },
+      200,
+    ),
+  ),
 
   {
     method: "GET",
@@ -338,6 +366,19 @@ export const MATRIX: readonly MatrixRow[] = [
       body: { reason: "Escalated by the RBAC matrix" },
     },
     200,
+  ),
+  ...onStaffTickets(
+    { method: "GET", path: "/api/v1/staff/tickets/:ticketId/audit-events" },
+    200,
+  ),
+  ...withFile(
+    onStaffTickets(
+      {
+        method: "GET",
+        path: "/api/v1/staff/tickets/:ticketId/attachments/:attachmentId",
+      },
+      200,
+    ),
   ),
   {
     method: "GET",

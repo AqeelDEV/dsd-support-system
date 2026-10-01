@@ -85,6 +85,25 @@ describe("internal notes", () => {
     ]);
   });
 
+  it("keeps its file from the customer: the download is a 404", async () => {
+    const [file] = await asOwner<{ id: string }>(
+      database,
+      "SELECT id FROM attachments WHERE filename = $1",
+      [canaryFile],
+    );
+    const asCustomer = await get(
+      `/api/v1/customer/tickets/${ticketId}/attachments/${file?.id ?? ""}`,
+      customer,
+    );
+    expect(asCustomer.status).toBe(404);
+    expectNoCanary(asCustomer.body);
+    const asStaff = await get(
+      `/api/v1/staff/tickets/${ticketId}/attachments/${file?.id ?? ""}`,
+      agent,
+    );
+    expect(asStaff.status).toBe(200);
+  });
+
   it("never appears in the customer's ticket list", async () => {
     expectNoCanary((await get("/api/v1/customer/tickets", customer)).body);
   });

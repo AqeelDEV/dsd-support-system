@@ -11,12 +11,14 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
   assignmentRequestSchema,
+  auditEventSchema,
   escalationRequestSchema,
   internalNoteFieldsSchema,
   pageOf,
+  pageQuerySchema,
   priorityChangeRequestSchema,
   queueQuerySchema,
   staffReplyFieldsSchema,
@@ -34,8 +36,9 @@ import {
   ApiProblem,
   ApiSession,
 } from "../../openapi/decorators.js";
+import { sendDownload } from "../attachments/download.js";
 import { withSubmission } from "../attachments/multipart.js";
-import { TicketParams } from "./params.js";
+import { AttachmentParams, TicketParams } from "./params.js";
 import { TicketMessagesService } from "./ticket-messages.service.js";
 import { TicketQueriesService } from "./ticket-queries.service.js";
 import { TicketUpdatesService } from "./ticket-updates.service.js";
@@ -47,6 +50,8 @@ class StatusChange extends createZodDto(statusChangeRequestSchema) {}
 class PriorityChange extends createZodDto(priorityChangeRequestSchema) {}
 class Assignment extends createZodDto(assignmentRequestSchema) {}
 class Escalation extends createZodDto(escalationRequestSchema) {}
+class PageQuery extends createZodDto(pageQuerySchema) {}
+class AuditEventPage extends createZodDto(pageOf(auditEventSchema)) {}
 
 /**
  * Working tickets (FR-7 to FR-11). Every route needs a staff session and a
@@ -278,6 +283,60 @@ export class StaffTicketsController {
       params.ticketId,
       body,
       request.id,
+    );
+  }
+
+  @Get(":ticketId/audit-events")
+  @RequirePermissions("ticket:audit:read")
+  @ApiSession("staff", { changesState: false })
+  @ApiOperation({
+    summary: "The ticket's history",
+    description:
+      "Every change, oldest first: who made it, what changed from and to, and the request that made it. The history is append-only; nothing can rewrite it.",
+  })
+  @ApiProblem(400, "The cursor is invalid")
+  @ApiProblem(403, "Missing the `ticket:audit:read` permission")
+  @ApiProblem(404, "No such ticket in your brands")
+  @ZodResponse({ status: HttpStatus.OK, type: AuditEventPage })
+  auditTrail(
+    @Param() params: TicketParams,
+    @Query() query: PageQuery,
+    @Req() request: FastifyRequest,
+  ) {
+    return this.queries.auditTrail(staffOf(request), params.ticketId, query);
+  }
+
+  @Get(":ticketId/attachments/:attachmentId")
+  @RequirePermissions("ticket:read:any")
+  @ApiSession("staff", { changesState: false })
+  @ApiOperation({
+    summary: "Download a file",
+    description:
+      "Any file on the ticket, internal notes included. Always a download, never displayed, with the type detected at upload, `nosniff` and a sandboxing CSP.",
+  })
+  @ApiOkResponse({
+    description: "The file",
+    content: {
+      "application/octet-stream": {
+        schema: { type: "string", format: "binary" },
+      },
+    },
+  })
+  @ApiProblem(403, "Missing the `ticket:read:any` permission")
+  @ApiProblem(404, "No such file on a ticket in your brands")
+  @ApiProblem(503, "File storage is unavailable for a moment")
+  async download(
+    @Param() params: AttachmentParams,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return sendDownload(
+      reply,
+      await this.queries.staffAttachment(
+        staffOf(request),
+        params.ticketId,
+        params.attachmentId,
+      ),
     );
   }
 }

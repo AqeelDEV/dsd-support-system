@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  type AuditEvent,
   type CustomerTicket,
   type CustomerTicketSummary,
   type PageQuery,
@@ -18,8 +19,10 @@ import type {
 } from "../../auth/principal.js";
 import { ProblemException } from "../../common/problem-details.js";
 import type { Executor } from "../../infrastructure/database.js";
+import { ObjectStore } from "../../infrastructure/object-store.js";
 import { DB } from "../../infrastructure/tokens.js";
 import { AttachmentsRepository } from "../attachments/attachments.repository.js";
+import type { Download } from "../attachments/download.js";
 import { AuditRepository } from "../audit/audit.repository.js";
 import {
   decodeCursor,
@@ -56,7 +59,11 @@ export const staffViewOf = (principal: StaffPrincipal): StaffView => ({
   permissions: principal.permissions,
 });
 
+const attachmentNotFound = () =>
+  new ProblemException(404, PROBLEM_TYPES.blank, "No such attachment.");
+
 const CUSTOMER_SORT = "newest";
+const HISTORY_SORT = "oldest";
 const customerKeys = z.tuple([exactTimestamp]);
 const priorityKeys = z.tuple([ticketPrioritySchema, exactTimestamp]);
 
@@ -93,6 +100,7 @@ export class TicketQueriesService {
     private readonly messages: MessagesRepository,
     private readonly attachments: AttachmentsRepository,
     private readonly audit: AuditRepository,
+    private readonly objects: ObjectStore,
   ) {}
 
   /** The customer's tickets, newest first; a guest session sees its one ticket. */
@@ -247,5 +255,104 @@ export class TicketQueriesService {
         ),
       };
     }, SNAPSHOT);
+  }
+
+  /**
+   * A file on one of the customer's tickets (ADR-0009, section 4). Files on
+   * internal notes, and files on tickets the session can't see, don't
+   * exist as far as a customer is concerned.
+   */
+  async customerAttachment(
+    principal: CustomerPrincipal,
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<Download> {
+    const visible = await this.tickets.customerTicket(
+      this.db,
+      scopeOf(principal),
+      ticketId,
+    );
+    if (visible === undefined) throw attachmentNotFound();
+    return this.download(ticketId, attachmentId, "public");
+  }
+
+  /** Any file on a ticket in the agent's brands. */
+  async staffAttachment(
+    principal: StaffPrincipal,
+    ticketId: string,
+    attachmentId: string,
+  ): Promise<Download> {
+    if (
+      !(await this.tickets.visibleToStaff(
+        this.db,
+        principal.agent.id,
+        ticketId,
+      ))
+    ) {
+      throw attachmentNotFound();
+    }
+    return this.download(ticketId, attachmentId, "all");
+  }
+
+  /** A ticket's history, oldest first, a page at a time (FR-18). */
+  async auditTrail(
+    principal: StaffPrincipal,
+    ticketId: string,
+    query: PageQuery,
+  ): Promise<{ items: AuditEvent[]; nextCursor: string | null }> {
+    if (
+      !(await this.tickets.visibleToStaff(
+        this.db,
+        principal.agent.id,
+        ticketId,
+      ))
+    ) {
+      throw ticketNotFound();
+    }
+    const after =
+      query.cursor === undefined
+        ? undefined
+        : decodeCursor(query.cursor, HISTORY_SORT, customerKeys);
+    const rows = await this.audit.ticketHistory(this.db, ticketId, {
+      limit: query.limit,
+      after:
+        after === undefined ? undefined : { at: after.keys[0], id: after.id },
+    });
+    return pageFrom(
+      rows,
+      query.limit,
+      (row) => ({
+        id: row.id,
+        action: row.action,
+        entityType: row.entityType,
+        entityId: row.entityId,
+        actor: { type: row.actorType, id: row.actorId, name: row.actorName },
+        before: row.before as Record<string, unknown> | null,
+        after: row.after as Record<string, unknown> | null,
+        requestId: row.requestId,
+        createdAt: iso(row.createdAt),
+      }),
+      (row) => encodeCursor(HISTORY_SORT, { keys: [row.cursorAt], id: row.id }),
+    );
+  }
+
+  private async download(
+    ticketId: string,
+    attachmentId: string,
+    visibility: "public" | "all",
+  ): Promise<Download> {
+    const file = await this.attachments.findForDownload(
+      this.db,
+      ticketId,
+      attachmentId,
+      visibility,
+    );
+    if (file === undefined) throw attachmentNotFound();
+    return {
+      filename: file.filename,
+      contentType: file.contentType,
+      sizeBytes: file.sizeBytes,
+      stream: await this.objects.get(file.objectKey),
+    };
   }
 }

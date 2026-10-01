@@ -1,13 +1,31 @@
 import { Injectable } from "@nestjs/common";
-import { auditEvents } from "@dsd/db/schema";
+import { agents, auditEvents, customers } from "@dsd/db/schema";
 import {
+  type ActorType,
   type AuditAction,
   type TicketStatus,
   ticketStatusSchema,
 } from "@dsd/shared";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, type SQL, sql } from "drizzle-orm";
 
 import type { Executor } from "../../infrastructure/database.js";
+
+/** One audit event as staff read it, with who made it. */
+export interface HistoryEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  actorType: ActorType;
+  actorId: string | null;
+  actorName: string | null;
+  before: unknown;
+  after: unknown;
+  requestId: string;
+  createdAt: Date;
+  /** `created_at` to the microsecond, for cursors. */
+  cursorAt: string;
+}
 
 /** Who made a change. */
 export type Actor =
@@ -86,6 +104,58 @@ export class AuditRepository {
     return rows.map((row) => ({
       status: ticketStatusSchema.parse(row.status),
       at: row.at,
+    }));
+  }
+
+  /**
+   * One page of a ticket's history, oldest first (FR-18), with one extra
+   * row to show whether another page follows.
+   */
+  async ticketHistory(
+    executor: Executor,
+    ticketId: string,
+    page: { limit: number; after: { at: string; id: string } | undefined },
+  ): Promise<HistoryEntry[]> {
+    const after: SQL | undefined =
+      page.after === undefined
+        ? undefined
+        : sql`(${auditEvents.createdAt}, ${auditEvents.id}) > (${page.after.at}::timestamptz, ${page.after.id}::uuid)`;
+    const rows = await executor
+      .select({
+        id: auditEvents.id,
+        action: auditEvents.action,
+        entityType: auditEvents.entityType,
+        entityId: auditEvents.entityId,
+        actorType: auditEvents.actorType,
+        actorAgentId: auditEvents.actorAgentId,
+        actorCustomerId: auditEvents.actorCustomerId,
+        agentName: agents.displayName,
+        customerName: customers.displayName,
+        before: auditEvents.before,
+        after: auditEvents.after,
+        requestId: auditEvents.requestId,
+        createdAt: auditEvents.createdAt,
+        cursorAt: sql<string>`to_char(${auditEvents.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
+      })
+      .from(auditEvents)
+      .leftJoin(agents, eq(agents.id, auditEvents.actorAgentId))
+      .leftJoin(customers, eq(customers.id, auditEvents.actorCustomerId))
+      .where(and(eq(auditEvents.ticketId, ticketId), after))
+      .orderBy(asc(auditEvents.createdAt), asc(auditEvents.id))
+      .limit(page.limit + 1);
+    return rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      actorType: row.actorType,
+      actorId: row.actorAgentId ?? row.actorCustomerId,
+      actorName: row.actorType === "agent" ? row.agentName : row.customerName,
+      before: row.before,
+      after: row.after,
+      requestId: row.requestId,
+      createdAt: row.createdAt,
+      cursorAt: row.cursorAt,
     }));
   }
 }

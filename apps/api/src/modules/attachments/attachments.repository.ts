@@ -94,4 +94,39 @@ export class AttachmentsRepository {
       .orderBy(asc(attachments.createdAt), asc(attachments.id));
     return rows.map(asRow);
   }
+
+  /**
+   * One attachment of one ticket, for download. With `public`, a file on an
+   * internal note doesn't exist (ADR-0009, section 4), and an ID from
+   * another ticket never matches.
+   */
+  async findForDownload(
+    executor: Executor,
+    ticketId: string,
+    attachmentId: string,
+    visibility: "public" | "all",
+  ) {
+    const [row] = await executor
+      .select({
+        objectKey: attachments.objectKey,
+        filename: attachments.filename,
+        contentType: attachments.contentType,
+        sizeBytes: attachments.sizeBytes,
+      })
+      .from(attachments)
+      .leftJoin(messages, eq(messages.id, attachments.messageId))
+      .where(
+        and(
+          eq(attachments.id, attachmentId),
+          eq(attachments.ticketId, ticketId),
+          visibility === "all"
+            ? undefined
+            : or(
+                isNull(attachments.messageId),
+                eq(messages.visibility, "public"),
+              ),
+        ),
+      );
+    return row;
+  }
 }

@@ -345,6 +345,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/customer/tickets/{ticketId}/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a file from one of my tickets
+         * @description Always a download, never displayed: `Content-Disposition: attachment`, the type detected at upload, `nosniff` and a sandboxing CSP. A file on another customer's ticket is a 404.
+         */
+        get: operations["CustomerTicketsController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/tickets": {
         parameters: {
             query?: never;
@@ -499,6 +519,46 @@ export interface paths {
          * @description Records the reason as an internal note, raises the priority to at least `high`, hands the ticket to `supervisorId` if given, and marks it escalated, all at once. The ticket keeps its status; the queue's `escalated` filter finds it. The customer sees none of it.
          */
         post: operations["StaffTicketsController_escalate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{ticketId}/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The ticket's history
+         * @description Every change, oldest first: who made it, what changed from and to, and the request that made it. The history is append-only; nothing can rewrite it.
+         */
+        get: operations["StaffTicketsController_auditTrail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{ticketId}/attachments/{attachmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a file
+         * @description Any file on the ticket, internal notes included. Always a download, never displayed, with the type detected at upload, `nosniff` and a sandboxing CSP.
+         */
+        get: operations["StaffTicketsController_download"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -856,6 +916,36 @@ export interface components {
              * @description A supervisor or admin in the ticket's brand to hand the ticket to
              */
             supervisorId?: string;
+        };
+        AuditEventPage_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** @description For example `ticket.status_changed` */
+                action: string;
+                entityType: string;
+                /** Format: uuid */
+                entityId: string;
+                actor: {
+                    /** @enum {string} */
+                    type: "customer" | "agent" | "system";
+                    id: string | null;
+                    name: string | null;
+                };
+                /** @description The changed fields before, or null for a creation */
+                before: {
+                    [key: string]: unknown;
+                } | null;
+                after: {
+                    [key: string]: unknown;
+                } | null;
+                /** @description Matches the API's request logs */
+                requestId: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Pass as `cursor` for the next page; null on the last page */
+            nextCursor: string[];
         };
         StaffCustomer_Output: {
             customer: {
@@ -1913,6 +2003,56 @@ export interface operations {
             };
         };
     };
+    CustomerTicketsController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such file, or not yours */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description File storage is unavailable for a moment */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     StaffTicketsController_queue: {
         parameters: {
             query?: {
@@ -2537,6 +2677,127 @@ export interface operations {
             };
             /** @description `supervisorId` isn't an active supervisor or admin in the ticket's brand */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_auditTrail: {
+        parameters: {
+            query?: {
+                /** @description Items per page, 1 to 100 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventPage_Output"];
+                };
+            };
+            /** @description The cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `ticket:audit:read` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+                attachmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `ticket:read:any` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such file on a ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description File storage is unavailable for a moment */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -9,7 +9,7 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
   customerReplyFieldsSchema,
   customerTicketFieldsSchema,
@@ -30,8 +30,9 @@ import {
   ApiProblem,
   ApiSession,
 } from "../../openapi/decorators.js";
+import { sendDownload } from "../attachments/download.js";
 import { withSubmission } from "../attachments/multipart.js";
-import { TicketParams } from "./params.js";
+import { AttachmentParams, TicketParams } from "./params.js";
 import { TicketMessagesService } from "./ticket-messages.service.js";
 import { TicketQueriesService } from "./ticket-queries.service.js";
 import { TicketSubmissionService } from "./ticket-submission.service.js";
@@ -131,6 +132,38 @@ export class CustomerTicketsController {
         params.ticketId,
         form,
         request.id,
+      ),
+    );
+  }
+
+  @Get(":ticketId/attachments/:attachmentId")
+  @ApiSession("customer", { changesState: false })
+  @ApiOperation({
+    summary: "Download a file from one of my tickets",
+    description:
+      "Always a download, never displayed: `Content-Disposition: attachment`, the type detected at upload, `nosniff` and a sandboxing CSP. A file on another customer's ticket is a 404.",
+  })
+  @ApiOkResponse({
+    description: "The file",
+    content: {
+      "application/octet-stream": {
+        schema: { type: "string", format: "binary" },
+      },
+    },
+  })
+  @ApiProblem(404, "No such file, or not yours")
+  @ApiProblem(503, "File storage is unavailable for a moment")
+  async download(
+    @Param() params: AttachmentParams,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return sendDownload(
+      reply,
+      await this.queries.customerAttachment(
+        customerOf(request),
+        params.ticketId,
+        params.attachmentId,
       ),
     );
   }

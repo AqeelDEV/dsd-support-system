@@ -1,10 +1,18 @@
+import { randomUUID } from "node:crypto";
+
 import type { TestDatabase } from "@dsd/db/testing";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ObjectStore } from "../../src/infrastructure/object-store.js";
 import { ORIGIN } from "../support/auth.js";
-import { createSeededDatabase, startAppOn } from "../support/database.js";
+import {
+  asOwner,
+  createSeededDatabase,
+  startAppOn,
+} from "../support/database.js";
+import { FILES } from "../support/files.js";
 import { newTicket, otherBrandId } from "../support/tickets.js";
 import { headersFor, identities } from "./actors.js";
 import {
@@ -55,6 +63,20 @@ describe("RBAC matrix", () => {
       seeded: await identities(database),
       newTicket: (ticket) => newTicket(database, ticket),
       otherBrandId: () => otherBrandId(database),
+      newAttachment: async (ticketId) => {
+        const objectKey = `attachments/${randomUUID()}`;
+        await app.get(ObjectStore).put(objectKey, FILES.png, "image/png");
+        const [row] = await asOwner<{ id: string }>(
+          database,
+          `INSERT INTO attachments (ticket_id, uploader_type, uploader_customer_id, object_key,
+                                    filename, content_type, size_bytes, sha256)
+           SELECT id, 'customer', customer_id, $2, 'matrix.png', 'image/png', $3, $4
+             FROM tickets WHERE id = $1
+           RETURNING id`,
+          [ticketId, objectKey, FILES.png.length, Buffer.alloc(32)],
+        );
+        return row?.id ?? "";
+      },
     };
   });
 
