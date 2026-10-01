@@ -288,13 +288,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * My tickets
+         * @description Newest first, a page at a time. A guest session sees only the ticket its link opened.
+         */
+        get: operations["CustomerTicketsController_list"];
         put?: never;
         /**
          * Raise a ticket
          * @description For a signed-in customer: the account's email is the contact. A guest session (from an emailed link) can't raise tickets here and gets 403; it uses the public form instead. Limited like the public form.
          */
         post: operations["CustomerTicketsController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/customer/tickets/{ticketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One of my tickets
+         * @description The status, the description, every public reply with its files, and the status timeline. Another customer's ticket is a 404, the same as one that doesn't exist.
+         */
+        get: operations["CustomerTicketsController_view"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -392,6 +416,75 @@ export interface components {
         GuestTicketReceipt_Output: {
             /** @description For example DSD-000123 */
             reference: string;
+        };
+        CustomerTicketPage_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                reference: string;
+                subject: string;
+                /** @enum {string} */
+                status: "open" | "pending_customer" | "resolved" | "closed";
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Pass as `cursor` for the next page; null on the last page */
+            nextCursor: string[];
+        };
+        CustomerTicket_Output: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            subject: string;
+            /** @enum {string} */
+            status: "open" | "pending_customer" | "resolved" | "closed";
+            /** Format: date-time */
+            createdAt: string;
+            description: string;
+            /** @description Files sent with the ticket itself */
+            attachments: {
+                /** Format: uuid */
+                id: string;
+                /** @description For display and as the download name; never part of a URL */
+                filename: string;
+                /** @enum {string} */
+                contentType: "image/png" | "image/jpeg" | "image/gif" | "image/webp" | "application/pdf" | "text/plain; charset=utf-8";
+                sizeBytes: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Every reply after the description, oldest first */
+            messages: {
+                /** Format: uuid */
+                id: string;
+                author: {
+                    /** @enum {string} */
+                    type: "customer" | "agent";
+                    /** @description The agent's display name, or the customer's if they set one */
+                    name: string | null;
+                };
+                body: string;
+                attachments: {
+                    /** Format: uuid */
+                    id: string;
+                    /** @description For display and as the download name; never part of a URL */
+                    filename: string;
+                    /** @enum {string} */
+                    contentType: "image/png" | "image/jpeg" | "image/gif" | "image/webp" | "application/pdf" | "text/plain; charset=utf-8";
+                    sizeBytes: number;
+                    /** Format: date-time */
+                    createdAt: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            /** @description Each status the ticket has had, starting with `open` */
+            timeline: {
+                /** @enum {string} */
+                status: "open" | "pending_customer" | "resolved" | "closed";
+                /** Format: date-time */
+                at: string;
+            }[];
         };
         CustomerTicketSummary_Output: {
             /** Format: uuid */
@@ -1130,6 +1223,48 @@ export interface operations {
             };
         };
     };
+    CustomerTicketsController_list: {
+        parameters: {
+            query?: {
+                /** @description Items per page, 1 to 100 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerTicketPage_Output"];
+                };
+            };
+            /** @description A query parameter or the cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     CustomerTicketsController_submit: {
         parameters: {
             query?: never;
@@ -1178,7 +1313,7 @@ export interface operations {
                 };
             };
             /**
-             * @description A guest session, or the Origin or CSRF token was wrong (`csrf-rejected`)
+             * @description A guest session can't raise tickets here
              *
              *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
              */
@@ -1219,6 +1354,45 @@ export interface operations {
             };
             /** @description File storage is unavailable; the same request without files still works */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CustomerTicketsController_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerTicket_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket, or not yours */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

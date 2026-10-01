@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { attachments } from "@dsd/db/schema";
+import { attachments, messages } from "@dsd/db/schema";
 import type { AttachmentContentType } from "@dsd/shared";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 
 import type { Executor } from "../../infrastructure/database.js";
 import type { Actor } from "../audit/audit.repository.js";
@@ -62,6 +63,35 @@ export class AttachmentsRepository {
         })),
       )
       .returning(columns);
+    return rows.map(asRow);
+  }
+
+  /**
+   * A ticket's attachments, oldest first. With `public`, files on internal
+   * notes are left out in the query itself, so a customer response can't
+   * contain them.
+   */
+  async forTicket(
+    executor: Executor,
+    ticketId: string,
+    visibility: "public" | "all",
+  ): Promise<AttachmentRow[]> {
+    const rows = await executor
+      .select(columns)
+      .from(attachments)
+      .leftJoin(messages, eq(messages.id, attachments.messageId))
+      .where(
+        and(
+          eq(attachments.ticketId, ticketId),
+          visibility === "all"
+            ? undefined
+            : or(
+                isNull(attachments.messageId),
+                eq(messages.visibility, "public"),
+              ),
+        ),
+      )
+      .orderBy(asc(attachments.createdAt), asc(attachments.id));
     return rows.map(asRow);
   }
 }

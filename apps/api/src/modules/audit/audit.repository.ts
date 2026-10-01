@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { auditEvents } from "@dsd/db/schema";
-import type { AuditAction } from "@dsd/shared";
+import {
+  type AuditAction,
+  type TicketStatus,
+  ticketStatusSchema,
+} from "@dsd/shared";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import type { Executor } from "../../infrastructure/database.js";
 
@@ -54,5 +59,33 @@ export class AuditRepository {
         requestId: context.requestId,
       })),
     );
+  }
+
+  /**
+   * Each status change on a ticket, oldest first, for the customer's
+   * timeline (ADR-0007, section 7). Only the new status and the time: who
+   * made the change stays with the staff history.
+   */
+  async statusChanges(
+    executor: Executor,
+    ticketId: string,
+  ): Promise<{ status: TicketStatus; at: Date }[]> {
+    const rows = await executor
+      .select({
+        status: sql<string>`${auditEvents.after} ->> 'status'`,
+        at: auditEvents.createdAt,
+      })
+      .from(auditEvents)
+      .where(
+        and(
+          eq(auditEvents.ticketId, ticketId),
+          eq(auditEvents.action, "ticket.status_changed"),
+        ),
+      )
+      .orderBy(asc(auditEvents.createdAt), asc(auditEvents.id));
+    return rows.map((row) => ({
+      status: ticketStatusSchema.parse(row.status),
+      at: row.at,
+    }));
   }
 }

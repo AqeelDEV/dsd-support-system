@@ -38,7 +38,7 @@ export interface Fixtures {
   database: TestDatabase;
   seeded: SeededIdentities;
   /** A fresh ticket, so a cell that changes one can't affect the next cell. */
-  newTicket(ticket: NewTicket): Promise<string>;
+  newTicket: (ticket: NewTicket) => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
@@ -97,6 +97,44 @@ const publicForm = (path: string, rule: string): MatrixRow => ({
   rule,
   expected: forEveryone(400),
 });
+
+type RouteOnly = Pick<MatrixRow, "method" | "path" | "body" | "form">;
+
+/**
+ * The two rows every route on one customer ticket gets, each on a fresh
+ * ticket per cell: one owned by the demo customer, and one owned by the
+ * guest, whose session is scoped to it. Only the owner's session succeeds;
+ * every other customer session gets 404, and staff sessions 401.
+ */
+const onCustomerTickets = (route: RouteOnly, success: number): MatrixRow[] => [
+  {
+    ...route,
+    rule: "The demo customer's own ticket: never another customer's, nor a guest's",
+    expected: {
+      ...forEveryone(401),
+      customer: success,
+      otherCustomer: 404,
+      guest: 404,
+    },
+    arrange: async ({ seeded, newTicket }) => ({
+      params: { ticketId: await newTicket({ customerId: seeded.customerId }) },
+    }),
+  },
+  {
+    ...route,
+    rule: "A guest's own ticket: open to the guest session scoped to it",
+    expected: {
+      ...forEveryone(401),
+      customer: 404,
+      otherCustomer: 404,
+      guest: success,
+    },
+    arrange: async ({ seeded, newTicket }) => {
+      const ticketId = await newTicket({ customerId: seeded.guest.customerId });
+      return { params: { ticketId }, guestTicketId: ticketId };
+    },
+  },
+];
 
 export const MATRIX: readonly MatrixRow[] = [
   {
@@ -171,4 +209,14 @@ export const MATRIX: readonly MatrixRow[] = [
     rule: "Signed-in customers; a guest session sees one ticket and can't raise more",
     expected: { ...customersOnly(201), guest: 403 },
   },
+  {
+    method: "GET",
+    path: "/api/v1/customer/tickets",
+    rule: "Any customer session, guests included; each lists only its own",
+    expected: customersOnly(200),
+  },
+  ...onCustomerTickets(
+    { method: "GET", path: "/api/v1/customer/tickets/:ticketId" },
+    200,
+  ),
 ];

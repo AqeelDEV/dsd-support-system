@@ -6,7 +6,9 @@ import { AuditModule } from "../audit/audit.module.js";
 import { CustomersModule } from "../customers/customers.module.js";
 import { OutboxModule } from "../outbox/outbox.module.js";
 import { CustomerTicketsController } from "./customer-tickets.controller.js";
+import { MessagesRepository } from "./messages.repository.js";
 import { PublicTicketsController } from "./public-tickets.controller.js";
+import { TicketQueriesService } from "./ticket-queries.service.js";
 import { TicketSubmissionService } from "./ticket-submission.service.js";
 import { TicketsRepository } from "./tickets.repository.js";
 
@@ -20,6 +22,11 @@ import { TicketsRepository } from "./tickets.repository.js";
     OutboxModule,
   ],
   controllers: [PublicTicketsController, CustomerTicketsController],
-  providers: [TicketsRepository, TicketSubmissionService],
+  providers: [
+    TicketsRepository,
+    MessagesRepository,
+    TicketSubmissionService,
+    TicketQueriesService,
+  ],
 })
 export class TicketsModule {}

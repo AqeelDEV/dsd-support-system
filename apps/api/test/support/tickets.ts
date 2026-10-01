@@ -37,9 +37,10 @@ export async function newTicket(
     database,
     `INSERT INTO tickets (brand_id, customer_id, channel, subject, description,
                           status, priority, assignee_agent_id, resolved_at, closed_at)
-     VALUES ($1, $2, 'web', $3, 'Written by a test.', $4, $5, $6,
-             CASE WHEN $4 IN ('resolved', 'closed') THEN now() END,
-             CASE WHEN $4 = 'closed' THEN now() END)
+     VALUES ($1, $2, 'web', $3, 'Written by a test.', $4::ticket_status,
+             $5::ticket_priority, $6,
+             CASE WHEN $4::ticket_status IN ('resolved', 'closed') THEN now() END,
+             CASE WHEN $4::ticket_status = 'closed' THEN now() END)
      RETURNING id`,
     [
       ticket.brandId ?? (await demoBrandId(database)),
