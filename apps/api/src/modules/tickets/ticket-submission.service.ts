@@ -12,9 +12,8 @@ import { RateLimitEnforcer } from "../../auth/rate-limit/enforcer.js";
 import { RATE_LIMITS } from "../../auth/rate-limit/policies.js";
 import type { CustomerPrincipal } from "../../auth/principal.js";
 import { ProblemException } from "../../common/problem-details.js";
-import type { Env } from "../../config/env.js";
 import type { Executor } from "../../infrastructure/database.js";
-import { DB, ENV } from "../../infrastructure/tokens.js";
+import { DB } from "../../infrastructure/tokens.js";
 import {
   AttachmentIntake,
   type StoredFile,
@@ -28,6 +27,7 @@ import { CustomersRepository } from "../customers/customers.repository.js";
 import { OutboxRepository } from "../outbox/outbox.repository.js";
 import { TicketChanges } from "./ticket-changes.js";
 import { TicketsRepository } from "./tickets.repository.js";
+import { BrandsRepository } from "../brands/brands.repository.js";
 
 /**
  * Raising a ticket (FR-1, FR-2; ADR-0003, section 6). A guest gives an
@@ -44,8 +44,8 @@ import { TicketsRepository } from "./tickets.repository.js";
 export class TicketSubmissionService {
   constructor(
     @Inject(DB) private readonly db: Executor,
-    @Inject(ENV) private readonly env: Env,
     private readonly tickets: TicketsRepository,
+    private readonly brands: BrandsRepository,
     private readonly customers: CustomersRepository,
     private readonly audit: AuditRepository,
     private readonly outbox: OutboxRepository,
@@ -132,7 +132,7 @@ export class TicketSubmissionService {
   ) {
     const { customerId, fields, stored } = submission;
     const ticket = await this.tickets.insert(tx, {
-      brandId: await this.tickets.brandIdBySlug(tx, this.env.TICKET_BRAND_SLUG),
+      brandId: await this.brands.publicBrandId(tx),
       customerId,
       channel: "web",
       subject: fields.subject,

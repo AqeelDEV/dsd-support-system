@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import {
   agentBrandMemberships,
   agents,
-  brands,
   customers,
   tickets,
 } from "@dsd/db/schema";
@@ -172,18 +171,6 @@ export interface NewTicket {
  */
 @Injectable()
 export class TicketsRepository {
-  /** The brand named in configuration; a missing one is a deployment error. */
-  async brandIdBySlug(executor: Executor, slug: string): Promise<string> {
-    const [row] = await executor
-      .select({ id: brands.id })
-      .from(brands)
-      .where(eq(brands.slug, slug));
-    if (row === undefined) {
-      throw new Error(`TICKET_BRAND_SLUG names no brand: ${slug}`);
-    }
-    return row.id;
-  }
-
   /**
    * One page of a customer's tickets, newest first, with one extra row to
    * show whether another page follows.
