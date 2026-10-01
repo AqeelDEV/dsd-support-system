@@ -6,10 +6,15 @@ import {
 } from "@nestjs/platform-fastify";
 import { describe, expect, it } from "vitest";
 
-import { Public, Realm } from "../../src/auth/decorators.js";
+import {
+  Public,
+  Realm,
+  RequirePermissions,
+} from "../../src/auth/decorators.js";
 import { enforceRouteAccess } from "../../src/auth/route-access.js";
 
 @Realm("staff")
+@RequirePermissions("report:view")
 @Controller("api/v1/staff/reports")
 class DeclaredController {
   @Get("volume")
@@ -20,6 +25,15 @@ class DeclaredController {
 
 @Controller("api/v1/staff/agents")
 class ForgottenController {
+  @Get()
+  list() {
+    return [];
+  }
+}
+
+@Realm("staff")
+@Controller("api/v1/staff/exports")
+class UnguardedController {
   @Get()
   list() {
     return [];
@@ -67,6 +81,12 @@ describe("route access check at startup", () => {
   it("refuses to start when a route declares no access", async () => {
     await expect(boot(ForgottenController)).rejects.toThrow(
       "GET /api/v1/staff/agents declares neither @Public() nor @Realm()",
+    );
+  });
+
+  it("refuses to start when staff work requires no permission", async () => {
+    await expect(boot(UnguardedController)).rejects.toThrow(
+      "GET /api/v1/staff/exports is staff work but requires no permission",
     );
   });
 

@@ -5,6 +5,7 @@ import { SessionCookies } from "./cookies.js";
 import { CsrfTokens } from "./csrf.js";
 import { AuthGuard } from "./guards/auth.guard.js";
 import { CsrfGuard } from "./guards/csrf.guard.js";
+import { PermissionsGuard } from "./guards/permissions.guard.js";
 import { RateLimitGuard } from "./guards/rate-limit.guard.js";
 import { PasswordHasher } from "./password-hasher.js";
 import { RateLimiter } from "./rate-limit/rate-limiter.js";
@@ -26,6 +27,7 @@ import { SessionService } from "./sessions/session.service.js";
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: RateLimitGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
   exports: [PasswordHasher, SessionService, SessionCookies, CsrfTokens],
 })

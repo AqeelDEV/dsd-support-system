@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { accessOf, Public, Realm } from "./decorators.js";
+import type { Permission } from "@dsd/shared";
+
+import {
+  accessOf,
+  permissionsOf,
+  Public,
+  Realm,
+  RequirePermissions,
+} from "./decorators.js";
 import { type RegisteredRoute, routeAccessProblems } from "./route-access.js";
 
 const customer = { kind: "realm", realm: "customer" } as const;
@@ -11,7 +19,12 @@ const route = (
   method: string,
   url: string,
   access: RegisteredRoute["access"],
-): RegisteredRoute => ({ method, url, access });
+  // Well-formed staff work names a permission unless a test says otherwise.
+  permissions: readonly Permission[] = access === staff &&
+  url.startsWith("/api/v1/staff/")
+    ? ["ticket:read:any"]
+    : [],
+): RegisteredRoute => ({ method, url, access, permissions });
 
 describe("routeAccessProblems", () => {
   it("accepts every route that sits where its access says", () => {
@@ -85,6 +98,30 @@ describe("routeAccessProblems", () => {
     ]);
   });
 
+  it("refuses staff work that requires no permission", () => {
+    expect(
+      routeAccessProblems([route("GET", "/api/v1/staff/tickets", staff, [])]),
+    ).toEqual([
+      "GET /api/v1/staff/tickets is staff work but requires no permission",
+    ]);
+  });
+
+  it("refuses permissions on a route that staff sessions can't reach", () => {
+    expect(
+      routeAccessProblems([
+        route("GET", "/api/v1/customer/tickets", customer, ["report:view"]),
+      ]),
+    ).toEqual([
+      "GET /api/v1/customer/tickets requires permissions, which only staff sessions carry",
+    ]);
+  });
+
+  it("lets staff sign-in routes go without permissions", () => {
+    expect(
+      routeAccessProblems([route("GET", "/api/v1/auth/staff/me", staff, [])]),
+    ).toEqual([]);
+  });
+
   it("refuses health checks that need a session", () => {
     expect(routeAccessProblems([route("GET", "/ready", staff)])).toEqual([
       "GET /ready is for infrastructure and must be @Public()",
@@ -94,6 +131,7 @@ describe("routeAccessProblems", () => {
 
 describe("access decorators", () => {
   @Realm("customer")
+  @RequirePermissions("kb:read")
   class Controller {
     @Public()
     login() {
@@ -105,6 +143,7 @@ describe("access decorators", () => {
     }
 
     @Realm("staff")
+    @RequirePermissions("report:view", "user:read")
     odd() {
       return "staff";
     }
@@ -120,6 +159,14 @@ describe("access decorators", () => {
   it("let a handler's own declaration win", () => {
     expect(accessOf(handler(Controller, "login"))).toEqual(open);
     expect(accessOf(handler(Controller, "odd"))).toEqual(staff);
+  });
+
+  it("put permissions on handlers the same way", () => {
+    expect(permissionsOf(handler(Controller, "me"))).toEqual(["kb:read"]);
+    expect(permissionsOf(handler(Controller, "odd"))).toEqual([
+      "report:view",
+      "user:read",
+    ]);
   });
 
   it("leave an undecorated handler without access", () => {

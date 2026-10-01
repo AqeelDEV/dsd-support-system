@@ -1,6 +1,7 @@
+import type { Permission } from "@dsd/shared";
 import type { FastifyInstance, RouteOptions } from "fastify";
 
-import { type Access, accessOf } from "./decorators.js";
+import { type Access, accessOf, permissionsOf } from "./decorators.js";
 
 /** A route as Fastify registered it, with the access its handler declares. */
 export interface RegisteredRoute {
@@ -8,9 +9,11 @@ export interface RegisteredRoute {
   url: string;
   /** Undefined for routes that aren't Nest handlers, such as Swagger UI's. */
   access: Access | undefined;
+  permissions: readonly Permission[];
 }
 
 const API_PREFIX = "/api/v1/";
+const STAFF_WORK = "/api/v1/staff/";
 const OPERATIONS = new Set(["/health", "/ready"]);
 const DOCS = "/api/docs";
 
@@ -74,6 +77,20 @@ export function routeAccessProblems(
         `${name} is ${declared} but lives outside ${allowed.join(", ")}`,
       );
     }
+    const isStaff =
+      route.access.kind === "realm" && route.access.realm === "staff";
+    if (route.permissions.length > 0 && !isStaff) {
+      problems.push(
+        `${name} requires permissions, which only staff sessions carry`,
+      );
+    }
+    if (
+      isStaff &&
+      route.url.startsWith(STAFF_WORK) &&
+      route.permissions.length === 0
+    ) {
+      problems.push(`${name} is staff work but requires no permission`);
+    }
   }
   return problems;
 }
@@ -94,7 +111,12 @@ export function enforceRouteAccess(fastify: FastifyInstance): void {
   registries.set(fastify, routes);
   fastify.addHook("onRoute", (route) => {
     for (const method of methodsOf(route)) {
-      routes.push({ method, url: route.url, access: accessOf(route.handler) });
+      routes.push({
+        method,
+        url: route.url,
+        access: accessOf(route.handler),
+        permissions: permissionsOf(route.handler),
+      });
     }
   });
   fastify.addHook("onReady", (done) => {
