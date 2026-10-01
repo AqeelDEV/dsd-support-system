@@ -64,7 +64,7 @@ describe("seed", () => {
     return Number(rows[0]?.n);
   };
 
-  it("loads one brand, the staff, the customers, the tickets and the canned responses", async () => {
+  it("loads one brand, the staff, the customers, the tickets, the canned responses and the knowledge base", async () => {
     expect({
       brands: await count("brands"),
       agents: await count("agents"),
@@ -72,6 +72,8 @@ describe("seed", () => {
       customers: await count("customers"),
       tickets: await count("tickets"),
       canned: await count("canned_responses"),
+      categories: await count("kb_categories"),
+      articles: await count("kb_articles"),
     }).toEqual({
       brands: 1,
       agents: 9,
@@ -79,7 +81,18 @@ describe("seed", () => {
       customers: 20,
       tickets: 60,
       canned: 6,
+      categories: 4,
+      articles: 9,
     });
+    const { rows } = await db
+      .pool("dsd_migrator")
+      .query<{ status: string; n: number }>(
+        "SELECT status, count(*)::int AS n FROM kb_articles GROUP BY status ORDER BY status",
+      );
+    expect(rows).toEqual([
+      { status: "draft", n: 1 },
+      { status: "published", n: 8 },
+    ]);
     expect(await count("messages")).toBeGreaterThan(100);
     expect(await count("audit_events")).toBeGreaterThan(
       await count("messages"),

@@ -1,4 +1,9 @@
-import { TICKET_PRIORITIES, TICKET_STATUSES } from "@dsd/shared";
+import {
+  sanitizeMarkdown,
+  SLUG_PATTERN,
+  TICKET_PRIORITIES,
+  TICKET_STATUSES,
+} from "@dsd/shared";
 import { describe, expect, it } from "vitest";
 
 import { generateSeedPlan } from "./generate.js";
@@ -89,6 +94,18 @@ describe("generateSeedPlan", () => {
       );
       expect(ticket.closedAt !== null).toBe(ticket.status === "closed");
       expect(ticket.escalatedAt !== null).toBe(ticket.escalatedByKey !== null);
+    }
+  });
+
+  it("writes knowledge-base articles the API would store unchanged", () => {
+    for (const article of generateSeedPlan(ANCHOR).kbArticles) {
+      expect(sanitizeMarkdown(article.body)).toBe(article.body);
+      expect(article.slug).toMatch(SLUG_PATTERN);
+      if (article.publishedAt !== null) {
+        expect(article.publishedAt.getTime()).toBeGreaterThan(
+          article.createdAt.getTime(),
+        );
+      }
     }
   });
 });

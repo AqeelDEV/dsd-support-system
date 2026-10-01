@@ -11,10 +11,12 @@ import {
 
 import {
   CANNED_RESPONSES,
+  type Category,
   PRODUCTS,
   SCENARIOS,
   type Scenario,
 } from "./catalog.js";
+import { KB_ARTICLES, KB_CATEGORIES } from "./kb-catalog.js";
 
 /**
  * Builds the demo dataset as plain data, without touching the database.
@@ -134,6 +136,29 @@ export interface SeedPlan {
     createdByKey: string;
     createdAt: Date;
   }[];
+  kbCategories: {
+    key: Category;
+    slug: string;
+    name: string;
+    position: number;
+    createdAt: Date;
+  }[];
+  kbArticles: PlannedArticle[];
+}
+
+/** A knowledge-base article, written by the supervisor and published a day later unless it is a draft. */
+export interface PlannedArticle {
+  categoryKey: Category;
+  slug: string;
+  title: string;
+  summary: string;
+  body: string;
+  tags: string[];
+  authorKey: string;
+  createdAt: Date;
+  /** Null for a draft. */
+  publishedAt: Date | null;
+  requestId: string;
 }
 
 const MINUTE = 60_000;
@@ -294,6 +319,22 @@ export function generateSeedPlan(anchor: Date): SeedPlan {
       ...response,
       createdByKey: "supervisor",
       createdAt: at(70 * DAY),
+    })),
+    kbCategories: KB_CATEGORIES.map((category) => ({
+      ...category,
+      createdAt: at(80 * DAY),
+    })),
+    kbArticles: KB_ARTICLES.map((article, index) => ({
+      categoryKey: article.category,
+      slug: article.slug,
+      title: article.title,
+      summary: article.summary,
+      body: article.body,
+      tags: article.tags,
+      authorKey: "supervisor",
+      createdAt: at((78 - index) * DAY),
+      publishedAt: article.published ? at((77 - index) * DAY) : null,
+      requestId: requestId(),
     })),
   };
 }

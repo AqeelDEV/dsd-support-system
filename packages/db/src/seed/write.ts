@@ -8,6 +8,8 @@ import {
   brands,
   cannedResponses,
   customers,
+  kbArticles,
+  kbCategories,
   messages,
   tickets,
 } from "../schema/index.js";
@@ -217,5 +219,63 @@ export async function writeSeedPlan(
         updatedAt: response.createdAt,
       })),
     );
+
+    // The knowledge base. Each published article is at version 1 with the
+    // audit event its publication would have written; there are no outbox
+    // events, so it is indexed for AI suggestions by a backfill, not here.
+    const categoryIds = new Map<string, string>();
+    for (const category of plan.kbCategories) {
+      const [row] = await tx
+        .insert(kbCategories)
+        .values({
+          brandId: brand.id,
+          slug: category.slug,
+          name: category.name,
+          position: category.position,
+          createdAt: category.createdAt,
+          updatedAt: category.createdAt,
+        })
+        .returning({ id: kbCategories.id });
+      if (row === undefined)
+        throw new Error("category insert returned nothing");
+      categoryIds.set(category.key, row.id);
+    }
+    for (const article of plan.kbArticles) {
+      const authorId = idOf(agentIds, article.authorKey);
+      const [row] = await tx
+        .insert(kbArticles)
+        .values({
+          brandId: brand.id,
+          categoryId: idOf(categoryIds, article.categoryKey),
+          slug: article.slug,
+          title: article.title,
+          summary: article.summary,
+          bodyMarkdown: article.body,
+          tags: article.tags,
+          status: article.publishedAt === null ? "draft" : "published",
+          version: article.publishedAt === null ? 0 : 1,
+          publishedAt: article.publishedAt,
+          authorAgentId: authorId,
+          updatedByAgentId: authorId,
+          createdAt: article.createdAt,
+          updatedAt: article.publishedAt ?? article.createdAt,
+        })
+        .returning({ id: kbArticles.id });
+      if (row === undefined) throw new Error("article insert returned nothing");
+      if (article.publishedAt !== null) {
+        await tx.insert(auditEvents).values({
+          ticketId: null,
+          entityType: "kb_article",
+          entityId: row.id,
+          action: "kb.article_published",
+          actorType: "agent",
+          actorAgentId: authorId,
+          before: { status: "draft", version: 0 },
+          after: { status: "published", version: 1 },
+          requestId: article.requestId,
+          createdAt: article.publishedAt,
+        });
+      }
+    }
   });
 }

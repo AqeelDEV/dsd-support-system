@@ -125,6 +125,12 @@ describe("indexes serve the queries they were designed for", () => {
       () => ["refund card"],
     ],
     [
+      "kb_articles_browse_idx",
+      "browsing published articles, newest first, as the help centre pages them (FR-4); ties on the time are put in ID order incrementally",
+      "SELECT id FROM kb_articles WHERE brand_id = $1 AND status = 'published' ORDER BY published_at DESC, id DESC LIMIT 25",
+      () => [ids.brandId],
+    ],
+    [
       "kb_chunks_search_idx",
       "keyword retrieval for AI suggestions",
       "SELECT id FROM kb_chunks WHERE search_vector @@ to_tsquery('english', $1)",
