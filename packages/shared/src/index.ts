@@ -17,6 +17,7 @@ export * from "./kb/markdown.js";
 export * from "./kb/requests.js";
 export * from "./kb/responses.js";
 export * from "./kb/slug.js";
+export * from "./reports/schemas.js";
 export * from "./tickets/attachments.js";
 export * from "./tickets/requests.js";
 export * from "./tickets/responses.js";
