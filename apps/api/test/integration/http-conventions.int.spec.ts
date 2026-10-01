@@ -122,6 +122,18 @@ describe("HTTP conventions", () => {
       expect(response.headers["content-type"]).toContain("text/html");
     });
 
+    it("copies the CSRF cookie into the header for Try it out", async () => {
+      const response = await http()
+        .get("/api/docs/swagger-ui-init.js")
+        .expect(200);
+      expect(response.text).toContain("requestInterceptor");
+      expect(response.text).toContain("X-CSRF-Token");
+    });
+
+    it("serves no YAML copy of the document", async () => {
+      await http().get("/api/docs-yaml").expect(404);
+    });
+
     it("serves the OpenAPI 3.1 document", async () => {
       const response = await http().get("/api/docs/openapi.json").expect(200);
       const document = response.body as {

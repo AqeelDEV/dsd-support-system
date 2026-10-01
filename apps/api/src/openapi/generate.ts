@@ -14,17 +14,17 @@ import { buildOpenApiDocument } from "./document.js";
  */
 const OUTPUT = fileURLToPath(new URL("../../openapi.json", import.meta.url));
 
-const app = await createApp(
-  parseEnv({
-    NODE_ENV: "test",
-    LOG_LEVEL: "silent",
-    DATABASE_URL: "postgres://openapi@127.0.0.1:1/openapi",
-    REDIS_URL: "redis://127.0.0.1:1",
-    TRUSTED_ORIGINS: "https://support.dsd.example",
-    AUTH_SECRET: "openapi-generation-only-placeholder-secret",
-  }),
-);
-const document = buildOpenApiDocument(app);
+const env = parseEnv({
+  NODE_ENV: "test",
+  LOG_LEVEL: "silent",
+  DATABASE_URL: "postgres://openapi@127.0.0.1:1/openapi",
+  REDIS_URL: "redis://127.0.0.1:1",
+  TRUSTED_ORIGINS: "https://support.dsd.example",
+  AUTH_SECRET: "openapi-generation-only-placeholder-secret",
+});
+const app = await createApp(env);
+// The committed document describes a production deployment: secure cookies.
+const document = buildOpenApiDocument(app, env.COOKIE_SECURE);
 await writeFile(OUTPUT, `${JSON.stringify(document, null, 2)}\n`);
 await app.close();
 process.stdout.write(`Wrote ${OUTPUT}\n`);

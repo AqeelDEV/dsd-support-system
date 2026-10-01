@@ -82,7 +82,7 @@ export async function createApp(
   });
 
   app.setGlobalPrefix(API_PREFIX, { exclude: UNVERSIONED_ROUTES });
-  serveApiDocs(app, buildOpenApiDocument(app));
+  serveApiDocs(app, buildOpenApiDocument(app, env.COOKIE_SECURE));
 
   return app;
 }

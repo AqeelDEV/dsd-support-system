@@ -26,6 +26,56 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The email or password is incorrect",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "summary": "Sign in with email and password",
@@ -52,6 +102,46 @@
         "responses": {
           "202": {
             "description": "Check your inbox"
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "summary": "Start registration",
@@ -85,6 +175,46 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "summary": "Finish registration from the emailed link",
@@ -111,6 +241,46 @@
         "responses": {
           "202": {
             "description": "Check your inbox"
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "summary": "Ask for a new link to a ticket",
@@ -144,6 +314,46 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "summary": "Open a ticket from an emailed link",
@@ -159,9 +369,35 @@
         "parameters": [],
         "responses": {
           "204": {
-            "description": ""
+            "description": "Signed out"
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin or the CSRF token was missing or wrong (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
+        "security": [
+          {
+            "customerSession": [],
+            "csrfToken": []
+          }
+        ],
         "summary": "Sign out",
         "tags": [
           "Customer sign-in"
@@ -183,8 +419,23 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
+        "security": [
+          {
+            "customerSession": []
+          }
+        ],
         "summary": "The signed-in customer",
         "tags": [
           "Customer sign-in"
@@ -213,6 +464,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StaffMe_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The email or password is incorrect",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -249,6 +550,46 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not sent from a trusted origin (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many attempts; `Retry-After` says when to try again (`rate-limited`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The rate-limit store is unreachable, so the request is refused rather than allowed unlimited",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
         "summary": "Accept an invite",
@@ -264,9 +605,35 @@
         "parameters": [],
         "responses": {
           "204": {
-            "description": ""
+            "description": "Signed out"
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The Origin or the CSRF token was missing or wrong (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
+        "security": [
+          {
+            "staffSession": [],
+            "csrfToken": []
+          }
+        ],
         "summary": "Sign out",
         "tags": [
           "Staff sign-in"
@@ -287,8 +654,23 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         },
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
         "summary": "The signed-in agent, with their role and permissions",
         "tags": [
           "Staff sign-in"
@@ -354,13 +736,33 @@
   },
   "info": {
     "title": "DSD Unified Customer Support API",
-    "description": "The API behind the DSD customer app and the DSD agent app.\n\nAll routes except `/health` and `/ready` live under `/api/v1`. Errors use RFC 9457 problem details (`application/problem+json`); every response carries an `X-Request-Id` header that matches the `requestId` in an error body and the server logs.",
+    "description": "The API behind the DSD customer app and the DSD agent app.\n\nAll routes except `/health` and `/ready` live under `/api/v1`. Errors use RFC 9457 problem details (`application/problem+json`); every response carries an `X-Request-Id` header that matches the `requestId` in an error body and the server logs.\n\n## Signing in\n\nCustomers and staff are separate realms with separate routes, cookies and sessions: `/api/v1/auth/customer/*` and `/api/v1/customer/*` for customers, `/api/v1/auth/staff/*` and `/api/v1/staff/*` for staff. A session from one realm is refused (401) by every route of the other.\n\nSigning in sets an HttpOnly session cookie and a readable CSRF cookie, and returns the CSRF token in the body too (it is also in `me`). Every POST, PUT, PATCH and DELETE must come from a trusted origin, and once signed in must send that token in the `X-CSRF-Token` header.\n\nTo try it here, sign in with \"Try it out\" on a `login` route: the browser keeps the cookies, and this page copies the CSRF token into the header for you.",
     "version": "1.0.0",
     "contact": {}
   },
   "tags": [],
   "servers": [],
   "components": {
+    "securitySchemes": {
+      "customerSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-dsd_customer_session",
+        "description": "Set by the customer login route. HttpOnly, so scripts can't read it."
+      },
+      "staffSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-dsd_staff_session",
+        "description": "Set by the staff login route. HttpOnly, so scripts can't read it."
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "The csrfToken from login or me. Required with the session cookie on every state-changing request."
+      }
+    },
     "schemas": {
       "LoginBody": {
         "type": "object",

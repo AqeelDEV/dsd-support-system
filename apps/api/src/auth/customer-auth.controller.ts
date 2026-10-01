@@ -8,7 +8,12 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
-import { ApiAcceptedResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+  ApiAcceptedResponse,
+  ApiNoContentResponse,
+  ApiOperation,
+  ApiTags,
+} from "@nestjs/swagger";
 import {
   customerMeSchema,
   guestAccessExchangeRequestSchema,
@@ -19,6 +24,12 @@ import {
 } from "@dsd/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { createZodDto, ZodResponse } from "nestjs-zod";
+
+import {
+  ApiPublicForm,
+  ApiSession,
+  ApiWrongCredentials,
+} from "../openapi/decorators.js";
 
 import { SessionCookies } from "./cookies.js";
 import { CsrfTokens } from "./csrf.js";
@@ -56,6 +67,8 @@ export class CustomerAuthController {
   @Post("login")
   @Public()
   @RateLimit(RATE_LIMITS.customerLogin)
+  @ApiPublicForm()
+  @ApiWrongCredentials()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Sign in with email and password",
@@ -81,6 +94,7 @@ export class CustomerAuthController {
   @Post("signup")
   @Public()
   @RateLimit(RATE_LIMITS.signup)
+  @ApiPublicForm()
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary: "Start registration",
@@ -95,6 +109,7 @@ export class CustomerAuthController {
   @Post("signup/complete")
   @Public()
   @RateLimit(RATE_LIMITS.signupCompletion)
+  @ApiPublicForm()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Finish registration from the emailed link",
@@ -120,6 +135,7 @@ export class CustomerAuthController {
   @Post("guest-access/request")
   @Public()
   @RateLimit(RATE_LIMITS.guestLinkRequest)
+  @ApiPublicForm()
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary: "Ask for a new link to a ticket",
@@ -134,6 +150,7 @@ export class CustomerAuthController {
   @Post("guest-access/exchange")
   @Public()
   @RateLimit(RATE_LIMITS.guestLinkExchange)
+  @ApiPublicForm()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Open a ticket from an emailed link",
@@ -158,6 +175,8 @@ export class CustomerAuthController {
 
   @Post("logout")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiSession("customer", { changesState: true })
+  @ApiNoContentResponse({ description: "Signed out" })
   @ApiOperation({
     summary: "Sign out",
     description: "Revokes this session and clears its cookies.",
@@ -171,6 +190,7 @@ export class CustomerAuthController {
   }
 
   @Get("me")
+  @ApiSession("customer", { changesState: false })
   @ApiOperation({
     summary: "The signed-in customer",
     description:

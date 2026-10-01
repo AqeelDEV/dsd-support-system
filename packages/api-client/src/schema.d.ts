@@ -395,6 +395,51 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerMe_Output"];
                 };
             };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The email or password is incorrect */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     CustomerAuthController_signup: {
@@ -416,6 +461,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
@@ -440,6 +521,42 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerMe_Output"];
                 };
             };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     CustomerAuthController_requestGuestLink: {
@@ -461,6 +578,42 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
@@ -485,6 +638,42 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerMe_Output"];
                 };
             };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     CustomerAuthController_logout: {
@@ -496,11 +685,30 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Signed out */
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The Origin or the CSRF token was missing or wrong (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
@@ -519,6 +727,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerMe_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -544,6 +761,51 @@ export interface operations {
                     "application/json": components["schemas"]["StaffMe_Output"];
                 };
             };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The email or password is incorrect */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     StaffAuthController_acceptInvite: {
@@ -567,6 +829,42 @@ export interface operations {
                     "application/json": components["schemas"]["StaffMe_Output"];
                 };
             };
+            /** @description The body doesn't match its schema (`validation-error`), or an emailed link is unknown, expired or used (`invalid-token`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not sent from a trusted origin (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many attempts; `Retry-After` says when to try again (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unreachable, so the request is refused rather than allowed unlimited */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     StaffAuthController_logout: {
@@ -578,11 +876,30 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Signed out */
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The Origin or the CSRF token was missing or wrong (`csrf-rejected`) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
@@ -601,6 +918,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffMe_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

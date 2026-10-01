@@ -8,7 +8,7 @@ import {
   Req,
   Res,
 } from "@nestjs/common";
-import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ApiNoContentResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
   inviteCompleteRequestSchema,
   loginRequestSchema,
@@ -16,6 +16,12 @@ import {
 } from "@dsd/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { createZodDto, ZodResponse } from "nestjs-zod";
+
+import {
+  ApiPublicForm,
+  ApiSession,
+  ApiWrongCredentials,
+} from "../openapi/decorators.js";
 
 import { SessionCookies } from "./cookies.js";
 import { CsrfTokens } from "./csrf.js";
@@ -48,6 +54,8 @@ export class StaffAuthController {
   @Post("login")
   @Public()
   @RateLimit(RATE_LIMITS.staffLogin)
+  @ApiPublicForm()
+  @ApiWrongCredentials()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Sign in with email and password",
@@ -73,6 +81,7 @@ export class StaffAuthController {
   @Post("invite/complete")
   @Public()
   @RateLimit(RATE_LIMITS.inviteCompletion)
+  @ApiPublicForm()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: "Accept an invite",
@@ -97,6 +106,8 @@ export class StaffAuthController {
 
   @Post("logout")
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiSession("staff", { changesState: true })
+  @ApiNoContentResponse({ description: "Signed out" })
   @ApiOperation({
     summary: "Sign out",
     description: "Revokes this session and clears its cookies.",
@@ -110,6 +121,7 @@ export class StaffAuthController {
   }
 
   @Get("me")
+  @ApiSession("staff", { changesState: false })
   @ApiOperation({
     summary: "The signed-in agent, with their role and permissions",
   })
