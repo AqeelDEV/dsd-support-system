@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-01 (see [Amendments](#amendments))
 - Requirements: FR-2, FR-17, NFR-2, NFR-5, NFR-6, NFR-9
 
 ## Context
@@ -161,3 +162,14 @@ Counters live in Redis, so every API instance shares the same limits. Initial va
 - Integration, rate limits: exceeding each limit gives 429. With Redis stopped, login returns 503 and ticket submission still returns 201.
 - Integration, logging: captured logs for auth requests contain no password, token or cookie values.
 - Statelessness: two API instances share Postgres and Redis; a session created through one works on the other.
+
+## Amendments
+
+### 2026-10-01, Phase 3
+
+1. **Cookies on a local stack (section 2).** Cookies are `Secure` with the `__Host-` prefix by default, everywhere, not only in production. Plain `http://localhost` is the exception browsers disagree on: Safari refuses every `Secure` cookie there (WebKit bugs 218980, 231035 and 232088), and Chrome, at the time of writing, accepts `Secure` cookies there but refuses `__Host-` ones ([httpwg/http-extensions#2605](https://github.com/httpwg/http-extensions/issues/2605)). Only Firefox accepts both. So `COOKIE_SECURE=false` switches to plain names (`dsd_customer_session`, `dsd_customer_csrf` and the staff equivalents) without the `Secure` flag, keeping `HttpOnly`, `SameSite=Lax`, `Path=/` and no `Domain`. The API refuses to start with `COOKIE_SECURE=false` unless every trusted origin (`TRUSTED_ORIGINS` and `CORS_ORIGINS`) is plain HTTP on `localhost`, `127.0.0.1` or `[::1]`, so a deployment with real origins can't turn it on. Docker Compose serves everything on `http://localhost` and sets it, so sign-in works in every browser for local review. Production keeps the default: `__Host-` and `Secure`.
+2. **Trusted origins (section 5).** The origin allowlist is `TRUSTED_ORIGINS` (both web apps, and the API's own origin for Swagger UI) plus `CORS_ORIGINS`, since an origin allowed to make credentialed cross-origin calls must also be able to make unsafe ones.
+3. **The client's address (section 4).** How the web apps work out the browser's address, and which proxies the API trusts, is decided in [ADR-0010](0010-client-address-behind-the-web-proxy.md).
+4. **Rate limits (section 10).** Sign-up completion and invite acceptance are limited like the guest token exchange: 20 per 15 minutes per IP. Counters are keyed by an HMAC of the email or address, so Redis holds no personal data. The global guards run in this order: session, then CSRF and origin, then rate limit, then permissions. The origin check comes before the rate limit so a forged cross-site request never uses up anyone's allowance.
+5. **Invalid emailed links** answer 400 with the problem type `invalid-token`, whether the token is unknown, expired, already used, meant for something else, or its account no longer fits (for example, a sign-up link for an account that already has a password).
+6. **Password reset (section 7)** moves to Phase 6, when the worker sends emails, so it can be built and tested end to end. It is scheduled work, not a known gap.

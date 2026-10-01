@@ -67,13 +67,13 @@ Requests pass through the same pipeline. Anything that fails a step stops there 
 ```mermaid
 flowchart TB
     req(["HTTP request"]) --> mw["Request ID, logging,<br/>security headers"]
-    mw --> rl{"Rate limit<br/>on selected routes"}
-    rl -->|over the limit| e429["429"]
-    rl --> auth{"Auth guard<br/>public route, or valid<br/>session for this realm?"}
+    mw --> auth{"Auth guard<br/>public route, or valid<br/>session for this realm?"}
     auth -->|no| e401["401"]
     auth --> csrf{"CSRF check<br/>on unsafe methods"}
     csrf -->|bad token or origin| e403a["403"]
-    csrf --> perm{"Permission guard<br/>on staff routes"}
+    csrf --> rl{"Rate limit<br/>on selected routes"}
+    rl -->|over the limit| e429["429"]
+    rl --> perm{"Permission guard<br/>on staff routes"}
     perm -->|missing permission| e403b["403"]
     perm --> pipe["zod validation<br/>strict schemas"]
     pipe -->|invalid| e400["400"]
@@ -365,6 +365,7 @@ flowchart TB
 
 - The `migrate` service runs migrations as `dsd_migrator` and seeds demo data, then exits. The API and worker start after it succeeds and connect as `dsd_api` and `dsd_worker`.
 - The object store and the databases are not needed from the browser, so they aren't exposed beyond what development convenience requires.
+- The web apps have fixed addresses on a fixed subnet, and the API believes `X-Forwarded-For` from those two addresses only. Each web app replaces the header with the browser's real address before Next.js sees the request ([ADR-0010](adr/0010-client-address-behind-the-web-proxy.md)).
 - Nothing depends on a specific cloud provider (NFR-13). Postgres, Redis, any S3-compatible store and any SMTP server are enough to run it anywhere.
 
 ## Statelessness (NFR-2)

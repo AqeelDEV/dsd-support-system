@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-01 (see [Amendments](#amendments))
 - Requirements: FR-11, FR-14, FR-17, NFR-6, NFR-11
 
 ## Context
@@ -105,3 +106,10 @@ Each agent has brand memberships (`agent_brand_memberships`), and every staff qu
 - Route coverage (integration): enumerates every registered route at runtime and fails if a route is missing from the matrix, declares neither a realm nor `@Public()`, or sits outside `/api/v1` (other than `/health` and `/ready`).
 - Escalation attempts: a supervisor promoting themselves gets 403; a supervisor creating an admin gets 403; demoting the last admin gets 409; an agent calling user management gets 403; a customer calling any staff route gets 401.
 - Brand scope: an agent without membership in a second brand gets 404 for that brand's tickets.
+
+## Amendments
+
+### 2026-10-01, Phase 3
+
+1. **More startup checks (section 2, layer 1).** Besides a route that declares neither `@Public()` nor `@Realm()`, the API refuses to start for a route outside `/api/v1` (other than `/health`, `/ready` and the Swagger UI pages), a route whose realm or `@Public()` contradicts its path prefix (ADR-0003, section 1), a route under `/api/v1/staff/` that requires no permission, and permissions on a route that only customers can reach. Staff work is therefore denied by default at the permission layer too. The checks read every route Fastify registers, not just Nest controllers.
+2. **What Phase 3 delivers.** The permission map, all four global guards, the RBAC matrix and route coverage for every route that exists so far. The rank rules (section 4) and revoking an agent's sessions on a role change arrive with agent management in Phase 5, and brand scope (section 6) with the ticket queries in Phase 4.
