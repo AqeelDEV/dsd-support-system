@@ -9,7 +9,7 @@ import { ZodValidationException } from "nestjs-zod";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { toProblem } from "./problem-details.js";
+import { ProblemException, toProblem } from "./problem-details.js";
 
 const context = {
   requestId: "0199a1b2-0000-7000-8000-000000000001",
@@ -30,6 +30,29 @@ describe("toProblem", () => {
       instance: "/api/v1/things",
       requestId: context.requestId,
     });
+  });
+
+  it("keeps a problem exception's own type and detail, even for a 503", () => {
+    const limited = new ProblemException(
+      429,
+      PROBLEM_TYPES.rateLimited,
+      "Too many attempts. Try again later.",
+      { "retry-after": "60" },
+    );
+    expect(toProblem(limited, context)).toMatchObject({
+      type: PROBLEM_TYPES.rateLimited,
+      status: 429,
+      detail: "Too many attempts. Try again later.",
+    });
+
+    const unavailable = new ProblemException(
+      503,
+      PROBLEM_TYPES.blank,
+      "Sign-in is unavailable right now.",
+    );
+    expect(toProblem(unavailable, context).detail).toBe(
+      "Sign-in is unavailable right now.",
+    );
   });
 
   it("maps validation failures to 400 with one entry per field", () => {

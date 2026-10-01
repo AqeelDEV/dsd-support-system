@@ -19,6 +19,8 @@ export const TEST_ENV = {
     process.env.TEST_API_DATABASE_URL ??
     "postgres://dsd_api:api-dev-password@127.0.0.1:55432/dsd",
   REDIS_URL: process.env.TEST_REDIS_URL ?? "redis://127.0.0.1:56379",
+  TRUSTED_ORIGINS: "https://support.dsd.example,https://agents.dsd.example",
+  AUTH_SECRET: "test-only-auth-secret-not-for-real-use",
 };
 
 /** Builds the real application and readies it without opening a port. */

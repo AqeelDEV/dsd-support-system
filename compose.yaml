@@ -122,6 +122,17 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: postgres://dsd_api:${DSD_API_PASSWORD:-api-dev-password}@postgres:5432/dsd
       REDIS_URL: redis://redis:6379
+      # Origins that may send state-changing requests (CSRF): both web apps,
+      # and the API itself for Swagger UI.
+      TRUSTED_ORIGINS: >-
+        http://localhost:${CUSTOMER_WEB_PORT:-3000},http://127.0.0.1:${CUSTOMER_WEB_PORT:-3000},
+        http://localhost:${AGENT_WEB_PORT:-3001},http://127.0.0.1:${AGENT_WEB_PORT:-3001},
+        http://localhost:${API_PORT:-4000},http://127.0.0.1:${API_PORT:-4000}
+      AUTH_SECRET: ${AUTH_SECRET:-dev-only-auth-secret-never-use-in-production}
+      # This stack is served over plain http://localhost, where Safari refuses
+      # Secure cookies and Chrome refuses __Host- ones. The API accepts
+      # "false" only when every trusted origin is local (ADR-0003).
+      COOKIE_SECURE: "false"
     ports:
       # Published for Swagger UI at http://localhost:4000/api/docs. The web
       # apps reach the API over the compose network.

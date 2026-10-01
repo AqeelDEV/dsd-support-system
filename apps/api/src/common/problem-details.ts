@@ -27,6 +27,25 @@ interface RequestContext {
 
 const title = (status: number) => STATUS_CODES[status] ?? "Error";
 
+type ProblemType = (typeof PROBLEM_TYPES)[keyof typeof PROBLEM_TYPES];
+
+/**
+ * An error with its own problem type, for cases a client handles
+ * differently from a plain status: a rejected CSRF token means "fetch a
+ * fresh one", a rate limit means "wait". Extra headers such as
+ * `Retry-After` travel with it.
+ */
+export class ProblemException extends HttpException {
+  constructor(
+    status: number,
+    readonly problemType: ProblemType,
+    detail: string,
+    readonly headers: Readonly<Record<string, string>> = {},
+  ) {
+    super(detail, status);
+  }
+}
+
 const UNEXPECTED_DETAIL =
   "An unexpected error occurred. Quote the request ID if you report it.";
 
@@ -92,10 +111,17 @@ export function toProblem(
 
   if (exception instanceof HttpException) {
     const status = exception.getStatus();
+    // A ProblemException's detail is written for the client, even for a
+    // deliberate 503; any other server error's message may hold internals.
     const detail =
-      status < 500 ? httpExceptionDetail(exception) : UNEXPECTED_DETAIL;
+      status < 500 || exception instanceof ProblemException
+        ? httpExceptionDetail(exception)
+        : UNEXPECTED_DETAIL;
     return {
-      type: PROBLEM_TYPES.blank,
+      type:
+        exception instanceof ProblemException
+          ? exception.problemType
+          : PROBLEM_TYPES.blank,
       title: title(status),
       status,
       ...(detail === undefined ? {} : { detail }),
@@ -133,12 +159,15 @@ export function sendProblem(
     requestId: request.id,
     path: requestPath(request.url),
   });
-  if (problem.status >= 500) {
+  if (problem.status >= 500 && !(exception instanceof ProblemException)) {
     logger.error(
       exception instanceof Error
         ? (exception.stack ?? exception.message)
         : String(exception),
     );
+  }
+  if (exception instanceof ProblemException) {
+    void reply.headers(exception.headers);
   }
   void reply
     .status(problem.status)

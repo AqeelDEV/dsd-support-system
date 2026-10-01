@@ -20,6 +20,8 @@ const app = await createApp(
     LOG_LEVEL: "silent",
     DATABASE_URL: "postgres://openapi@127.0.0.1:1/openapi",
     REDIS_URL: "redis://127.0.0.1:1",
+    TRUSTED_ORIGINS: "https://support.dsd.example",
+    AUTH_SECRET: "openapi-generation-only-placeholder-secret",
   }),
 );
 const document = buildOpenApiDocument(app);
