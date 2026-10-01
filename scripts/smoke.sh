@@ -85,10 +85,11 @@ echo "Tickets"
 # A guest submits a ticket with a file through the customer app, as its
 # form will (multipart, fields first). Each run uses a fresh address, so the
 # per-email limit never trips. The file comes from stdin.
+guest_email="smoke-$(date +%s)-$RANDOM@example.com"
 receipt=$(printf 'hub-01 lost Wi-Fi at 20:04\n' | curl --silent --max-time 15 \
   -X POST "$CUSTOMER/api/v1/public/tickets" \
   -H "Origin: $CUSTOMER" \
-  -F "email=smoke+$(date +%s)@example.com" \
+  -F "email=$guest_email" \
   -F "subject=Smoke test ticket" \
   -F "description=Raised by scripts/smoke.sh" \
   -F "attachments=@-;filename=smoke-log.txt;type=application/octet-stream" || true)
@@ -114,6 +115,95 @@ else
 fi
 expect_status "the customer app won't serve a staff download" 404 \
   "$CUSTOMER/api/v1/staff/tickets/$ticket_id/attachments/$attachment_id"
+
+echo "Emails"
+# Mail arrives in Mailpit; its API is read with node, which the stack needs
+# anyway, rather than assuming jq is installed.
+
+# wait_for_email <address> <subject pattern> [seconds]: prints the text body of
+# the newest matching email, or nothing once the time is up.
+wait_for_email() {
+  local address=$1 pattern=$2 seconds=${3:-30} found
+  for ((i = 0; i < seconds * 2; i++)); do
+    found=$(curl --silent --max-time 5 "$MAILPIT/api/v1/search?query=$(node -e 'process.stdout.write(encodeURIComponent(`to:"${process.argv[1]}"`))' "$address")" |
+      node -e '
+        let s = "";
+        process.stdin.on("data", (d) => (s += d)).on("end", () => {
+          const hit = (JSON.parse(s).messages ?? []).find((m) => new RegExp(process.argv[1]).test(m.Subject));
+          if (hit) process.stdout.write(hit.ID);
+        });' "$pattern" 2>/dev/null || true)
+    if [[ -n $found ]]; then
+      curl --silent --max-time 5 "$MAILPIT/api/v1/message/$found" |
+        node -e 'let s="";process.stdin.on("data",(d)=>(s+=d)).on("end",()=>process.stdout.write(JSON.parse(s).Text))'
+      return
+    fi
+    sleep 0.5
+  done
+}
+token_in() { grep -oE '#token=[A-Za-z0-9_-]{43}' <<<"$1" | head -n 1 | cut -d= -f2; }
+staff_csrf() { awk '$6 == "dsd_staff_csrf" { print $7 }' "$jar" | tail -n 1; }
+
+ack=$(wait_for_email "$guest_email" "We've received your request")
+guest_token=$(token_in "$ack")
+if [[ -n $guest_token ]]; then pass "the guest's acknowledgement arrives with an access link"; else fail "the guest's acknowledgement arrives with an access link (got: ${ack:0:200})"; fi
+
+guest_jar=$(mktemp)
+trap 'rm -f "$jar" "$guest_jar"' EXIT
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 \
+  --cookie-jar "$guest_jar" -X POST "$CUSTOMER/api/v1/auth/customer/guest-access/exchange" \
+  -H "Origin: $CUSTOMER" -H 'Content-Type: application/json' --data "{\"token\":\"$guest_token\"}" || true)
+if [[ $status == 200 ]]; then pass "the emailed link opens a guest session through the customer app"; else fail "the emailed link opens a guest session through the customer app (got $status)"; fi
+expect_body "the guest session shows the ticket" "\"reference\":\"$reference\"" \
+  "$CUSTOMER/api/v1/customer/tickets/$ticket_id" --cookie "$guest_jar"
+
+reply_text="Smoke reply $RANDOM: please restart the hub."
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 \
+  --cookie "$jar" -X POST "$AGENT/api/v1/staff/tickets/$ticket_id/replies" \
+  -H "Origin: $AGENT" -H "X-CSRF-Token: $(staff_csrf)" \
+  -F "body=$reply_text" -F "status=pending_customer" || true)
+if [[ $status == 201 ]]; then pass "the agent replies and waits for the customer"; else fail "the agent replies and waits for the customer (got $status)"; fi
+reply=$(wait_for_email "$guest_email" "New reply")
+if grep -qF "$reply_text" <<<"$reply" && grep -qF "waiting for your reply" <<<"$reply"; then
+  pass "one email carries the reply and the new status"
+else
+  fail "one email carries the reply and the new status (got: ${reply:0:300})"
+fi
+
+# Sign-up and password reset, end to end, on a fresh address.
+member_email="smoke-member-$(date +%s)-$RANDOM@example.com"
+curl --silent --output /dev/null --max-time 10 -X POST "$CUSTOMER/api/v1/auth/customer/signup" \
+  -H "Origin: $CUSTOMER" -H 'Content-Type: application/json' --data "{\"email\":\"$member_email\"}" || true
+signup_token=$(token_in "$(wait_for_email "$member_email" "Finish creating")")
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 \
+  -X POST "$CUSTOMER/api/v1/auth/customer/signup/complete" -H "Origin: $CUSTOMER" -H 'Content-Type: application/json' \
+  --data "{\"token\":\"$signup_token\",\"displayName\":\"Smoke Member\",\"password\":\"first smoke password\"}" || true)
+if [[ $status == 200 ]]; then pass "sign-up completes from the emailed link"; else fail "sign-up completes from the emailed link (got $status)"; fi
+curl --silent --output /dev/null --max-time 10 -X POST "$CUSTOMER/api/v1/auth/customer/password-reset/request" \
+  -H "Origin: $CUSTOMER" -H 'Content-Type: application/json' --data "{\"email\":\"$member_email\"}" || true
+reset_token=$(token_in "$(wait_for_email "$member_email" "Reset your")")
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 \
+  -X POST "$CUSTOMER/api/v1/auth/customer/password-reset/complete" -H "Origin: $CUSTOMER" -H 'Content-Type: application/json' \
+  --data "{\"token\":\"$reset_token\",\"password\":\"second smoke password\"}" || true)
+status_login=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 \
+  -X POST "$CUSTOMER/api/v1/auth/customer/login" -H "Origin: $CUSTOMER" -H 'Content-Type: application/json' \
+  --data "{\"email\":\"$member_email\",\"password\":\"second smoke password\"}" || true)
+if [[ $status == 200 && $status_login == 200 ]]; then pass "a password reset from the emailed link works"; else fail "a password reset from the emailed link works (reset $status, sign-in $status_login)"; fi
+
+# With the mail server down, a customer can still submit and an agent can
+# still reply; the email goes out once it is back (NFR-10).
+docker compose stop mailpit >/dev/null 2>&1 || true
+outage_email="smoke-outage-$(date +%s)-$RANDOM@example.com"
+status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 \
+  -X POST "$CUSTOMER/api/v1/public/tickets" -H "Origin: $CUSTOMER" \
+  -F "email=$outage_email" -F "subject=Raised while mail is down" -F "description=Raised by scripts/smoke.sh" || true)
+reply_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 \
+  --cookie "$jar" -X POST "$AGENT/api/v1/staff/tickets/$ticket_id/replies" \
+  -H "Origin: $AGENT" -H "X-CSRF-Token: $(staff_csrf)" -F "body=Sent while mail is down" || true)
+docker compose start mailpit >/dev/null 2>&1 || true
+docker compose up --detach --wait mailpit >/dev/null 2>&1 || true
+if [[ $status == 201 && $reply_status == 201 ]]; then pass "with the mail server down, submitting and replying still work"; else fail "with the mail server down, submitting and replying still work (submit $status, reply $reply_status)"; fi
+late=$(wait_for_email "$outage_email" "We've received your request" 120)
+if [[ -n $late ]]; then pass "the delayed email arrives once the mail server is back"; else fail "the delayed email arrives once the mail server is back"; fi
 
 echo "Knowledge base"
 expect_body "the help centre lists the seeded articles" '"slug":"reset-your-password"' \
