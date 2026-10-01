@@ -92,6 +92,35 @@ function isFastifyClientError(
   );
 }
 
+/** The PostgreSQL error code on `error`, or on the error it wraps (Drizzle wraps driver errors). */
+function sqlState(error: unknown): string | undefined {
+  let current = error;
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (typeof current !== "object" || current === null) return undefined;
+    if ("code" in current && typeof current.code === "string") {
+      return current.code;
+    }
+    current = "cause" in current ? current.cause : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Two transactions waited on each other's locks and PostgreSQL cancelled
+ * this one (SQLSTATE 40P01). Nothing was written, and the same request is
+ * very likely to succeed a moment later, so the client is told to retry
+ * rather than shown a server error.
+ */
+export function clashOf(exception: unknown): ProblemException | undefined {
+  if (sqlState(exception) !== "40P01") return undefined;
+  return new ProblemException(
+    HttpStatus.SERVICE_UNAVAILABLE,
+    PROBLEM_TYPES.blank,
+    "The request clashed with another change made at the same moment. Nothing was saved; try again.",
+    { "Retry-After": "1" },
+  );
+}
+
 /**
  * Turns anything thrown while handling a request into RFC 9457 problem
  * details. Client errors keep their message; server errors never expose
@@ -157,10 +186,15 @@ export function toProblem(
 const logger = new Logger("Errors");
 
 export function sendProblem(
-  exception: unknown,
+  thrown: unknown,
   request: FastifyRequest,
   reply: FastifyReply,
 ): void {
+  const clash = clashOf(thrown);
+  if (clash !== undefined) {
+    logger.warn(`Deadlock cancelled request ${request.id}; answered 503`);
+  }
+  const exception = clash ?? thrown;
   const problem = toProblem(exception, {
     requestId: request.id,
     path: requestPath(request.url),

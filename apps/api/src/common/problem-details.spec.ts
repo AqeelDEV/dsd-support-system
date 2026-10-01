@@ -9,7 +9,7 @@ import { ZodValidationException } from "nestjs-zod";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { ProblemException, toProblem } from "./problem-details.js";
+import { clashOf, ProblemException, toProblem } from "./problem-details.js";
 
 const context = {
   requestId: "0199a1b2-0000-7000-8000-000000000001",
@@ -128,5 +128,29 @@ describe("toProblem", () => {
     expect(
       problemDetailsSchema.safeParse(toProblem(exception, context)).success,
     ).toBe(true);
+  });
+});
+
+describe("clashOf", () => {
+  it("turns a deadlock, wrapped or not, into a 503 that asks for a retry", () => {
+    const deadlock = Object.assign(new Error("deadlock detected"), {
+      code: "40P01",
+    });
+    for (const thrown of [
+      deadlock,
+      new Error("Failed query", { cause: deadlock }),
+    ]) {
+      const clash = clashOf(thrown);
+      expect(clash?.getStatus()).toBe(503);
+      expect(clash?.headers).toEqual({ "Retry-After": "1" });
+    }
+  });
+
+  it("leaves every other error alone", () => {
+    expect(clashOf(new Error("boom"))).toBeUndefined();
+    expect(
+      clashOf(Object.assign(new Error("unique"), { code: "23505" })),
+    ).toBeUndefined();
+    expect(clashOf("not an error")).toBeUndefined();
   });
 });
