@@ -1,6 +1,149 @@
 {
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/auth/customer/login": {
+      "post": {
+        "description": "Starts a new customer session in an HttpOnly cookie and returns the same body as `me`. A wrong password, an unknown email and a guest without a password all get the same 401.",
+        "operationId": "CustomerAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in with email and password",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/customer/logout": {
+      "post": {
+        "description": "Revokes this session and clears its cookies.",
+        "operationId": "CustomerAuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Sign out",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/customer/me": {
+      "get": {
+        "description": "For a guest session, `guestTicketId` names the one ticket it can see.",
+        "operationId": "CustomerAuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The signed-in customer",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/staff/login": {
+      "post": {
+        "description": "Starts a new staff session in an HttpOnly cookie and returns the same body as `me`. A deactivated agent, or one who hasn't accepted their invite, gets the same 401 as a wrong password.",
+        "operationId": "StaffAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in with email and password",
+        "tags": [
+          "Staff sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/staff/logout": {
+      "post": {
+        "description": "Revokes this session and clears its cookies.",
+        "operationId": "StaffAuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Sign out",
+        "tags": [
+          "Staff sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/staff/me": {
+      "get": {
+        "operationId": "StaffAuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The signed-in agent, with their role and permissions",
+        "tags": [
+          "Staff sign-in"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "The process is running and can answer. Checks no dependencies.",
@@ -68,6 +211,157 @@
   "servers": [],
   "components": {
     "schemas": {
+      "LoginBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Compared case-insensitively, after trimming"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerMe_Output": {
+        "type": "object",
+        "properties": {
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "email": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "displayName"
+            ],
+            "additionalProperties": false
+          },
+          "guestTicketId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a guest session, which can see this one ticket and nothing else"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "Send this back in the X-CSRF-Token header on every POST, PUT, PATCH and DELETE"
+          }
+        },
+        "required": [
+          "customer",
+          "guestTicketId",
+          "csrfToken"
+        ],
+        "additionalProperties": false
+      },
+      "StaffMe_Output": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "email": {
+                "type": "string"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "agent",
+                  "supervisor",
+                  "admin"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "displayName",
+              "role"
+            ],
+            "additionalProperties": false
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ticket:read:any",
+                "ticket:reply",
+                "ticket:note:create",
+                "ticket:status:update",
+                "ticket:priority:update",
+                "ticket:assign",
+                "ticket:reassign:any",
+                "ticket:escalate",
+                "ticket:audit:read",
+                "customer:read",
+                "kb:read",
+                "kb:write",
+                "kb:publish",
+                "canned:use",
+                "canned:manage",
+                "report:view",
+                "user:read",
+                "user:manage",
+                "ai:suggestion:read",
+                "ai:suggestion:request",
+                "ai:suggestion:feedback"
+              ]
+            },
+            "description": "What this agent may do. The agent app shows controls from this list; the API enforces it regardless"
+          },
+          "csrfToken": {
+            "type": "string",
+            "description": "Send this back in the X-CSRF-Token header on every POST, PUT, PATCH and DELETE"
+          }
+        },
+        "required": [
+          "agent",
+          "permissions",
+          "csrfToken"
+        ],
+        "additionalProperties": false
+      },
       "Liveness_Output": {
         "type": "object",
         "properties": {

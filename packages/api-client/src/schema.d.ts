@@ -4,6 +4,123 @@
  */
 
 export interface paths {
+    "/api/v1/auth/customer/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with email and password
+         * @description Starts a new customer session in an HttpOnly cookie and returns the same body as `me`. A wrong password, an unknown email and a guest without a password all get the same 401.
+         */
+        post: operations["CustomerAuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/customer/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign out
+         * @description Revokes this session and clears its cookies.
+         */
+        post: operations["CustomerAuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/customer/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The signed-in customer
+         * @description For a guest session, `guestTicketId` names the one ticket it can see.
+         */
+        get: operations["CustomerAuthController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/staff/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with email and password
+         * @description Starts a new staff session in an HttpOnly cookie and returns the same body as `me`. A deactivated agent, or one who hasn't accepted their invite, gets the same 401 as a wrong password.
+         */
+        post: operations["StaffAuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/staff/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign out
+         * @description Revokes this session and clears its cookies.
+         */
+        post: operations["StaffAuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/staff/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in agent, with their role and permissions */
+        get: operations["StaffAuthController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -48,6 +165,40 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        LoginBody: {
+            /**
+             * Format: email
+             * @description Compared case-insensitively, after trimming
+             */
+            email: string;
+            password: string;
+        };
+        CustomerMe_Output: {
+            customer: {
+                /** Format: uuid */
+                id: string;
+                email: string;
+                displayName: string | null;
+            };
+            /** @description Set for a guest session, which can see this one ticket and nothing else */
+            guestTicketId: string | null;
+            /** @description Send this back in the X-CSRF-Token header on every POST, PUT, PATCH and DELETE */
+            csrfToken: string;
+        };
+        StaffMe_Output: {
+            agent: {
+                /** Format: uuid */
+                id: string;
+                email: string;
+                displayName: string;
+                /** @enum {string} */
+                role: "agent" | "supervisor" | "admin";
+            };
+            /** @description What this agent may do. The agent app shows controls from this list; the API enforces it regardless */
+            permissions: ("ticket:read:any" | "ticket:reply" | "ticket:note:create" | "ticket:status:update" | "ticket:priority:update" | "ticket:assign" | "ticket:reassign:any" | "ticket:escalate" | "ticket:audit:read" | "customer:read" | "kb:read" | "kb:write" | "kb:publish" | "canned:use" | "canned:manage" | "report:view" | "user:read" | "user:manage" | "ai:suggestion:read" | "ai:suggestion:request" | "ai:suggestion:feedback")[];
+            /** @description Send this back in the X-CSRF-Token header on every POST, PUT, PATCH and DELETE */
+            csrfToken: string;
+        };
         Liveness_Output: {
             /** @constant */
             status: "ok";
@@ -90,6 +241,124 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    CustomerAuthController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerMe_Output"];
+                };
+            };
+        };
+    };
+    CustomerAuthController_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerAuthController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerMe_Output"];
+                };
+            };
+        };
+    };
+    StaffAuthController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMe_Output"];
+                };
+            };
+        };
+    };
+    StaffAuthController_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    StaffAuthController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMe_Output"];
+                };
+            };
+        };
+    };
     HealthController_liveness: {
         parameters: {
             query?: never;

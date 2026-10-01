@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { SessionRealm } from "@dsd/shared";
-import type { FastifyRequest } from "fastify";
+import type { CookieSerializeOptions } from "@fastify/cookie";
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 import type { Env } from "../config/env.js";
 import { ENV } from "../infrastructure/tokens.js";
@@ -49,5 +50,40 @@ export class SessionCookies {
   ): string | undefined {
     const value = request.cookies[this.names(realm).session];
     return value !== undefined && TOKEN_SHAPE.test(value) ? value : undefined;
+  }
+
+  /**
+   * Sets the session cookie, which scripts can't read, and the CSRF cookie,
+   * which the app's own scripts read to fill the X-CSRF-Token header. Both
+   * end with the session.
+   */
+  issue(
+    reply: FastifyReply,
+    realm: SessionRealm,
+    session: { token: string; expiresAt: Date },
+    csrfToken: string,
+  ): void {
+    const names = this.names(realm);
+    const options = this.options(session.expiresAt);
+    void reply.setCookie(names.session, session.token, {
+      ...options,
+      httpOnly: true,
+    });
+    void reply.setCookie(names.csrf, csrfToken, {
+      ...options,
+      httpOnly: false,
+    });
+  }
+
+  clear(reply: FastifyReply, realm: SessionRealm): void {
+    const names = this.names(realm);
+    const options = this.options(new Date(0));
+    void reply.clearCookie(names.session, { ...options, httpOnly: true });
+    void reply.clearCookie(names.csrf, { ...options, httpOnly: false });
+  }
+
+  /** No Domain, so the cookie stays on the exact host that set it: the app's own. */
+  private options(expires: Date): CookieSerializeOptions {
+    return { secure: this.secure, sameSite: "lax", path: "/", expires };
   }
 }
