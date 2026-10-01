@@ -15,6 +15,9 @@ const env = parseEnv({
   TRUSTED_ORIGINS: "https://support.example.com,https://agents.example.com",
   CORS_ORIGINS: "https://tools.example.com",
   AUTH_SECRET: "a-secret-of-at-least-thirty-two-characters",
+  S3_ENDPOINT: "http://objects:8333",
+  S3_ACCESS_KEY_ID: "access-key",
+  S3_SECRET_ACCESS_KEY: "secret-key",
 });
 const tokens = new CsrfTokens(env);
 const guard = new CsrfGuard(tokens, env);

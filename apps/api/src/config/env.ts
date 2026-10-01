@@ -98,6 +98,22 @@ export const envSchema = z
     GUEST_SESSION_IDLE_MINUTES: minutes(24 * 60),
     /** Prefix for every key the API writes to Redis. */
     REDIS_KEY_PREFIX: z.string().min(1).default("dsd:"),
+    /**
+     * The S3-compatible store for attachments (ADR-0009). It should be
+     * reachable only from the API; browsers download through the API.
+     */
+    S3_ENDPOINT: z.url({ protocol: /^https?$/ }),
+    S3_REGION: z.string().min(1).default("us-east-1"),
+    S3_BUCKET: z.string().min(3).default("dsd-attachments"),
+    S3_ACCESS_KEY_ID: z.string().min(1),
+    S3_SECRET_ACCESS_KEY: z.string().min(1),
+    /** Bucket in the path rather than the host name, as most self-hosted stores need. */
+    S3_FORCE_PATH_STYLE: z.stringbool().default(true),
+    /**
+     * The brand new tickets are filed under. v1 has one brand; with more,
+     * each intake (app, address or channel) would name its own.
+     */
+    TICKET_BRAND_SLUG: z.string().min(1).default("dsd"),
   })
   .superRefine((env, context) => {
     for (const realm of ["STAFF", "CUSTOMER", "GUEST"] as const) {

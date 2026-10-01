@@ -9,6 +9,9 @@ const env = (secret: string) =>
     REDIS_URL: "redis://redis:6379",
     TRUSTED_ORIGINS: "https://support.example.com",
     AUTH_SECRET: secret,
+    S3_ENDPOINT: "http://objects:8333",
+    S3_ACCESS_KEY_ID: "access-key",
+    S3_SECRET_ACCESS_KEY: "secret-key",
   });
 
 const tokens = new CsrfTokens(

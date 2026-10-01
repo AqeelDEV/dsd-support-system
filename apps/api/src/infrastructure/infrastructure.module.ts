@@ -12,6 +12,7 @@ import { createDb, createPool, type Database, type Pool } from "@dsd/db";
 import { Redis } from "ioredis";
 
 import type { Env } from "../config/env.js";
+import { createS3Client, ObjectStore } from "./object-store.js";
 import { DB, DB_POOL, ENV, REDIS } from "./tokens.js";
 
 const REDIS_STARTUP_GRACE_MS = 2_000;
@@ -42,6 +43,7 @@ class ConnectionLifecycle implements OnModuleInit, OnApplicationShutdown {
   constructor(
     @Inject(DB_POOL) private readonly pool: Pool,
     @Inject(REDIS) private readonly redis: Redis,
+    private readonly objects: ObjectStore,
   ) {}
 
   /**
@@ -70,14 +72,15 @@ class ConnectionLifecycle implements OnModuleInit, OnApplicationShutdown {
     } else {
       this.redis.disconnect();
     }
+    this.objects.close();
     await this.pool.end();
   }
 }
 
 /**
  * Configuration and the shared connections. Nothing here keeps request or
- * ticket state: sessions live in Postgres and counters in Redis, so any
- * instance can serve any request (NFR-2).
+ * ticket state: sessions live in Postgres, counters in Redis and files in
+ * the object store, so any instance can serve any request (NFR-2).
  */
 @Global()
 @Module({})
@@ -108,9 +111,13 @@ export class InfrastructureModule {
           inject: [DB_POOL],
         },
         { provide: REDIS, useFactory: () => createRedis(env) },
+        {
+          provide: ObjectStore,
+          useFactory: () => new ObjectStore(createS3Client(env), env.S3_BUCKET),
+        },
         ConnectionLifecycle,
       ],
-      exports: [ENV, DB_POOL, DB, REDIS],
+      exports: [ENV, DB_POOL, DB, REDIS, ObjectStore],
     };
   }
 }

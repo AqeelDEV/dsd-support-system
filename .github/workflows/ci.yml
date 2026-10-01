@@ -68,15 +68,15 @@ jobs:
       - name: Database schema and migrations agree
         run: pnpm db:check
 
-      - name: Start PostgreSQL and Redis
-        run: docker compose up --detach --wait postgres redis
+      - name: Start PostgreSQL, Redis and the object store
+        run: docker compose up --detach --wait postgres redis seaweedfs
 
-      - name: Tests (unit and integration, against real PostgreSQL and Redis)
+      - name: Tests (unit and integration, against the real data stores)
         run: pnpm test
 
       - name: Service logs
         if: failure()
-        run: docker compose logs --no-color postgres redis
+        run: docker compose logs --no-color postgres redis seaweedfs
 
   compose-smoke:
     name: Full stack smoke test

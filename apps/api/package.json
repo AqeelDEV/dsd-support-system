@@ -17,6 +17,7 @@
     "test:unit": "vitest run --exclude \"**/*.int.spec.ts\""
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
     "@dsd/db": "workspace:*",
     "@dsd/shared": "workspace:*",
     "@fastify/cookie": "catalog:",

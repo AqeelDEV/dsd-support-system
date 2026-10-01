@@ -7,6 +7,9 @@ const valid = {
   REDIS_URL: "redis://redis:6379",
   TRUSTED_ORIGINS: "https://support.example.com",
   AUTH_SECRET: "a-secret-of-at-least-thirty-two-characters",
+  S3_ENDPOINT: "http://objects:8333",
+  S3_ACCESS_KEY_ID: "access-key",
+  S3_SECRET_ACCESS_KEY: "secret-key",
 };
 
 function configError(source: Record<string, string | undefined>): ConfigError {
@@ -38,6 +41,10 @@ describe("parseEnv", () => {
       GUEST_SESSION_MAX_AGE_MINUTES: 1440,
       GUEST_SESSION_IDLE_MINUTES: 1440,
       REDIS_KEY_PREFIX: "dsd:",
+      S3_REGION: "us-east-1",
+      S3_BUCKET: "dsd-attachments",
+      S3_FORCE_PATH_STYLE: true,
+      TICKET_BRAND_SLUG: "dsd",
     });
   });
 
@@ -61,6 +68,9 @@ describe("parseEnv", () => {
       "REDIS_URL: is required",
       "TRUSTED_ORIGINS: Too small: expected array to have >=1 items",
       "AUTH_SECRET: is required",
+      "S3_ENDPOINT: is required",
+      "S3_ACCESS_KEY_ID: is required",
+      "S3_SECRET_ACCESS_KEY: is required",
     ]);
   });
 
@@ -78,6 +88,8 @@ describe("parseEnv", () => {
     ["AUTH_SECRET", "too-short"],
     ["COOKIE_SECURE", "maybe"],
     ["STAFF_SESSION_IDLE_MINUTES", "0"],
+    ["S3_ENDPOINT", "s3://bucket"],
+    ["S3_FORCE_PATH_STYLE", "sometimes"],
   ])("rejects an invalid %s", (key, value) => {
     const error = configError({ ...valid, [key]: value });
     expect(error.problems.some((problem) => problem.startsWith(key))).toBe(

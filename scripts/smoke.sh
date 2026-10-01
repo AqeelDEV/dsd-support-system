@@ -86,7 +86,7 @@ if [[ $tickets -gt 0 ]] 2>/dev/null; then pass "migrated and seeded ($tickets ti
 
 echo "Supporting services"
 expect_status "Mailpit web UI" 200 "$MAILPIT/"
-# The object store has no published port, so ask from inside its container.
+# Ask from inside the store's container, as the API would, over its own network.
 s3_status() {
   docker compose exec -T seaweedfs sh -c "curl --silent --output /dev/null --write-out '%{http_code}' $1 http://127.0.0.1:8333/dsd-attachments" || true
 }

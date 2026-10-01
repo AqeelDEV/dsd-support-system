@@ -7,9 +7,10 @@
 # file next to this one (see .env.example). Never reuse these values in a
 # real deployment.
 #
-# Data stores publish uncommon host ports (55432, 56379) so they don't clash
-# with a PostgreSQL or Redis already installed on the machine. Everything is
-# bound to 127.0.0.1 only.
+# Data stores publish uncommon host ports (55432, 56379, 58333) so they
+# don't clash with anything already installed on the machine, and so the
+# tests and a host-run API can reach them. Everything is bound to 127.0.0.1
+# only.
 
 name: dsd-support
 
@@ -61,9 +62,10 @@ services:
       timeout: 3s
       retries: 30
 
-  # S3-compatible object store for attachments (ADR-0001, ADR-0009). It is
-  # reachable only on the compose network; browsers never talk to it. The
+  # S3-compatible object store for attachments (ADR-0001, ADR-0009).
+  # Browsers never talk to it: the API is the only door to the files. The
   # access key becomes its only identity, so anonymous requests are refused.
+  # Its S3 port is published on this machine's loopback for the tests.
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
     command:
@@ -77,6 +79,8 @@ services:
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-dsd-dev-secret-key}
     volumes:
       - seaweedfs-data:/data
+    ports:
+      - 127.0.0.1:${S3_PORT:-58333}:8333
     healthcheck:
       test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8333/healthz]
       interval: 3s
@@ -137,6 +141,9 @@ services:
       # browser's real address there (ADR-0010). Requests from anywhere else,
       # including the host through the published port, are taken as they come.
       TRUST_PROXY: 10.250.73.10,10.250.73.11
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-dsd-dev-access-key}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-dsd-dev-secret-key}
     ports:
       # Published for Swagger UI at http://localhost:4000/api/docs. The web
       # apps reach the API over the compose network.
@@ -147,6 +154,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      seaweedfs:
         condition: service_healthy
     healthcheck:
       <<: *node-healthcheck

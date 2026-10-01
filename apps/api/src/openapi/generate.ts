@@ -21,6 +21,9 @@ const env = parseEnv({
   REDIS_URL: "redis://127.0.0.1:1",
   TRUSTED_ORIGINS: "https://support.dsd.example",
   AUTH_SECRET: "openapi-generation-only-placeholder-secret",
+  S3_ENDPOINT: "http://127.0.0.1:1",
+  S3_ACCESS_KEY_ID: "openapi",
+  S3_SECRET_ACCESS_KEY: "openapi",
 });
 const app = await createApp(env);
 // The committed document describes a production deployment: secure cookies.
