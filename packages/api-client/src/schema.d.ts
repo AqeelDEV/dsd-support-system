@@ -24,6 +24,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/customer/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start registration
+         * @description Takes only an email and always answers 202. The address gets a verification link, or a reminder to sign in if it already has an account. The password is chosen after the link proves the inbox is yours, so nobody can set one for someone else's address.
+         */
+        post: operations["CustomerAuthController_signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/customer/signup/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish registration from the emailed link
+         * @description Sets the first password and display name, verifies the email and signs in. Tickets raised earlier as a guest with this email are already in the account.
+         */
+        post: operations["CustomerAuthController_completeSignup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/customer/guest-access/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a new link to a ticket
+         * @description Always answers 202. If the email and ticket reference match, a fresh access link is emailed.
+         */
+        post: operations["CustomerAuthController_requestGuestLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/customer/guest-access/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open a ticket from an emailed link
+         * @description Exchanges the token from the link's URL fragment for a guest session that can see that one ticket.
+         */
+        post: operations["CustomerAuthController_exchangeGuestLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/customer/logout": {
         parameters: {
             query?: never;
@@ -185,6 +265,33 @@ export interface components {
             /** @description Send this back in the X-CSRF-Token header on every POST, PUT, PATCH and DELETE */
             csrfToken: string;
         };
+        SignupBody: {
+            /**
+             * Format: email
+             * @description Compared case-insensitively, after trimming
+             */
+            email: string;
+        };
+        SignupCompleteBody: {
+            /** @description The token from the emailed link */
+            token: string;
+            displayName: string;
+            /** @description 12 to 128 characters */
+            password: string;
+        };
+        GuestAccessRequestBody: {
+            /**
+             * Format: email
+             * @description Compared case-insensitively, after trimming
+             */
+            email: string;
+            /** @description The ticket reference from an earlier email, like DSD-000123 */
+            reference: string;
+        };
+        GuestAccessExchangeBody: {
+            /** @description The token from the emailed link */
+            token: string;
+        };
         StaffMe_Output: {
             agent: {
                 /** Format: uuid */
@@ -251,6 +358,96 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["LoginBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerMe_Output"];
+                };
+            };
+        };
+    };
+    CustomerAuthController_signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupBody"];
+            };
+        };
+        responses: {
+            /** @description Check your inbox */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerAuthController_completeSignup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupCompleteBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerMe_Output"];
+                };
+            };
+        };
+    };
+    CustomerAuthController_requestGuestLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestAccessRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Check your inbox */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    CustomerAuthController_exchangeGuestLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuestAccessExchangeBody"];
             };
         };
         responses: {

@@ -34,6 +34,124 @@
         ]
       }
     },
+    "/api/v1/auth/customer/signup": {
+      "post": {
+        "description": "Takes only an email and always answers 202. The address gets a verification link, or a reminder to sign in if it already has an account. The password is chosen after the link proves the inbox is yours, so nobody can set one for someone else's address.",
+        "operationId": "CustomerAuthController_signup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Check your inbox"
+          }
+        },
+        "summary": "Start registration",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/customer/signup/complete": {
+      "post": {
+        "description": "Sets the first password and display name, verifies the email and signs in. Tickets raised earlier as a guest with this email are already in the account.",
+        "operationId": "CustomerAuthController_completeSignup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupCompleteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Finish registration from the emailed link",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/customer/guest-access/request": {
+      "post": {
+        "description": "Always answers 202. If the email and ticket reference match, a fresh access link is emailed.",
+        "operationId": "CustomerAuthController_requestGuestLink",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestAccessRequestBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Check your inbox"
+          }
+        },
+        "summary": "Ask for a new link to a ticket",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
+    "/api/v1/auth/customer/guest-access/exchange": {
+      "post": {
+        "description": "Exchanges the token from the link's URL fragment for a guest session that can see that one ticket.",
+        "operationId": "CustomerAuthController_exchangeGuestLink",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuestAccessExchangeBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Open a ticket from an emailed link",
+        "tags": [
+          "Customer sign-in"
+        ]
+      }
+    },
     "/api/v1/auth/customer/logout": {
       "post": {
         "description": "Revokes this session and clears its cookies.",
@@ -283,6 +401,85 @@
           "customer",
           "guestTicketId",
           "csrfToken"
+        ],
+        "additionalProperties": false
+      },
+      "SignupBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Compared case-insensitively, after trimming"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "SignupCompleteBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "The token from the emailed link"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "description": "12 to 128 characters"
+          }
+        },
+        "required": [
+          "token",
+          "displayName",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "GuestAccessRequestBody": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Compared case-insensitively, after trimming"
+          },
+          "reference": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2,8}-\\d{6,}$",
+            "description": "The ticket reference from an earlier email, like DSD-000123"
+          }
+        },
+        "required": [
+          "email",
+          "reference"
+        ],
+        "additionalProperties": false
+      },
+      "GuestAccessExchangeBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "The token from the emailed link"
+          }
+        },
+        "required": [
+          "token"
         ],
         "additionalProperties": false
       },

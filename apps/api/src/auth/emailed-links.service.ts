@@ -1,0 +1,163 @@
+import { Inject, Injectable } from "@nestjs/common";
+import {
+  type GuestAccessRequest,
+  normalizeEmail,
+  PROBLEM_TYPES,
+  type SignupCompleteRequest,
+} from "@dsd/shared";
+
+import { ProblemException } from "../common/problem-details.js";
+import type { Executor } from "../infrastructure/database.js";
+import { DB } from "../infrastructure/tokens.js";
+import { OutboxRepository } from "../modules/outbox/outbox.repository.js";
+import { EmailedLinksRepository } from "./emailed-links.repository.js";
+import { PasswordHasher } from "./password-hasher.js";
+import type { CustomerPrincipal } from "./principal.js";
+import { type ClientInfo, SessionService } from "./sessions/session.service.js";
+import type { SignedIn } from "./sign-in.service.js";
+import { hashToken } from "./tokens.js";
+
+const invalidLink = () =>
+  new ProblemException(
+    400,
+    PROBLEM_TYPES.invalidToken,
+    "This link is invalid, has expired or has already been used. Ask for a new one.",
+  );
+
+/**
+ * Everything a customer does through an emailed link (ADR-0003, sections 6
+ * and 7): email-first sign-up and guest access to one ticket. The API only
+ * records that a link is wanted, as an outbox event; the worker creates the
+ * token when it sends the email, so no raw token is ever stored.
+ */
+@Injectable()
+export class EmailedLinksService {
+  constructor(
+    @Inject(DB) private readonly db: Executor,
+    private readonly links: EmailedLinksRepository,
+    private readonly outbox: OutboxRepository,
+    private readonly hasher: PasswordHasher,
+    private readonly sessions: SessionService,
+  ) {}
+
+  /**
+   * Starts registration. The same answer comes back whether or not the
+   * email has an account; the email itself says which. No password is
+   * accepted here, so nobody can set one for an inbox they don't control
+   * (account pre-hijacking).
+   */
+  async requestSignup(email: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      const customerId = await this.links.findOrCreateCustomer(
+        tx,
+        email.trim(),
+        normalizeEmail(email),
+      );
+      await this.outbox.add(tx, {
+        type: "customer.signup_requested",
+        aggregateType: "customer",
+        aggregateId: customerId,
+        payload: { customerId },
+      });
+    });
+  }
+
+  /**
+   * Finishes registration from the emailed link: the first password, the
+   * verified email and the name go on the customer's existing row, so their
+   * guest tickets are already in the account. Then it signs them in.
+   */
+  async completeSignup(
+    request: SignupCompleteRequest,
+    client: ClientInfo,
+    replacing: string | undefined,
+  ): Promise<SignedIn<CustomerPrincipal>> {
+    // Hashing is slow, so it happens before the transaction opens.
+    const passwordHash = await this.hasher.hash(request.password);
+    if (replacing !== undefined) await this.sessions.revokeToken(replacing);
+    return this.db.transaction(async (tx) => {
+      const token = await this.links.consumeSignupToken(
+        tx,
+        hashToken(request.token),
+      );
+      if (token === undefined) throw invalidLink();
+      // An account that already has a password is never changed this way;
+      // the rollback also leaves the token as it was.
+      const customer = await this.links.completeRegistration(
+        tx,
+        token.customerId,
+        { passwordHash, displayName: request.displayName },
+      );
+      if (customer === undefined) throw invalidLink();
+      const session = await this.sessions.create(
+        { kind: "customer", customerId: customer.id },
+        client,
+        tx,
+      );
+      return {
+        session,
+        principal: {
+          realm: "customer",
+          sessionId: session.id,
+          customer,
+          guestTicketId: null,
+        },
+      };
+    });
+  }
+
+  /**
+   * Asks for a fresh guest link. It answers the same way whether or not the
+   * email and reference match, so it can't be used to find out which
+   * addresses have tickets.
+   */
+  async requestGuestLink(request: GuestAccessRequest): Promise<void> {
+    const ticket = await this.links.ticketOf(
+      normalizeEmail(request.email),
+      request.reference.toUpperCase(),
+    );
+    if (ticket === undefined) return;
+    await this.db.transaction(async (tx) => {
+      await this.outbox.add(tx, {
+        type: "guest_access.requested",
+        aggregateType: "ticket",
+        aggregateId: ticket.ticketId,
+        payload: { ticketId: ticket.ticketId, customerId: ticket.customerId },
+      });
+    });
+  }
+
+  /**
+   * Turns a guest link into a guest session that can see that one ticket.
+   * Opening the link proves the customer owns the address, so the ticket's
+   * contact is marked verified for the agents.
+   */
+  async exchangeGuestLink(
+    token: string,
+    client: ClientInfo,
+    replacing: string | undefined,
+  ): Promise<SignedIn<CustomerPrincipal>> {
+    if (replacing !== undefined) await this.sessions.revokeToken(replacing);
+    return this.db.transaction(async (tx) => {
+      const link = await this.links.useGuestToken(tx, hashToken(token));
+      if (link === undefined) throw invalidLink();
+      await this.links.markContactVerified(tx, link.ticketId);
+      const customer = await this.links.customer(tx, link.customerId);
+      if (customer === undefined) throw invalidLink();
+      const session = await this.sessions.create(
+        { kind: "guest", customerId: customer.id, ticketId: link.ticketId },
+        client,
+        tx,
+      );
+      return {
+        session,
+        principal: {
+          realm: "customer",
+          sessionId: session.id,
+          customer,
+          guestTicketId: link.ticketId,
+        },
+      };
+    });
+  }
+}
