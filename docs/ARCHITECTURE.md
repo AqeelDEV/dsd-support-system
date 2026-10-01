@@ -122,7 +122,7 @@ flowchart TB
 
 ### Route map
 
-This is the shape of the API by realm. It is preliminary until each phase publishes its routes in the OpenAPI document.
+This is the shape of the API by realm. The ticket and attachment routes are built and documented in the OpenAPI document ([ADR-0011](adr/0011-ticket-api.md)); the rest are preliminary until their phase publishes them.
 
 | Realm         | Routes                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -345,7 +345,7 @@ flowchart TB
         migrate["migrate<br/>one-off: migrations, then seed"]
         pg[("postgres<br/>with pgvector")]
         redis[("redis")]
-        s3[("seaweedfs<br/>S3 API, internal only")]
+        s3[("seaweedfs<br/>S3 API, no browser access")]
         mailpit["mailpit<br/>web UI on port 8025"]
     end
     browser --> cweb
@@ -364,7 +364,7 @@ flowchart TB
 ```
 
 - The `migrate` service runs migrations as `dsd_migrator` and seeds demo data, then exits. The API and worker start after it succeeds and connect as `dsd_api` and `dsd_worker`.
-- The object store and the databases are not needed from the browser, so they aren't exposed beyond what development convenience requires.
+- The object store and the databases are not needed from the browser. Their ports are published on the host's loopback interface only, so the tests and a host-run API can reach them, and the object store refuses any request without its access key.
 - The web apps have fixed addresses on a fixed subnet, and the API believes `X-Forwarded-For` from those two addresses only. Each web app replaces the header with the browser's real address before Next.js sees the request ([ADR-0010](adr/0010-client-address-behind-the-web-proxy.md)).
 - Nothing depends on a specific cloud provider (NFR-13). Postgres, Redis, any S3-compatible store and any SMTP server are enough to run it anywhere.
 

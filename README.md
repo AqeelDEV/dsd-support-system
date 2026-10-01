@@ -40,7 +40,7 @@ The stack starts with synthetic demo data. Every demo account's password is `dsd
 
 Two more staff accounts exist for testing the edges: `former.agent@dsd.example` has been deactivated, and `new.starter@dsd.example` was invited but hasn't set a password. Neither can sign in.
 
-The apps' sign-in screens aren't built yet. Until they are, sign in from Swagger UI: open `POST /api/v1/auth/customer/login` or `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests, so `me` and `logout` work from the same page.
+The apps' sign-in screens aren't built yet. Until they are, sign in from Swagger UI: open `POST /api/v1/auth/customer/login` or `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests, so `me`, `logout` and the ticket routes work from the same page. Routes that take files (raising a ticket, replies and internal notes) use a multipart form with the fields first and up to five files in `attachments`.
 
 Customers and staff are separate realms: a customer session is refused by every staff route and the other way round ([ADR-0003](docs/adr/0003-authentication-and-sessions.md), [ADR-0004](docs/adr/0004-authorization-rbac.md)). Because this stack runs on plain `http://localhost`, its cookies leave out the `Secure` flag and the `__Host-` prefix, which browsers refuse there. A real deployment keeps both, and the API refuses to start without them unless every trusted origin is on localhost.
 
@@ -50,11 +50,11 @@ You need Node.js 24 and pnpm 12. The exact versions are pinned in `.nvmrc` and i
 
 ```bash
 pnpm install
-docker compose up --detach --wait postgres redis
+docker compose up --detach --wait postgres redis seaweedfs
 pnpm test
 ```
 
-The tests run against real PostgreSQL and Redis, started from the same `compose.yaml`, because the design depends on database constraints, triggers and privileges that a mock would hide.
+The tests run against real PostgreSQL, Redis and the S3-compatible object store, started from the same `compose.yaml`, because the design depends on database constraints, triggers, privileges and storage access rules that a mock would hide.
 
 | Command                 | What it does                                                           |
 | ----------------------- | ---------------------------------------------------------------------- |
