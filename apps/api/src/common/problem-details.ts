@@ -18,6 +18,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { ZodValidationException } from "nestjs-zod";
 import type { ZodError } from "zod";
 
+import { sqlState } from "./pg-errors.js";
 import { requestPath } from "./url.js";
 
 interface RequestContext {
@@ -90,19 +91,6 @@ function isFastifyClientError(
     typeof exception.code === "string" &&
     exception.code.startsWith("FST_")
   );
-}
-
-/** The PostgreSQL error code on `error`, or on the error it wraps (Drizzle wraps driver errors). */
-function sqlState(error: unknown): string | undefined {
-  let current = error;
-  for (let depth = 0; depth < 3; depth += 1) {
-    if (typeof current !== "object" || current === null) return undefined;
-    if ("code" in current && typeof current.code === "string") {
-      return current.code;
-    }
-    current = "cause" in current ? current.cause : undefined;
-  }
-  return undefined;
 }
 
 /**

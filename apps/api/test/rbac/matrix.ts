@@ -15,6 +15,7 @@ import { randomUUID } from "node:crypto";
 import type { TestDatabase } from "@dsd/db/testing";
 
 import type { NewAgent } from "../support/agents.js";
+import type { NewArticle } from "../support/kb.js";
 import type { NewTicket } from "../support/tickets.js";
 import type { SeededIdentities } from "./actors.js";
 
@@ -48,6 +49,10 @@ export interface Fixtures {
   newAttachment: (ticketId: string) => Promise<string>;
   /** A fresh staff account, so a cell that changes one can't affect the next. */
   newAgent: (agent?: NewAgent) => Promise<string>;
+  /** A fresh knowledge-base article, a draft unless the row says otherwise. */
+  newArticle: (article?: NewArticle) => Promise<{ id: string; slug: string }>;
+  /** A fresh, empty knowledge-base category. */
+  newCategory: () => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
@@ -307,6 +312,146 @@ const AGENT_ROWS: MatrixRow[] = [
   },
 ];
 
+/** A fresh draft's ID as the `:articleId` parameter. */
+const onNewDraft = async ({ newArticle }: Fixtures): Promise<Cell> => ({
+  params: { articleId: (await newArticle()).id },
+});
+
+/**
+ * The knowledge base (FR-4, FR-15). Public routes answer everyone alike;
+ * staff routes need `kb:read` to read, and `kb:write` or `kb:publish`,
+ * which agents lack, to change anything.
+ */
+const KB_ROWS: MatrixRow[] = [
+  {
+    method: "GET",
+    path: "/api/v1/public/kb/articles",
+    rule: "The help centre is public; a session changes nothing",
+    expected: forEveryone(200),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/public/kb/articles/:slug",
+    rule: "A published article is public",
+    expected: forEveryone(200),
+    arrange: async ({ newArticle }) => ({
+      params: { slug: (await newArticle({ status: "published" })).slug },
+    }),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/public/kb/articles/:slug",
+    rule: "A draft is a 404 for everyone, staff sessions included",
+    expected: forEveryone(404),
+    arrange: async ({ newArticle }) => ({
+      params: { slug: (await newArticle()).slug },
+    }),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/public/kb/categories",
+    rule: "Categories are public",
+    expected: forEveryone(200),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/kb/articles",
+    rule: "Every agent reads the knowledge base, drafts included (kb:read)",
+    expected: staffOnly(200),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/kb/articles/:articleId",
+    rule: "A draft in the actors' brand (kb:read)",
+    expected: staffOnly(200),
+    arrange: onNewDraft,
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/kb/articles/:articleId",
+    rule: "An article in a brand none of the actors belong to is a 404",
+    expected: staffOnly(404),
+    arrange: async ({ newArticle, otherBrandId }) => ({
+      params: {
+        articleId: (await newArticle({ brandId: await otherBrandId() })).id,
+      },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/kb/articles",
+    rule: "Writing needs kb:write",
+    expected: managersOnly(201),
+    arrange: () =>
+      Promise.resolve({
+        body: {
+          title: "Written by the matrix",
+          slug: `matrix-${randomUUID()}`,
+          bodyMarkdown: "Text.",
+        },
+      }),
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/staff/kb/articles/:articleId",
+    body: { title: "Edited by the matrix" },
+    rule: "Editing needs kb:write",
+    expected: managersOnly(200),
+    arrange: onNewDraft,
+  },
+  ...(["publish", "archive"] as const).map((action): MatrixRow => ({
+    method: "POST",
+    path: `/api/v1/staff/kb/articles/:articleId/${action}`,
+    rule: `Needs kb:publish (${action})`,
+    expected: managersOnly(200),
+    arrange: onNewDraft,
+  })),
+  {
+    method: "POST",
+    path: "/api/v1/staff/kb/articles/:articleId/unpublish",
+    rule: "Needs kb:publish (unpublish)",
+    expected: managersOnly(200),
+    arrange: async ({ newArticle }) => ({
+      params: { articleId: (await newArticle({ status: "published" })).id },
+    }),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/kb/categories",
+    rule: "Every agent reads the categories (kb:read)",
+    expected: staffOnly(200),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/kb/categories",
+    rule: "Adding a category needs kb:write",
+    expected: managersOnly(201),
+    arrange: () =>
+      Promise.resolve({
+        body: { name: "Matrix category", slug: `matrix-${randomUUID()}` },
+      }),
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/staff/kb/categories/:categoryId",
+    body: { name: "Renamed by the matrix" },
+    rule: "Changing a category needs kb:write",
+    expected: managersOnly(200),
+    arrange: async ({ newCategory }) => ({
+      params: { categoryId: await newCategory() },
+    }),
+  },
+  {
+    method: "DELETE",
+    path: "/api/v1/staff/kb/categories/:categoryId",
+    rule: "Deleting an empty category needs kb:write",
+    expected: managersOnly(204),
+    arrange: async ({ newCategory }) => ({
+      params: { categoryId: await newCategory() },
+    }),
+  },
+];
+
 export const MATRIX: readonly MatrixRow[] = [
   {
     method: "GET",
@@ -503,4 +648,5 @@ export const MATRIX: readonly MatrixRow[] = [
       Promise.resolve({ params: { customerId: seeded.customerId } }),
   },
   ...AGENT_ROWS,
+  ...KB_ROWS,
 ];

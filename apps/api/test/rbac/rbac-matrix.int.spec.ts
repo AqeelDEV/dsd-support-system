@@ -14,6 +14,7 @@ import {
   startAppOn,
 } from "../support/database.js";
 import { FILES } from "../support/files.js";
+import { newArticle, newCategory } from "../support/kb.js";
 import { newTicket, otherBrandId } from "../support/tickets.js";
 import { headersFor, identities } from "./actors.js";
 import {
@@ -79,6 +80,8 @@ describe("RBAC matrix", () => {
         return row?.id ?? "";
       },
       newAgent: async (agent) => (await newAgent(database, agent)).id,
+      newArticle: (article) => newArticle(database, article),
+      newCategory: async () => (await newCategory(database)).id,
     };
   });
 

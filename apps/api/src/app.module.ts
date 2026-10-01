@@ -10,6 +10,7 @@ import type { Env } from "./config/env.js";
 import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
 import { AgentsModule } from "./modules/agents/agents.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
+import { KbModule } from "./modules/kb/kb.module.js";
 import { TicketsModule } from "./modules/tickets/tickets.module.js";
 
 /**
@@ -38,6 +39,7 @@ export class AppModule {
         HealthModule,
         TicketsModule,
         AgentsModule,
+        KbModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },
