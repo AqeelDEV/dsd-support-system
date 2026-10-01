@@ -8,11 +8,11 @@ import {
   type OnApplicationShutdown,
   type OnModuleInit,
 } from "@nestjs/common";
-import { createPool, type Pool } from "@dsd/db";
+import { createDb, createPool, type Database, type Pool } from "@dsd/db";
 import { Redis } from "ioredis";
 
 import type { Env } from "../config/env.js";
-import { DB_POOL, ENV, REDIS } from "./tokens.js";
+import { DB, DB_POOL, ENV, REDIS } from "./tokens.js";
 
 const REDIS_STARTUP_GRACE_MS = 2_000;
 
@@ -102,10 +102,15 @@ export class InfrastructureModule {
             });
           },
         },
+        {
+          provide: DB,
+          useFactory: (pool: Pool): Database => createDb(pool),
+          inject: [DB_POOL],
+        },
         { provide: REDIS, useFactory: () => createRedis(env) },
         ConnectionLifecycle,
       ],
-      exports: [ENV, DB_POOL, REDIS],
+      exports: [ENV, DB_POOL, DB, REDIS],
     };
   }
 }

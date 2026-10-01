@@ -3,6 +3,7 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { createZodValidationPipe, ZodSerializerInterceptor } from "nestjs-zod";
 import type { DestinationStream } from "pino";
 
+import { AuthModule } from "./auth/auth.module.js";
 import { loggingModule } from "./common/logging.js";
 import { ProblemDetailsFilter } from "./common/problem-details.js";
 import type { Env } from "./config/env.js";
@@ -31,6 +32,7 @@ export class AppModule {
       imports: [
         loggingModule(env, options.logDestination),
         InfrastructureModule.forRoot(env),
+        AuthModule,
         HealthModule,
       ],
       providers: [
