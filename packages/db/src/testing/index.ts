@@ -18,3 +18,4 @@ export {
  * the API's auth and RBAC tests sign in as the seeded demo accounts.
  */
 export { DEMO_PASSWORD, seedDatabase, type SeedResult } from "../seed/index.js";
+export { asOwner, createSeededDatabase, idOf, SEED_ANCHOR } from "./seeded.js";
