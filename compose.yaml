@@ -133,6 +133,10 @@ services:
       # Secure cookies and Chrome refuses __Host- ones. The API accepts
       # "false" only when every trusted origin is local (ADR-0003).
       COOKIE_SECURE: "false"
+      # Only the two web apps' X-Forwarded-For is believed, and they put the
+      # browser's real address there (ADR-0010). Requests from anywhere else,
+      # including the host through the published port, are taken as they come.
+      TRUST_PROXY: 10.250.73.10,10.250.73.11
     ports:
       # Published for Swagger UI at http://localhost:4000/api/docs. The web
       # apps reach the API over the compose network.
@@ -176,6 +180,10 @@ services:
       target: customer-web
     environment:
       API_INTERNAL_URL: http://api:4000
+    networks:
+      default:
+        # Fixed, so the API can trust exactly this app (TRUST_PROXY above).
+        ipv4_address: 10.250.73.10
     ports:
       - 127.0.0.1:${CUSTOMER_WEB_PORT:-3000}:3000
     depends_on:
@@ -195,6 +203,9 @@ services:
       target: agent-web
     environment:
       API_INTERNAL_URL: http://api:4000
+    networks:
+      default:
+        ipv4_address: 10.250.73.11
     ports:
       - 127.0.0.1:${AGENT_WEB_PORT:-3001}:3001
     depends_on:
@@ -207,6 +218,14 @@ services:
         - node
         - -e
         - "fetch('http://127.0.0.1:3001/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+
+# A fixed subnet, so the web apps can have the fixed addresses the API
+# trusts. It sits outside Docker's default address pools.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.250.73.0/24
 
 volumes:
   postgres-data:
