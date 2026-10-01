@@ -1,5 +1,6 @@
 import type { Env } from "./config/env.js";
 import type { Container } from "./container.js";
+import { type JobOptions, type Jobs, startJobs } from "./jobs.js";
 import type { Logger } from "./logger.js";
 
 export class StartupError extends Error {
@@ -51,17 +52,19 @@ export interface Worker {
 }
 
 /**
- * The worker process. Job handlers (outbox dispatch, notifications, KB
- * indexing, AI suggestions) are registered here as later phases add them.
- * Until then the worker starts, checks its dependencies and shuts down
- * cleanly, which is what the deployment needs from it now.
+ * The worker process: once PostgreSQL and Redis answer, it starts the
+ * outbox dispatcher, the queue consumers and the nightly clean-up
+ * (`startJobs`). Stopping lets jobs in progress finish, then closes every
+ * connection.
  */
 export function createWorker(
-  env: Pick<Env, "STARTUP_TIMEOUT_SECONDS">,
+  env: Env,
   container: Container,
   logger: Logger,
+  options: JobOptions = {},
 ): Worker {
   let stopping: Promise<void> | undefined;
+  let jobs: Jobs | undefined;
 
   return {
     async start() {
@@ -70,11 +73,13 @@ export function createWorker(
         env.STARTUP_TIMEOUT_SECONDS * 1000,
         logger,
       );
+      jobs = await startJobs(env, container, logger, options);
       logger.info("worker started");
     },
     stop() {
       stopping ??= (async () => {
         logger.info("worker stopping");
+        await jobs?.stop();
         await container.close();
         logger.info("worker stopped");
       })();
