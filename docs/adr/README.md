@@ -18,6 +18,7 @@ This folder records the significant design decisions for the DSD Unified Custome
 | [0010](0010-client-address-behind-the-web-proxy.md)                | The client's address behind the web apps' proxy                    | Accepted |
 | [0011](0011-ticket-api.md)                                         | The ticket API: submissions, files, reading and concurrency        | Accepted |
 | [0012](0012-knowledge-base-canned-responses-reports-and-agents.md) | Knowledge base, canned responses, reports and agent management     | Accepted |
+| [0013](0013-web-apps.md)                                           | The web apps: visual direction, data flow and page security        | Proposed |
 
 ## Conventions
 
