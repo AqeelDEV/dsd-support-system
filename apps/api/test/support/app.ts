@@ -31,6 +31,9 @@ export async function startApp(
   const app = await createApp(parseEnv({ ...TEST_ENV, ...overrides }), options);
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
+  // Nest buffers application logs until listen() flushes them. Tests never
+  // listen, so flush here, or nothing logged through Nest's Logger appears.
+  app.flushLogs();
   return app;
 }
 
