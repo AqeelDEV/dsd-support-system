@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApiProxy, REALM_PREFIXES } from "./proxy";
+import { createApiProxy, REALM_PREFIXES, SEAL_HEADER } from "./proxy";
 
 interface SeenRequest {
   method: string | undefined;
@@ -46,6 +46,8 @@ const APP = "https://support.dsd.example";
 describe("createApiProxy", () => {
   const { server, seen } = startUpstream();
   let proxy: (request: Request) => Promise<Response>;
+  /** What the app's client-address hook would report for the next request. */
+  let clientAddress: string | undefined;
 
   beforeAll(async () => {
     await new Promise<void>((resolve) =>
@@ -55,6 +57,7 @@ describe("createApiProxy", () => {
     proxy = createApiProxy({
       upstream: `http://127.0.0.1:${port}`,
       allowedPrefixes: CUSTOMER_PREFIXES,
+      clientAddress: () => clientAddress,
     });
   });
 
@@ -68,6 +71,7 @@ describe("createApiProxy", () => {
 
   beforeEach(() => {
     seen.length = 0;
+    clientAddress = "198.51.100.23";
   });
 
   it("forwards the method, path, query, body and application headers", async () => {
@@ -78,7 +82,6 @@ describe("createApiProxy", () => {
           "content-type": "application/json",
           cookie: "dsd_customer_session=abc",
           "x-csrf-token": "token-value",
-          "x-forwarded-for": "203.0.113.7",
         },
         body: JSON.stringify({ subject: "Card declined" }),
       }),
@@ -97,7 +100,7 @@ describe("createApiProxy", () => {
       "content-type": "application/json",
       cookie: "dsd_customer_session=abc",
       "x-csrf-token": "token-value",
-      "x-forwarded-for": "203.0.113.7",
+      "x-forwarded-for": "198.51.100.23",
       "x-forwarded-host": "support.dsd.example",
       "x-forwarded-proto": "https",
     });
@@ -117,6 +120,29 @@ describe("createApiProxy", () => {
       "x-forwarded-proto": "https",
       host: expect.stringMatching(/^127\.0\.0\.1:\d+$/) as unknown,
     });
+  });
+
+  it("forwards only the client address the app worked out, never the browser's own claim", async () => {
+    await proxy(
+      new Request(`${APP}/api/v1/public/kb/articles`, {
+        headers: {
+          "x-forwarded-for": "203.0.113.66",
+          [SEAL_HEADER]: "guessed",
+        },
+      }),
+    );
+    expect(seen[0]?.headers["x-forwarded-for"]).toBe("198.51.100.23");
+    expect(seen[0]?.headers[SEAL_HEADER]).toBeUndefined();
+  });
+
+  it("sends no X-Forwarded-For when the app doesn't know the address", async () => {
+    clientAddress = undefined;
+    await proxy(
+      new Request(`${APP}/api/v1/public/kb/articles`, {
+        headers: { "x-forwarded-for": "203.0.113.66" },
+      }),
+    );
+    expect(seen[0]?.headers["x-forwarded-for"]).toBeUndefined();
   });
 
   it("doesn't forward hop-by-hop headers", async () => {

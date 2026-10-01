@@ -1,3 +1,4 @@
+import { forwardedClientAddress } from "@dsd/api-client/client-address";
 import { createApiProxy, REALM_PREFIXES } from "@dsd/api-client/proxy";
 
 /**
@@ -22,6 +23,8 @@ export function apiProxy(request: Request): Promise<Response> {
   proxy ??= createApiProxy({
     upstream: apiUpstream(),
     allowedPrefixes: REALM_PREFIXES.customer,
+    // The address src/instrumentation.ts worked out, never the browser's claim.
+    clientAddress: (incoming) => forwardedClientAddress(incoming.headers),
   });
   return proxy(request);
 }

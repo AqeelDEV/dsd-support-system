@@ -17,6 +17,13 @@
  */
 
 /**
+ * Marks a request whose X-Forwarded-For the web app's client-address hook
+ * wrote (see `./client-address`). Defined here, where it is dropped, so
+ * this module stays free of Node-only imports; it never reaches the API.
+ */
+export const SEAL_HEADER = "x-dsd-client-address-seal";
+
+/**
  * The API route prefixes each app may forward, by realm (ADR-0003). The
  * customer app never forwards staff routes, and the agent app never
  * forwards customer or public ones.
@@ -31,6 +38,13 @@ export interface ApiProxyOptions {
   upstream: string;
   /** Path prefixes this app may forward, each ending in `/`. */
   allowedPrefixes: readonly string[];
+  /**
+   * The browser's address for this request, if the app knows it reliably
+   * (`forwardedClientAddress` from `./client-address`). It becomes the
+   * only X-Forwarded-For the API sees. Without one, the API sees the app's
+   * own address instead.
+   */
+  clientAddress?: (request: Request) => string | undefined;
 }
 
 /** Connection-level headers that must not be forwarded (RFC 9110, section 7.6.1). */
@@ -46,12 +60,18 @@ const HOP_BY_HOP = new Set([
   "upgrade",
 ]);
 
-/** Set by fetch for the upstream request, never copied from the browser. */
+/**
+ * Set here or by fetch for the upstream request, never copied from the
+ * browser. X-Forwarded-For in particular may have been written by the
+ * client itself; only the address from `clientAddress` is forwarded.
+ */
 const REQUEST_HEADERS_TO_DROP = new Set([
   ...HOP_BY_HOP,
   "host",
+  "x-forwarded-for",
   "x-forwarded-host",
   "x-forwarded-proto",
+  SEAL_HEADER,
 ]);
 
 /**
@@ -125,6 +145,8 @@ export function createApiProxy(
       if (!REQUEST_HEADERS_TO_DROP.has(key)) headers.set(key, value);
     });
     headers.set("x-request-id", requestId);
+    const client = options.clientAddress?.(request);
+    if (client !== undefined) headers.set("x-forwarded-for", client);
     headers.set("x-forwarded-host", url.host);
     headers.set("x-forwarded-proto", url.protocol.slice(0, -1));
 

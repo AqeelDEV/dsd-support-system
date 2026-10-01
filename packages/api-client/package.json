@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./client-address": "./src/client-address.ts",
     "./proxy": "./src/proxy.ts"
   },
   "scripts": {
