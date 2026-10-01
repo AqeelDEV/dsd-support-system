@@ -10,7 +10,8 @@ import { permissionSchema } from "./permissions.js";
  * nothing can be smuggled into an endpoint that doesn't expect it.
  */
 
-const email = z.email().max(254).meta({
+/** An email address as people type it; shared with ticket submission. */
+export const emailSchema = z.email().max(254).meta({
   description: "Compared case-insensitively",
   example: "customer@example.com",
 });
@@ -37,11 +38,11 @@ const emailedToken = z
   .describe("The token from the emailed link");
 
 export const loginRequestSchema = z.strictObject({
-  email,
+  email: emailSchema,
   password: currentPassword,
 });
 
-export const signupRequestSchema = z.strictObject({ email });
+export const signupRequestSchema = z.strictObject({ email: emailSchema });
 
 export const signupCompleteRequestSchema = z.strictObject({
   token: emailedToken,
@@ -50,7 +51,7 @@ export const signupCompleteRequestSchema = z.strictObject({
 });
 
 export const guestAccessRequestSchema = z.strictObject({
-  email,
+  email: emailSchema,
   reference: z
     .string()
     .trim()

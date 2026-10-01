@@ -8,3 +8,6 @@ export * from "./domain/events.js";
 export * from "./domain/password.js";
 export * from "./http/health.js";
 export * from "./http/problem-details.js";
+export * from "./tickets/attachments.js";
+export * from "./tickets/requests.js";
+export * from "./tickets/responses.js";

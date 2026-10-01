@@ -34,4 +34,21 @@ describe("problemDetailsSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("carries the allowed statuses on an invalid transition", () => {
+    const problem = {
+      type: "tag:dsd.example,2026:problems/invalid-status-transition",
+      title: "Conflict",
+      status: 409,
+      requestId: "x",
+      allowedTransitions: ["open", "closed"],
+    };
+    expect(problemDetailsSchema.parse(problem)).toEqual(problem);
+    expect(
+      problemDetailsSchema.safeParse({
+        ...problem,
+        allowedTransitions: ["lost"],
+      }).success,
+    ).toBe(false);
+  });
 });
