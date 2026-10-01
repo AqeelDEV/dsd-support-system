@@ -25,10 +25,11 @@ expect_status() {
   if [[ $status == "$expected" ]]; then pass "$description"; else fail "$description (got $status, expected $expected)"; fi
 }
 
-# expect_body <description> <pattern> <url>
+# expect_body <description> <pattern> <url> [curl args...]
 expect_body() {
   local description=$1 pattern=$2 url=$3 body
-  body=$(curl --silent --max-time 10 "$url" || true)
+  shift 3
+  body=$(curl --silent --max-time 10 "$@" "$url" || true)
   if grep --quiet --extended-regexp -- "$pattern" <<<"$body"; then pass "$description"; else fail "$description (body: ${body:0:200})"; fi
 }
 
@@ -50,6 +51,34 @@ expect_status "home page" 200 "$AGENT/"
 expect_status "healthcheck" 200 "$AGENT/healthz"
 expect_body "proxy reaches the API (problem details from the API)" '"detail":"Cannot GET /api/v1/staff/no-such-route"' "$AGENT/api/v1/staff/no-such-route"
 expect_body "proxy refuses customer routes itself" '"detail":"No such API route in this app\."' "$AGENT/api/v1/customer/tickets"
+
+echo "Sign-in"
+# One sign-in per account per run, so the per-email limit (5 in 15 minutes)
+# allows several runs in a row.
+jar=$(mktemp)
+trap 'rm -f "$jar"' EXIT
+sign_in() {
+  local app=$1 realm=$2 email=$3
+  shift 3
+  curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 \
+    --cookie-jar "$jar" --cookie "$jar" "$@" \
+    -X POST "$app/api/v1/auth/$realm/login" \
+    -H "Origin: $app" -H 'Content-Type: application/json' \
+    --data "{\"email\":\"$email\",\"password\":\"dsd-demo-password\"}" || true
+}
+expect_status "a sign-in from another site is refused (CSRF)" 403 "$CUSTOMER/api/v1/auth/customer/login" \
+  -X POST -H 'Origin: https://attacker.example' -H 'Content-Type: application/json' \
+  --data '{"email":"customer@example.com","password":"dsd-demo-password"}'
+# The forged X-Forwarded-For must not become the session's address.
+status=$(sign_in "$CUSTOMER" customer customer@example.com -H 'X-Forwarded-For: 203.0.113.99')
+if [[ $status == 200 ]]; then pass "demo customer signs in through the customer app"; else fail "demo customer signs in through the customer app (got $status)"; fi
+expect_body "the customer session works" '"email":"customer@example.com"' "$CUSTOMER/api/v1/auth/customer/me" --cookie "$jar"
+ip=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc \
+  "SELECT host(ip) FROM sessions WHERE realm = 'customer' ORDER BY created_at DESC LIMIT 1" 2>/dev/null | tr -d '[:space:]' || true)
+if [[ -n $ip && $ip != 203.0.113.99 ]]; then pass "a forged X-Forwarded-For is ignored (session address $ip)"; else fail "a forged X-Forwarded-For is ignored (session address '$ip')"; fi
+status=$(sign_in "$AGENT" staff agent@dsd.example)
+if [[ $status == 200 ]]; then pass "demo agent signs in through the agent app"; else fail "demo agent signs in through the agent app (got $status)"; fi
+expect_body "the staff session works" '"role":"agent"' "$AGENT/api/v1/auth/staff/me" --cookie "$jar"
 
 echo "Database"
 tickets=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc "SELECT count(*) FROM tickets" 2>/dev/null | tr -d '[:space:]' || true)
