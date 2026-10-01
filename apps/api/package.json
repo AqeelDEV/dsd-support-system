@@ -22,6 +22,7 @@
     "@dsd/shared": "workspace:*",
     "@fastify/cookie": "catalog:",
     "@fastify/helmet": "catalog:",
+    "@fastify/multipart": "catalog:",
     "@fastify/static": "catalog:",
     "@nestjs/common": "catalog:",
     "@nestjs/core": "catalog:",

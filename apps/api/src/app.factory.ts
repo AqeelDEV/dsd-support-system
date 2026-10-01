@@ -1,6 +1,8 @@
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
+import multipart from "@fastify/multipart";
 import { NestFactory } from "@nestjs/core";
+import { ATTACHMENT_LIMITS } from "@dsd/shared";
 import {
   FastifyAdapter,
   type NestFastifyApplication,
@@ -75,6 +77,22 @@ export async function createApp(
   });
 
   await app.register(cookie);
+
+  // Only routes that take files read multipart bodies, in their handlers,
+  // after the guards have run (ADR-0011). These limits stop busboy itself;
+  // the handlers check the rest.
+  await app.register(multipart, {
+    limits: {
+      fileSize: ATTACHMENT_LIMITS.maxBytes,
+      files: ATTACHMENT_LIMITS.maxFiles,
+      // Room for a 20,000-character message in UTF-8; longer is refused.
+      fieldSize: 100 * 1024,
+      fields: 10,
+      parts: ATTACHMENT_LIMITS.maxFiles + 10,
+      headerPairs: 100,
+    },
+    throwFileSizeLimit: true,
+  });
 
   app.enableCors({
     origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : false,
