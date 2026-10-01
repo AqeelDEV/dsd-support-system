@@ -13,6 +13,7 @@ import { CsrfGuard } from "./guards/csrf.guard.js";
 import { PermissionsGuard } from "./guards/permissions.guard.js";
 import { RateLimitGuard } from "./guards/rate-limit.guard.js";
 import { PasswordHasher } from "./password-hasher.js";
+import { RateLimitEnforcer } from "./rate-limit/enforcer.js";
 import { RateLimiter } from "./rate-limit/rate-limiter.js";
 import { SessionRepository } from "./sessions/session.repository.js";
 import { SessionService } from "./sessions/session.service.js";
@@ -37,11 +38,18 @@ import { StaffAuthController } from "./staff-auth.controller.js";
     SessionCookies,
     CsrfTokens,
     RateLimiter,
+    RateLimitEnforcer,
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
-  exports: [PasswordHasher, SessionService, SessionCookies, CsrfTokens],
+  exports: [
+    PasswordHasher,
+    SessionService,
+    SessionCookies,
+    CsrfTokens,
+    RateLimitEnforcer,
+  ],
 })
 export class AuthModule {}

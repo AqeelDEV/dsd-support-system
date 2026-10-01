@@ -2,20 +2,14 @@ import {
   type CanActivate,
   type ExecutionContext,
   Injectable,
-  Logger,
   SetMetadata,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { normalizeEmail, PROBLEM_TYPES } from "@dsd/shared";
+import { normalizeEmail } from "@dsd/shared";
 import type { FastifyRequest } from "fastify";
 
-import { ProblemException } from "../../common/problem-details.js";
+import { RateLimitEnforcer } from "../rate-limit/enforcer.js";
 import type { RateLimitPolicy } from "../rate-limit/policies.js";
-import {
-  RateLimiter,
-  RateLimitUnavailableError,
-  type Verdict,
-} from "../rate-limit/rate-limiter.js";
 
 const RATE_LIMIT_METADATA = "dsd:rate-limit";
 
@@ -26,7 +20,8 @@ export const RateLimit = (policy: RateLimitPolicy) =>
 /**
  * The email a request is about, read from the raw body because guards run
  * before validation. If it isn't a string, only the IP limit applies, and
- * validation then rejects the request anyway.
+ * validation then rejects the request anyway. A multipart body isn't read
+ * until the handler runs, so routes that take one count the email later.
  */
 function emailOf(request: FastifyRequest): string | undefined {
   const body = request.body;
@@ -44,11 +39,9 @@ function emailOf(request: FastifyRequest): string | undefined {
  */
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  private readonly logger = new Logger("RateLimit");
-
   constructor(
     private readonly reflector: Reflector,
-    private readonly limiter: RateLimiter,
+    private readonly enforcer: RateLimitEnforcer,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,37 +51,10 @@ export class RateLimitGuard implements CanActivate {
     if (policy === undefined) return true;
 
     const request = context.switchToHttp().getRequest<FastifyRequest>();
-    let verdict: Verdict;
-    try {
-      verdict = await this.limiter.consume(policy, {
-        ip: request.ip,
-        email: emailOf(request),
-      });
-    } catch (error) {
-      if (!(error instanceof RateLimitUnavailableError)) throw error;
-      if (policy.whenRedisIsDown === "allow") {
-        this.logger.warn(
-          `Redis is unavailable; ${policy.name} is not rate limited`,
-        );
-        return true;
-      }
-      this.logger.warn(`Redis is unavailable; refusing ${policy.name}`);
-      throw new ProblemException(
-        503,
-        PROBLEM_TYPES.blank,
-        "This is unavailable for a moment. Try again shortly.",
-        { "retry-after": "30" },
-      );
-    }
-
-    if (!verdict.allowed) {
-      throw new ProblemException(
-        429,
-        PROBLEM_TYPES.rateLimited,
-        "Too many attempts. Wait a while before trying again.",
-        { "retry-after": String(verdict.retryAfterSeconds) },
-      );
-    }
+    await this.enforcer.enforce(policy, {
+      ip: request.ip,
+      email: emailOf(request),
+    });
     return true;
   }
 }

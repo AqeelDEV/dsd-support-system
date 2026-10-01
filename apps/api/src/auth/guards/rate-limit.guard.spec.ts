@@ -5,6 +5,7 @@ import type { FastifyRequest } from "fastify";
 import { describe, expect, it, vi } from "vitest";
 
 import { ProblemException } from "../../common/problem-details.js";
+import { RateLimitEnforcer } from "../rate-limit/enforcer.js";
 import { RATE_LIMITS, type RateLimitPolicy } from "../rate-limit/policies.js";
 import {
   type RateLimiter,
@@ -39,7 +40,7 @@ function setup(consume: () => Promise<Verdict>) {
   const limiter = { consume: vi.fn(consume) };
   const guard = new RateLimitGuard(
     new Reflector(),
-    limiter as unknown as RateLimiter,
+    new RateLimitEnforcer(limiter as unknown as RateLimiter),
   );
   const run = (handler: keyof Routes, body: unknown = {}) => {
     const request = { ip: "203.0.113.7", body } as unknown as FastifyRequest;
