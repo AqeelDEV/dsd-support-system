@@ -392,6 +392,29 @@ export class TicketsRepository {
     return row;
   }
 
+  /**
+   * Locks the `open` and `pending_customer` tickets assigned to `agentId`,
+   * in every brand, for unassigning them when the agent is deactivated
+   * (ADR-0007, section 5). Tickets are locked in ID order, the same order
+   * whichever request takes them, so two such requests can't deadlock.
+   */
+  async lockOpenAssignedTo(
+    executor: Executor,
+    agentId: string,
+  ): Promise<{ id: string; assigneeAgentId: string | null }[]> {
+    return executor
+      .select({ id: tickets.id, assigneeAgentId: tickets.assigneeAgentId })
+      .from(tickets)
+      .where(
+        and(
+          eq(tickets.assigneeAgentId, agentId),
+          inArray(tickets.status, ["open", "pending_customer"]),
+        ),
+      )
+      .orderBy(asc(tickets.id))
+      .for("update");
+  }
+
   /** Whether the ticket is in one of the agent's brands, without locking it. */
   async visibleToStaff(
     executor: Executor,
@@ -456,7 +479,11 @@ export class TicketsRepository {
           eq(agentBrandMemberships.brandId, brandId),
         ),
       )
-      .where(and(eq(agents.id, agentId), isNull(agents.deactivatedAt)));
+      .where(and(eq(agents.id, agentId), isNull(agents.deactivatedAt)))
+      // Holds the agent's row until the assignment commits, so a
+      // deactivation or role change running at the same moment waits for
+      // it, and then finds and unassigns this ticket too.
+      .for("share", { of: agents });
     return row;
   }
 

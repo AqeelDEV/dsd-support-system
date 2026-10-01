@@ -8,6 +8,7 @@ import { loggingModule } from "./common/logging.js";
 import { ProblemDetailsFilter } from "./common/problem-details.js";
 import type { Env } from "./config/env.js";
 import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
+import { AgentsModule } from "./modules/agents/agents.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { TicketsModule } from "./modules/tickets/tickets.module.js";
 
@@ -36,6 +37,7 @@ export class AppModule {
         AuthModule,
         HealthModule,
         TicketsModule,
+        AgentsModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },

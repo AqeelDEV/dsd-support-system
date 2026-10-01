@@ -125,4 +125,26 @@ export class SessionRepository {
         and(eq(sessions.tokenHash, tokenHash), isNull(sessions.revokedAt)),
       );
   }
+
+  /**
+   * Revokes every live session of one identity: a role change,
+   * deactivation or password reset applies on the very next request
+   * (ADR-0003, section 2). Runs in the caller's transaction.
+   */
+  async revokeAllFor(
+    executor: Executor,
+    identity: { agentId: string } | { customerId: string },
+  ): Promise<void> {
+    await executor
+      .update(sessions)
+      .set({ revokedAt: sql`now()` })
+      .where(
+        and(
+          "agentId" in identity
+            ? eq(sessions.agentId, identity.agentId)
+            : eq(sessions.customerId, identity.customerId),
+          isNull(sessions.revokedAt),
+        ),
+      );
+  }
 }

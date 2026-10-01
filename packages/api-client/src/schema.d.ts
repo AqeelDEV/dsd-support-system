@@ -585,6 +585,131 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List colleagues
+         * @description Staff who share a brand with you, by name, with what you may do to each (`allowedActions`, `grantableRoles`).
+         */
+        get: operations["AgentsController_list"];
+        put?: never;
+        /**
+         * Invite an agent
+         * @description Creates the account without a password, in your brands, and emails an invite link that is valid for 72 hours. You can give any role up to your own.
+         */
+        post: operations["AgentsController_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/agents/{agentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One colleague */
+        get: operations["AgentsController_view"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rename a colleague
+         * @description Supervisors manage agents; admins manage everyone else. Nobody manages their own account, and no change may leave the system without an active admin.
+         */
+        patch: operations["AgentsController_update"];
+        trace?: never;
+    };
+    "/api/v1/staff/agents/{agentId}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a colleague's role
+         * @description Supervisors manage agents; admins manage everyone else. Nobody manages their own account, and no change may leave the system without an active admin. The colleague is signed out everywhere, so the new role applies at once.
+         */
+        patch: operations["AgentsController_changeRole"];
+        trace?: never;
+    };
+    "/api/v1/staff/agents/{agentId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate a colleague
+         * @description Supervisors manage agents; admins manage everyone else. Nobody manages their own account, and no change may leave the system without an active admin. They are signed out everywhere, can't sign in again, and their open and pending tickets go back to the queue.
+         */
+        post: operations["AgentsController_deactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/agents/{agentId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reactivate a colleague
+         * @description Supervisors manage agents; admins manage everyone else. Nobody manages their own account, and no change may leave the system without an active admin. Tickets unassigned when they were deactivated stay in the queue.
+         */
+        post: operations["AgentsController_reactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/agents/{agentId}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send the invite again
+         * @description For an active colleague who hasn't set a password yet, for example because the first link expired.
+         */
+        post: operations["AgentsController_resendInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -993,6 +1118,97 @@ export interface components {
                 /** @description Pass as `cursor` for the next page; null on the last page */
                 nextCursor: string | null;
             };
+        };
+        AgentPage_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                email: string;
+                displayName: string;
+                /** @enum {string} */
+                role: "agent" | "supervisor" | "admin";
+                /**
+                 * @description `invited` until they set a password from the emailed invite
+                 * @enum {string}
+                 */
+                status: "active" | "invited" | "deactivated";
+                brands: {
+                    /** Format: uuid */
+                    id: string;
+                    slug: string;
+                    name: string;
+                }[];
+                lastLoginAt: string | null;
+                deactivatedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                allowedActions: {
+                    edit: boolean;
+                    changeRole: boolean;
+                    deactivate: boolean;
+                    reactivate: boolean;
+                    resendInvite: boolean;
+                };
+                /** @description The roles you may give this colleague now; empty if none */
+                grantableRoles: ("agent" | "supervisor" | "admin")[];
+            }[];
+            /** @description Pass as `cursor` for the next page; null on the last page */
+            nextCursor: string[];
+        };
+        AgentView_Output: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            displayName: string;
+            /** @enum {string} */
+            role: "agent" | "supervisor" | "admin";
+            /**
+             * @description `invited` until they set a password from the emailed invite
+             * @enum {string}
+             */
+            status: "active" | "invited" | "deactivated";
+            brands: {
+                /** Format: uuid */
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+            lastLoginAt: string | null;
+            deactivatedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            allowedActions: {
+                edit: boolean;
+                changeRole: boolean;
+                deactivate: boolean;
+                reactivate: boolean;
+                resendInvite: boolean;
+            };
+            /** @description The roles you may give this colleague now; empty if none */
+            grantableRoles: ("agent" | "supervisor" | "admin")[];
+        };
+        AgentInvite: {
+            /**
+             * Format: email
+             * @description Compared case-insensitively
+             * @example customer@example.com
+             */
+            email: string;
+            /** @description How colleagues and customers see them */
+            displayName: string;
+            /**
+             * @description Up to and including your own rank: only an admin can invite an admin
+             * @enum {string}
+             */
+            role: "agent" | "supervisor" | "admin";
+        };
+        AgentUpdate: {
+            /** @description How colleagues and customers see them */
+            displayName: string;
+        };
+        AgentRoleChange: {
+            /** @enum {string} */
+            role: "agent" | "supervisor" | "admin";
         };
         ProblemDetails: {
             /** @description Problem type URI; `about:blank` when the HTTP status says it all */
@@ -2875,6 +3091,484 @@ export interface operations {
             };
             /** @description No such customer in your brands */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_list: {
+        parameters: {
+            query?: {
+                /** @description `active`, `invited` (no password yet) or `deactivated`; all by default */
+                status?: "active" | "invited" | "deactivated";
+                role?: "agent" | "supervisor" | "admin";
+                /** @description Items per page, 1 to 100 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentPage_Output"];
+                };
+            };
+            /** @description A filter or the cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `user:read` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentInvite"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description The body is invalid (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `user:manage`, or the role is above your own
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description A staff account with that email exists (`already-exists`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `user:read` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such agent in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentUpdate"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description The body is invalid (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `user:manage`, or the rank rules forbid it
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such agent in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_changeRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentRoleChange"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description Not a role (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `user:manage`, or the rank rules forbid it
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such agent in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description They are the last active admin (`last-admin`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_deactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `user:manage`, or the rank rules forbid it
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such agent in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description They are the last active admin (`last-admin`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_reactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `user:manage`, or the rank rules forbid it
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such agent in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_resendInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentView_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing `user:manage`, or the rank rules forbid it
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such agent in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description They already have a password, or are deactivated */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

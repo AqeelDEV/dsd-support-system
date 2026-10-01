@@ -138,6 +138,14 @@ export class SessionService {
     return this.sessions.revoke(sessionId);
   }
 
+  /** Signs one identity out everywhere, inside the caller's transaction. */
+  revokeAllFor(
+    executor: Executor,
+    identity: { agentId: string } | { customerId: string },
+  ): Promise<void> {
+    return this.sessions.revokeAllFor(executor, identity);
+  }
+
   /** Revokes whatever session `token` names, if any. Used when a browser signs in again. */
   revokeToken(token: string): Promise<void> {
     return this.sessions.revokeByTokenHash(hashToken(token));

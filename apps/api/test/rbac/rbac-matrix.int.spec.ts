@@ -6,6 +6,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ObjectStore } from "../../src/infrastructure/object-store.js";
+import { newAgent } from "../support/agents.js";
 import { ORIGIN } from "../support/auth.js";
 import {
   asOwner,
@@ -77,6 +78,7 @@ describe("RBAC matrix", () => {
         );
         return row?.id ?? "";
       },
+      newAgent: async (agent) => (await newAgent(database, agent)).id,
     };
   });
 

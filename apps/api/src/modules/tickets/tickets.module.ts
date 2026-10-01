@@ -41,5 +41,8 @@ import { TicketsRepository } from "./tickets.repository.js";
     TicketMessagesService,
     TicketUpdatesService,
   ],
+  // Agent management unassigns a deactivated agent's tickets through the
+  // same writes, so each one gets its history (ADR-0007, section 5).
+  exports: [TicketChanges, TicketsRepository],
 })
 export class TicketsModule {}

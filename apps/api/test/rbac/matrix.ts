@@ -10,8 +10,11 @@
  * have several rows, for example one per kind of resource it acts on.
  */
 
+import { randomUUID } from "node:crypto";
+
 import type { TestDatabase } from "@dsd/db/testing";
 
+import type { NewAgent } from "../support/agents.js";
 import type { NewTicket } from "../support/tickets.js";
 import type { SeededIdentities } from "./actors.js";
 
@@ -43,6 +46,8 @@ export interface Fixtures {
   otherBrandId: () => Promise<string>;
   /** A file on the ticket, stored for real, so a download can succeed. */
   newAttachment: (ticketId: string) => Promise<string>;
+  /** A fresh staff account, so a cell that changes one can't affect the next. */
+  newAgent: (agent?: NewAgent) => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
@@ -192,6 +197,115 @@ const withFile = (rows: MatrixRow[]): MatrixRow[] =>
       };
     },
   }));
+
+/** Managers, the staff with `user:read` and `user:manage`, get `status`; agents 403. */
+const managersOnly = (status: number): Record<Actor, number> => ({
+  ...staffOnly(status),
+  agent: 403,
+});
+
+/**
+ * Agent management (FR-14). Each cell acts on a fresh colleague of the
+ * agent rank, which both supervisors and admins outrank, so the rows test
+ * the permission boundary; the rank rules have their own tests.
+ */
+const AGENT_ROWS: MatrixRow[] = [
+  {
+    method: "GET",
+    path: "/api/v1/staff/agents",
+    rule: "Listing colleagues needs user:read (supervisors, admins)",
+    expected: managersOnly(200),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/agents/:agentId",
+    rule: "One colleague needs user:read",
+    expected: managersOnly(200),
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent() },
+    }),
+  },
+  {
+    method: "GET",
+    path: "/api/v1/staff/agents/:agentId",
+    rule: "A colleague in a brand none of the actors belong to is a 404, for managers too",
+    expected: managersOnly(404),
+    arrange: async ({ newAgent, otherBrandId }) => ({
+      params: { agentId: await newAgent({ brandIds: [await otherBrandId()] }) },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/agents",
+    rule: "Inviting needs user:manage",
+    expected: managersOnly(201),
+    arrange: () =>
+      Promise.resolve({
+        body: {
+          email: `matrix-${randomUUID()}@dsd.example`,
+          displayName: "Matrix Invite",
+          role: "agent",
+        },
+      }),
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/staff/agents/:agentId",
+    body: { displayName: "Renamed by the matrix" },
+    rule: "Renaming needs user:manage",
+    expected: managersOnly(200),
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent() },
+    }),
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/staff/agents/:agentId/role",
+    body: { role: "supervisor" },
+    rule: "Changing a role needs user:manage",
+    expected: managersOnly(200),
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent() },
+    }),
+  },
+  {
+    method: "PATCH",
+    path: "/api/v1/staff/agents/:agentId/role",
+    body: { role: "agent" },
+    rule: "A supervisor's role: only an admin outranks them (rank rules)",
+    expected: { ...managersOnly(200), supervisor: 403 },
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent({ role: "supervisor" }) },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/agents/:agentId/deactivate",
+    rule: "Deactivating needs user:manage",
+    expected: managersOnly(200),
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent() },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/agents/:agentId/reactivate",
+    rule: "Reactivating needs user:manage",
+    expected: managersOnly(200),
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent({ active: false }) },
+    }),
+  },
+  {
+    method: "POST",
+    path: "/api/v1/staff/agents/:agentId/invite",
+    rule: "Sending an invite again needs user:manage",
+    expected: managersOnly(202),
+    arrange: async ({ newAgent }) => ({
+      params: { agentId: await newAgent({ hasPassword: false }) },
+    }),
+  },
+];
 
 export const MATRIX: readonly MatrixRow[] = [
   {
@@ -388,4 +502,5 @@ export const MATRIX: readonly MatrixRow[] = [
     arrange: ({ seeded }) =>
       Promise.resolve({ params: { customerId: seeded.customerId } }),
   },
+  ...AGENT_ROWS,
 ];

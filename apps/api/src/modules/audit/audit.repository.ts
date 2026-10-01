@@ -40,8 +40,9 @@ export interface ChangeContext {
 
 /** One change, with only the fields that changed (ADR-0008, section 3). */
 export interface AuditEntry {
-  ticketId: string;
-  entityType: "ticket" | "message" | "attachment";
+  /** The ticket, or null for history that isn't about one, such as a role change. */
+  ticketId: string | null;
+  entityType: "ticket" | "message" | "attachment" | "agent" | "kb_article";
   entityId: string;
   action: AuditAction;
   before: Record<string, unknown> | null;
