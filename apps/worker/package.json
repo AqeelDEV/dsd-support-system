@@ -13,18 +13,24 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\""
+    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\"",
+    "dead-letter": "node --env-file-if-exists=../../.env dist/cli/dead-letter.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
     "@dsd/db": "workspace:*",
     "@dsd/shared": "workspace:*",
+    "bullmq": "catalog:",
+    "drizzle-orm": "catalog:",
     "ioredis": "catalog:",
+    "nodemailer": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@dsd/config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/nodemailer": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
