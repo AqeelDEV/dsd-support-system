@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-01 (see [Amendments](#amendments))
 - Requirements: FR-5, FR-18, FR-20, FR-21, NFR-2, NFR-4, NFR-10
 
 ## Context
@@ -121,3 +122,9 @@ interface NotificationChannel {
 - Integration, content: emails read through the Mailpit API contain the reply text and never contain internal-note text.
 - Unit: template escaping, channel selection, retry settings per queue.
 - End to end: an agent's reply produces an email visible in Mailpit.
+
+## Amendments
+
+### 2026-10-01, Phase 5
+
+1. **Payloads for the events Phase 5 writes (section 2).** `agent.invited { agentId }`, written when an agent is invited and when an invite is sent again; `kb.article_published { articleId, version }`, the version to index; and `kb.article_unpublished { articleId }`, written when a published article is unpublished or archived. Archiving a draft writes none, because nothing public changed ([ADR-0012](0012-knowledge-base-canned-responses-reports-and-agents.md), section 1).

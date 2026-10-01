@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
-- Amended: 2026-10-01 (see [Amendments](#amendments))
+- Amended: 2026-10-01, twice (see [Amendments](#amendments))
 - Requirements: FR-1, FR-3, FR-7, FR-8, FR-9, FR-11, FR-13
 
 ## Context
@@ -148,3 +148,8 @@ All metrics use calendar time; business hours are not modelled in v1. They are c
    - A ticket can be escalated again. `escalated_at` and `escalated_by_agent_id` then record the latest escalation, and the audit trail keeps every one.
    - Closed tickets can't be escalated (item 1).
 5. **Unassigning a deactivated agent's tickets (section 5)** arrives with agent management in Phase 5, which is where agents are deactivated.
+
+### 2026-10-01, Phase 5
+
+6. **Deactivation unassigns (section 5)** is built. It covers the agent's `open` and `pending_customer` tickets in every brand, each with its own audit and outbox event, and an assignment to the agent that is in flight when the deactivation starts is waited for and unassigned too ([ADR-0012](0012-knowledge-base-canned-responses-reports-and-agents.md), section 7).
+7. **Reporting details (section 9).** Ranges are whole days in `REPORTING_TIMEZONE`, both ends included, at most 366 days; weeks start on Monday; "awaiting first response" leaves out tickets closed without a reply; and "resolved while assigned" counts the ticket's current holder, which for finished work is final because closed tickets can't be reassigned. Details in [ADR-0012](0012-knowledge-base-canned-responses-reports-and-agents.md), section 6.

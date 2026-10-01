@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
-- Amended: 2026-10-01 (see [Amendments](#amendments))
+- Amended: 2026-10-01, twice (see [Amendments](#amendments))
 - Requirements: FR-11, FR-14, FR-17, NFR-6, NFR-11
 
 ## Context
@@ -113,3 +113,9 @@ Each agent has brand memberships (`agent_brand_memberships`), and every staff qu
 
 1. **More startup checks (section 2, layer 1).** Besides a route that declares neither `@Public()` nor `@Realm()`, the API refuses to start for a route outside `/api/v1` (other than `/health`, `/ready` and the Swagger UI pages), a route whose realm or `@Public()` contradicts its path prefix (ADR-0003, section 1), a route under `/api/v1/staff/` that requires no permission, and permissions on a route that only customers can reach. Staff work is therefore denied by default at the permission layer too. The checks read every route Fastify registers, not just Nest controllers.
 2. **What Phase 3 delivers.** The permission map, all four global guards, the RBAC matrix and route coverage for every route that exists so far. The rank rules (section 4) and revoking an agent's sessions on a role change arrive with agent management in Phase 5, and brand scope (section 6) with the ticket queries in Phase 4.
+
+### 2026-10-01, Phase 5
+
+1. **Admins manage other admins (section 4).** As first written, a manager acts only on colleagues ranked below them, yet the same section forbids demoting or deactivating "the last active admin", which that rule could never reach: no admin outranks another, so no admin could ever be demoted or deactivated by anyone. The rule is now: supervisors manage colleagues ranked below them; admins, the top rank, manage everyone else, other admins included. Nobody manages their own account, roles can still be given only up to the manager's own rank, and no change may leave the system without an active admin (409 `last-admin`).
+2. **How the last-admin rule holds.** Agent-management changes run one at a time under a transaction-scoped advisory lock, and each re-reads the manager's own row under lock, so a manager demoted a moment ago acts with their new role. Two admins demoting each other at the same moment therefore get one success and one refusal, never zero admins. Because a manager can't act on themselves and is an active admin whenever they act on another admin, the 409 can't be reached through the API today; it is kept as a stated invariant and unit-tested ([ADR-0012](0012-knowledge-base-canned-responses-reports-and-agents.md), section 7).
+3. **What Phase 5 delivers.** The rank rules, invites (and sending one again), renaming, role changes and deactivation that revoke the colleague's sessions at once, deactivation unassigning their open work, and reactivation. Responses carry `allowedActions` and `grantableRoles` for the viewer (section 5). Agent management is brand-scoped like everything else (section 6): a colleague who shares no brand with the manager is a 404.
