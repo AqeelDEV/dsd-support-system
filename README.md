@@ -47,6 +47,12 @@ Beyond tickets, the API serves:
 - **The help centre**, without signing in: `GET /api/v1/public/kb/articles` browses the published articles, and with `q` searches them (for example `q=refund`), each result with a snippet showing where the words matched.
 - **For staff:** knowledge-base authoring under `/api/v1/staff/kb`, canned responses filled in for a ticket under `/api/v1/staff/canned-responses`, reports under `/api/v1/staff/reports` (volume, response times, tickets per agent) and agent management under `/api/v1/staff/agents`. Agents can read and use these; writing, publishing, reporting and managing people need the supervisor or admin account.
 
+### Emails
+
+Every email the system sends goes to Mailpit, a local mail catcher: open http://localhost:8025 to read them. Raise a ticket as a guest and the acknowledgement arrives with a link that opens it; an agent's reply, a status change, sign-up, a password reset and an agent invite each send theirs. The links point at the customer and agent apps, whose pages for them arrive with the apps; until then, the token in a link can be posted to its API route from Swagger UI (for example `POST /api/v1/auth/customer/guest-access/exchange`).
+
+Emails are sent by the worker, never by a request: if the mail server is down, tickets and replies still go through and the emails follow once it is back. A job that keeps failing ends up in a dead-letter queue: `docker compose exec worker node dist/cli/dead-letter.js list` shows it and `... replay --all` sends it again.
+
 Customers and staff are separate realms: a customer session is refused by every staff route and the other way round ([ADR-0003](docs/adr/0003-authentication-and-sessions.md), [ADR-0004](docs/adr/0004-authorization-rbac.md)). Because this stack runs on plain `http://localhost`, its cookies leave out the `Secure` flag and the `__Host-` prefix, which browsers refuse there. A real deployment keeps both, and the API refuses to start without them unless every trusted origin is on localhost.
 
 ## Development
