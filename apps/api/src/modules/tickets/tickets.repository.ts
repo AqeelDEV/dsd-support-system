@@ -28,7 +28,7 @@ import {
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Executor } from "../../infrastructure/database.js";
-import type { Position } from "./domain/cursor.js";
+import type { Position } from "../../common/cursor.js";
 import type { TimestampChange } from "./domain/ticket-status.js";
 
 /** The tickets a customer session may see: the customer's own, or a guest's one. */

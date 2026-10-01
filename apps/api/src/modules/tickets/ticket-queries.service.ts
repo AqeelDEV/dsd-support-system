@@ -29,7 +29,7 @@ import {
   encodeCursor,
   exactTimestamp,
   pageFrom,
-} from "./domain/cursor.js";
+} from "../../common/cursor.js";
 import type { StaffView } from "./domain/ticket-actions.js";
 import { MessagesRepository } from "./messages.repository.js";
 import {
