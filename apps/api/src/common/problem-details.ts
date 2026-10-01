@@ -29,11 +29,15 @@ const title = (status: number) => STATUS_CODES[status] ?? "Error";
 
 type ProblemType = (typeof PROBLEM_TYPES)[keyof typeof PROBLEM_TYPES];
 
+/** Extension members a problem type may add (RFC 9457, section 3.2). */
+export type ProblemExtensions = Pick<ProblemDetails, "allowedTransitions">;
+
 /**
  * An error with its own problem type, for cases a client handles
  * differently from a plain status: a rejected CSRF token means "fetch a
  * fresh one", a rate limit means "wait". Extra headers such as
- * `Retry-After` travel with it.
+ * `Retry-After` travel with it, and so do extension members such as the
+ * statuses a ticket can still move to.
  */
 export class ProblemException extends HttpException {
   constructor(
@@ -41,6 +45,7 @@ export class ProblemException extends HttpException {
     readonly problemType: ProblemType,
     detail: string,
     readonly headers: Readonly<Record<string, string>> = {},
+    readonly extensions: ProblemExtensions = {},
   ) {
     super(detail, status);
   }
@@ -126,6 +131,7 @@ export function toProblem(
       status,
       ...(detail === undefined ? {} : { detail }),
       ...base,
+      ...(exception instanceof ProblemException ? exception.extensions : {}),
     };
   }
 

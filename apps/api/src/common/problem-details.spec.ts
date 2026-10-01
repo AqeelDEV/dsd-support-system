@@ -55,6 +55,19 @@ describe("toProblem", () => {
     );
   });
 
+  it("adds a problem exception's extension members", () => {
+    const conflict = new ProblemException(
+      409,
+      PROBLEM_TYPES.invalidStatusTransition,
+      "A closed ticket can't change status.",
+      {},
+      { allowedTransitions: [] },
+    );
+    const problem = toProblem(conflict, context);
+    expect(problem).toMatchObject({ status: 409, allowedTransitions: [] });
+    expect(problemDetailsSchema.parse(problem)).toEqual(problem);
+  });
+
   it("maps validation failures to 400 with one entry per field", () => {
     const schema = z.object({
       subject: z.string().min(1),
