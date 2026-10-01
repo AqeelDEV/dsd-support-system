@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
+  customerReplyFieldsSchema,
   customerTicketFieldsSchema,
   customerTicketSchema,
   customerTicketSummarySchema,
@@ -31,6 +32,7 @@ import {
 } from "../../openapi/decorators.js";
 import { withSubmission } from "../attachments/multipart.js";
 import { TicketParams } from "./params.js";
+import { TicketMessagesService } from "./ticket-messages.service.js";
 import { TicketQueriesService } from "./ticket-queries.service.js";
 import { TicketSubmissionService } from "./ticket-submission.service.js";
 
@@ -53,6 +55,7 @@ export class CustomerTicketsController {
   constructor(
     private readonly submission: TicketSubmissionService,
     private readonly queries: TicketQueriesService,
+    private readonly messages: TicketMessagesService,
   ) {}
 
   @Get()
@@ -101,6 +104,34 @@ export class CustomerTicketsController {
   ) {
     return withSubmission(request, reply, customerTicketFieldsSchema, (form) =>
       this.submission.submitAsCustomer(customerOf(request), form, request.id),
+    );
+  }
+
+  @Post(":ticketId/messages")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiSession("customer", { changesState: true })
+  @ApiOperation({
+    summary: "Reply to one of my tickets",
+    description:
+      "Adds a public reply with up to five files. A ticket waiting on the customer, or resolved, reopens. A closed ticket refuses replies with 409 (`ticket-closed`): raise a new ticket instead. Answers with the ticket as it now stands.",
+  })
+  @ApiMultipartBody(customerReplyFieldsSchema)
+  @ApiProblem(400, "The body is missing or invalid (`validation-error`)")
+  @ApiProblem(404, "No such ticket, or not yours")
+  @ApiProblem(409, "The ticket is closed (`ticket-closed`)")
+  @ZodResponse({ status: HttpStatus.CREATED, type: CustomerTicket })
+  reply(
+    @Param() params: TicketParams,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return withSubmission(request, reply, customerReplyFieldsSchema, (form) =>
+      this.messages.customerReply(
+        customerOf(request),
+        params.ticketId,
+        form,
+        request.id,
+      ),
     );
   }
 }

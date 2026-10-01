@@ -219,4 +219,12 @@ export const MATRIX: readonly MatrixRow[] = [
     { method: "GET", path: "/api/v1/customer/tickets/:ticketId" },
     200,
   ),
+  ...onCustomerTickets(
+    {
+      method: "POST",
+      path: "/api/v1/customer/tickets/:ticketId/messages",
+      form: { body: "A reply sent by the RBAC matrix" },
+    },
+    201,
+  ),
 ];

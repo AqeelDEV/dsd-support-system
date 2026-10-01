@@ -60,6 +60,15 @@ export async function signIn(
     .set("origin", ORIGIN)
     .set("user-agent", "vitest-browser")
     .send({ email, password });
+  return { response, ...credentialsFrom(app, realm, response) };
+}
+
+/** The session a response's Set-Cookie headers started, as a browser would keep it. */
+export function credentialsFrom(
+  app: NestFastifyApplication,
+  realm: SessionRealm,
+  response: request.Response,
+): { setCookies: string[]; credentials: Credentials } {
   const names = app.get(SessionCookies).names(realm);
   const setCookies = ([] as string[]).concat(
     response.headers["set-cookie"] ?? [],
@@ -72,13 +81,12 @@ export async function signIn(
   const token = value(names.session) ?? "";
   const csrfToken = value(names.csrf) ?? "";
   return {
-    response,
     setCookies,
     credentials: {
       token,
       csrfToken,
       cookie: `${names.session}=${token}; ${names.csrf}=${csrfToken}`,
-    } satisfies Credentials,
+    },
   };
 }
 

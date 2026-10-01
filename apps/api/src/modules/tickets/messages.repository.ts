@@ -4,6 +4,7 @@ import type { MessageVisibility, ParticipantType } from "@dsd/shared";
 import { and, asc, eq } from "drizzle-orm";
 
 import type { Executor } from "../../infrastructure/database.js";
+import type { Actor } from "../audit/audit.repository.js";
 
 export interface ThreadMessage {
   id: string;
@@ -22,6 +23,31 @@ export interface ThreadMessage {
  */
 @Injectable()
 export class MessagesRepository {
+  async insert(
+    executor: Executor,
+    message: {
+      ticketId: string;
+      author: Actor;
+      visibility: MessageVisibility;
+      body: string;
+    },
+  ): Promise<string> {
+    const { author } = message;
+    const [row] = await executor
+      .insert(messages)
+      .values({
+        ticketId: message.ticketId,
+        authorType: author.type,
+        authorCustomerId: author.type === "customer" ? author.customerId : null,
+        authorAgentId: author.type === "agent" ? author.agentId : null,
+        visibility: message.visibility,
+        body: message.body,
+      })
+      .returning({ id: messages.id });
+    if (row === undefined) throw new Error("message insert returned nothing");
+    return row.id;
+  }
+
   /**
    * The thread, oldest first. With `public`, internal notes are filtered
    * out in the query itself (FR-10), so a customer response can't hold one.

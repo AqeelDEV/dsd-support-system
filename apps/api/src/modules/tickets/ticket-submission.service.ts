@@ -19,7 +19,6 @@ import {
   AttachmentIntake,
   type StoredFile,
 } from "../attachments/attachment-intake.js";
-import { AttachmentsRepository } from "../attachments/attachments.repository.js";
 import type { Submission } from "../attachments/multipart.js";
 import {
   AuditRepository,
@@ -27,6 +26,7 @@ import {
 } from "../audit/audit.repository.js";
 import { CustomersRepository } from "../customers/customers.repository.js";
 import { OutboxRepository } from "../outbox/outbox.repository.js";
+import { TicketChanges } from "./ticket-changes.js";
 import { TicketsRepository } from "./tickets.repository.js";
 
 /**
@@ -47,9 +47,9 @@ export class TicketSubmissionService {
     @Inject(ENV) private readonly env: Env,
     private readonly tickets: TicketsRepository,
     private readonly customers: CustomersRepository,
-    private readonly attachments: AttachmentsRepository,
     private readonly audit: AuditRepository,
     private readonly outbox: OutboxRepository,
+    private readonly changes: TicketChanges,
     private readonly intake: AttachmentIntake,
     private readonly limits: RateLimitEnforcer,
   ) {}
@@ -139,14 +139,10 @@ export class TicketSubmissionService {
       description: fields.description,
       contactVerified: submission.contactVerified,
     });
-    const actor = { type: "customer", customerId } as const;
-    const files = await this.attachments.insert(
-      tx,
-      { ticketId: ticket.id, messageId: null },
-      actor,
-      stored,
-    );
-    const context: ChangeContext = { actor, requestId: submission.requestId };
+    const context: ChangeContext = {
+      actor: { type: "customer", customerId },
+      requestId: submission.requestId,
+    };
     await this.audit.record(tx, context, [
       {
         ticketId: ticket.id,
@@ -160,19 +156,13 @@ export class TicketSubmissionService {
           channel: ticket.channel,
         },
       },
-      ...files.map((file) => ({
-        ticketId: ticket.id,
-        entityType: "attachment" as const,
-        entityId: file.id,
-        action: "attachment.created" as const,
-        before: null,
-        after: {
-          messageId: null,
-          contentType: file.contentType,
-          sizeBytes: file.sizeBytes,
-        },
-      })),
     ]);
+    await this.changes.addFiles(
+      tx,
+      context,
+      { ticketId: ticket.id, messageId: null },
+      stored,
+    );
     await this.outbox.add(tx, {
       type: "ticket.created",
       aggregateType: "ticket",

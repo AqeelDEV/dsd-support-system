@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { brands, tickets } from "@dsd/db/schema";
-import type { TicketChannel } from "@dsd/shared";
+import type { TicketChannel, TicketPriority, TicketStatus } from "@dsd/shared";
 import { and, desc, eq, type SQL, sql } from "drizzle-orm";
 
 import type { Executor } from "../../infrastructure/database.js";
 import type { Position } from "./domain/cursor.js";
+import type { TimestampChange } from "./domain/ticket-status.js";
 
 /** The tickets a customer session may see: the customer's own, or a guest's one. */
 export interface CustomerScope {
@@ -27,6 +28,28 @@ function ownedBy(scope: CustomerScope): SQL | undefined {
       : eq(tickets.id, scope.guestTicketId),
   );
 }
+
+/** A ticket row locked for the rest of the transaction, with what the rules need. */
+export interface LockedTicket {
+  id: string;
+  brandId: string;
+  customerId: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  assigneeAgentId: string | null;
+}
+
+const lockedColumns = {
+  id: tickets.id,
+  brandId: tickets.brandId,
+  customerId: tickets.customerId,
+  status: tickets.status,
+  priority: tickets.priority,
+  assigneeAgentId: tickets.assigneeAgentId,
+};
+
+const timestamp = (change: TimestampChange) =>
+  change === "set" ? sql`now()` : change === "clear" ? null : undefined;
 
 export interface NewTicket {
   brandId: string;
@@ -107,6 +130,41 @@ export class TicketsRepository {
       .from(tickets)
       .where(and(eq(tickets.id, ticketId), ownedBy(scope)));
     return row;
+  }
+
+  /**
+   * Locks one of the customer's tickets (`SELECT ... FOR UPDATE`) until the
+   * transaction ends, so two changes to it run one after the other and the
+   * second sees the first (ADR-0007, section 2).
+   */
+  async lockForCustomer(
+    executor: Executor,
+    scope: CustomerScope,
+    ticketId: string,
+  ): Promise<LockedTicket | undefined> {
+    const [row] = await executor
+      .select(lockedColumns)
+      .from(tickets)
+      .where(and(eq(tickets.id, ticketId), ownedBy(scope)))
+      .for("update");
+    return row;
+  }
+
+  /** The new status, with the lifecycle timestamps it moves. */
+  async setStatus(
+    executor: Executor,
+    ticketId: string,
+    status: TicketStatus,
+    changes: { resolvedAt: TimestampChange; closedAt: TimestampChange },
+  ): Promise<void> {
+    await executor
+      .update(tickets)
+      .set({
+        status,
+        resolvedAt: timestamp(changes.resolvedAt),
+        closedAt: timestamp(changes.closedAt),
+      })
+      .where(eq(tickets.id, ticketId));
   }
 
   /** A new open ticket. The database builds its reference from the brand's prefix. */
