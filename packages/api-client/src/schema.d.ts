@@ -425,6 +425,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/tickets/{ticketId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change the status
+         * @description Moves the ticket through the state machine (ADR-0007). The current status is a no-op. Anything else not allowed from here is a 409 whose `allowedTransitions` lists where the ticket can go.
+         */
+        patch: operations["StaffTicketsController_changeStatus"];
+        trace?: never;
+    };
+    "/api/v1/staff/tickets/{ticketId}/priority": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change the priority
+         * @description Customers never choose or see the priority. A closed ticket keeps the one it had.
+         */
+        patch: operations["StaffTicketsController_changePriority"];
+        trace?: never;
+    };
     "/api/v1/staff/customers/{customerId}": {
         parameters: {
             query?: never;
@@ -747,6 +787,14 @@ export interface components {
                 escalate: boolean;
                 viewAuditTrail: boolean;
             };
+        };
+        StatusChange: {
+            /** @enum {string} */
+            status: "open" | "pending_customer" | "resolved" | "closed";
+        };
+        PriorityChange: {
+            /** @enum {string} */
+            priority: "low" | "normal" | "high" | "urgent";
         };
         StaffCustomer_Output: {
             customer: {
@@ -2114,6 +2162,154 @@ export interface operations {
             };
             /** @description File storage is unavailable; the same request without files still works */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_changeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChange"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTicket_Output"];
+                };
+            };
+            /** @description Not a status (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `ticket:status:update` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not allowed from the current status (`invalid-status-transition`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_changePriority: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriorityChange"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTicket_Output"];
+                };
+            };
+            /** @description Not a priority (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `ticket:priority:update` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The ticket is closed (`ticket-closed`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

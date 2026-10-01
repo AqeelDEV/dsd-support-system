@@ -1815,6 +1815,206 @@
         ]
       }
     },
+    "/api/v1/staff/tickets/{ticketId}/status": {
+      "patch": {
+        "description": "Moves the ticket through the state machine (ADR-0007). The current status is a no-op. Anything else not allowed from here is a 409 whose `allowedTransitions` lists where the ticket can go.",
+        "operationId": "StaffTicketsController_changeStatus",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffTicket_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a status (`validation-error`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing the `ticket:status:update` permission\n\nThe Origin or the CSRF token was missing or wrong (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket in your brands",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Not allowed from the current status (`invalid-status-transition`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Change the status",
+        "tags": [
+          "Tickets (staff)"
+        ]
+      }
+    },
+    "/api/v1/staff/tickets/{ticketId}/priority": {
+      "patch": {
+        "description": "Customers never choose or see the priority. A closed ticket keeps the one it had.",
+        "operationId": "StaffTicketsController_changePriority",
+        "parameters": [
+          {
+            "name": "ticketId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorityChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffTicket_Output"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Not a priority (`validation-error`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing the `ticket:priority:update` permission\n\nThe Origin or the CSRF token was missing or wrong (`csrf-rejected`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such ticket in your brands",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The ticket is closed (`ticket-closed`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffSession": [],
+            "csrfToken": []
+          }
+        ],
+        "summary": "Change the priority",
+        "tags": [
+          "Tickets (staff)"
+        ]
+      }
+    },
     "/api/v1/staff/customers/{customerId}": {
       "get": {
         "description": "Their profile and their tickets in your brands, newest first, a page at a time. A customer with no ticket in your brands is a 404.",
@@ -3179,6 +3379,42 @@
           "messages",
           "allowedTransitions",
           "allowedActions"
+        ],
+        "additionalProperties": false
+      },
+      "StatusChange": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "pending_customer",
+              "resolved",
+              "closed"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "PriorityChange": {
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "urgent"
+            ]
+          }
+        },
+        "required": [
+          "priority"
         ],
         "additionalProperties": false
       },

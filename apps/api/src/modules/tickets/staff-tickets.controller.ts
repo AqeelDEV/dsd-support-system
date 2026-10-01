@@ -1,9 +1,11 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -13,10 +15,12 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
   internalNoteFieldsSchema,
   pageOf,
+  priorityChangeRequestSchema,
   queueQuerySchema,
   staffReplyFieldsSchema,
   staffTicketSchema,
   staffTicketSummarySchema,
+  statusChangeRequestSchema,
 } from "@dsd/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { createZodDto, ZodResponse } from "nestjs-zod";
@@ -32,10 +36,13 @@ import { withSubmission } from "../attachments/multipart.js";
 import { TicketParams } from "./params.js";
 import { TicketMessagesService } from "./ticket-messages.service.js";
 import { TicketQueriesService } from "./ticket-queries.service.js";
+import { TicketUpdatesService } from "./ticket-updates.service.js";
 
 class QueueQuery extends createZodDto(queueQuerySchema) {}
 class StaffTicketPage extends createZodDto(pageOf(staffTicketSummarySchema)) {}
 class StaffTicket extends createZodDto(staffTicketSchema) {}
+class StatusChange extends createZodDto(statusChangeRequestSchema) {}
+class PriorityChange extends createZodDto(priorityChangeRequestSchema) {}
 
 /**
  * Working tickets (FR-7 to FR-11). Every route needs a staff session and a
@@ -49,6 +56,7 @@ export class StaffTicketsController {
   constructor(
     private readonly queries: TicketQueriesService,
     private readonly messages: TicketMessagesService,
+    private readonly updates: TicketUpdatesService,
   ) {}
 
   @Get()
@@ -143,6 +151,61 @@ export class StaffTicketsController {
         form,
         request.id,
       ),
+    );
+  }
+
+  @Patch(":ticketId/status")
+  @RequirePermissions("ticket:status:update")
+  @ApiSession("staff", { changesState: true })
+  @ApiOperation({
+    summary: "Change the status",
+    description:
+      "Moves the ticket through the state machine (ADR-0007). The current status is a no-op. Anything else not allowed from here is a 409 whose `allowedTransitions` lists where the ticket can go.",
+  })
+  @ApiProblem(400, "Not a status (`validation-error`)")
+  @ApiProblem(403, "Missing the `ticket:status:update` permission")
+  @ApiProblem(404, "No such ticket in your brands")
+  @ApiProblem(
+    409,
+    "Not allowed from the current status (`invalid-status-transition`)",
+  )
+  @ZodResponse({ status: HttpStatus.OK, type: StaffTicket })
+  changeStatus(
+    @Param() params: TicketParams,
+    @Body() body: StatusChange,
+    @Req() request: FastifyRequest,
+  ) {
+    return this.updates.changeStatus(
+      staffOf(request),
+      params.ticketId,
+      body,
+      request.id,
+    );
+  }
+
+  @Patch(":ticketId/priority")
+  @RequirePermissions("ticket:priority:update")
+  @ApiSession("staff", { changesState: true })
+  @ApiOperation({
+    summary: "Change the priority",
+    description:
+      "Customers never choose or see the priority. A closed ticket keeps the one it had.",
+  })
+  @ApiProblem(400, "Not a priority (`validation-error`)")
+  @ApiProblem(403, "Missing the `ticket:priority:update` permission")
+  @ApiProblem(404, "No such ticket in your brands")
+  @ApiProblem(409, "The ticket is closed (`ticket-closed`)")
+  @ZodResponse({ status: HttpStatus.OK, type: StaffTicket })
+  changePriority(
+    @Param() params: TicketParams,
+    @Body() body: PriorityChange,
+    @Req() request: FastifyRequest,
+  ) {
+    return this.updates.changePriority(
+      staffOf(request),
+      params.ticketId,
+      body,
+      request.id,
     );
   }
 }

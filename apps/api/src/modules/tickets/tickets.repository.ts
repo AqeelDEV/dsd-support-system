@@ -412,6 +412,17 @@ export class TicketsRepository {
       .where(eq(tickets.id, ticketId));
   }
 
+  async setPriority(
+    executor: Executor,
+    ticketId: string,
+    priority: TicketPriority,
+  ): Promise<void> {
+    await executor
+      .update(tickets)
+      .set({ priority })
+      .where(eq(tickets.id, ticketId));
+  }
+
   /** The new status, with the lifecycle timestamps it moves. */
   async setStatus(
     executor: Executor,

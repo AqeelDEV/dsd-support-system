@@ -420,4 +420,195 @@ describe("ticket lifecycle", () => {
       expect(response.status).toBe(409);
     });
   });
+
+  describe("status and priority (FR-9)", () => {
+    const patch = (
+      ticketId: string,
+      field: "status" | "priority",
+      value: string,
+    ) =>
+      send("patch", `/api/v1/staff/tickets/${ticketId}/${field}`, agent).send({
+        [field]: value,
+      });
+
+    it("walks a ticket from submission to closed, and every step is history", async () => {
+      await resetRateLimits(app);
+      const submitted = await send("post", "/api/v1/customer/tickets", customer)
+        .field("subject", "Smart plug won't pair")
+        .field("description", "It blinks red and the app can't find it.");
+      expect(submitted.status).toBe(201);
+      const ticketId = (submitted.body as { id: string }).id;
+
+      // The agent replies and waits for the customer.
+      expect(
+        (
+          await agentReply(
+            ticketId,
+            "Hold the button for ten seconds.",
+            "pending_customer",
+          )
+        ).status,
+      ).toBe(201);
+      expect((await ticketRow(ticketId)).first_response_at).toBeInstanceOf(
+        Date,
+      );
+
+      // The customer's reply reopens it.
+      expect(
+        (await customerReply(ticketId, customer, "Still red.")).status,
+      ).toBe(201);
+      expect((await ticketRow(ticketId)).status).toBe("open");
+
+      // Resolved, then reopened by the customer, which clears resolved_at.
+      expect((await patch(ticketId, "status", "resolved")).status).toBe(200);
+      expect((await ticketRow(ticketId)).resolved_at).toBeInstanceOf(Date);
+      expect(
+        (await customerReply(ticketId, customer, "It came back.")).status,
+      ).toBe(201);
+      expect(await ticketRow(ticketId)).toMatchObject({
+        status: "open",
+        resolved_at: null,
+      });
+
+      // Resolved again, then closed: resolved_at stays, closed_at is set.
+      const resolved = await agentReply(
+        ticketId,
+        "A firmware update fixed it.",
+        "resolved",
+      );
+      expect(resolved.status).toBe(201);
+      const closing = await patch(ticketId, "status", "closed");
+      expect(closing.status).toBe(200);
+      expect((closing.body as StaffTicket).allowedTransitions).toEqual([]);
+      const closed = await ticketRow(ticketId);
+      expect(closed.resolved_at).toBeInstanceOf(Date);
+      expect(closed.closed_at).toBeInstanceOf(Date);
+
+      // A closed ticket takes internal notes and nothing else.
+      expect((await customerReply(ticketId, customer, "Thanks!")).status).toBe(
+        409,
+      );
+      expect((await agentReply(ticketId, "Glad to help")).status).toBe(409);
+      expect(
+        (
+          await send(
+            "post",
+            `/api/v1/staff/tickets/${ticketId}/notes`,
+            agent,
+          ).field("body", "Customer confirmed by phone.")
+        ).status,
+      ).toBe(201);
+      const reopen = await patch(ticketId, "status", "open");
+      expect(reopen.status).toBe(409);
+      expect(reopen.body).toMatchObject({ allowedTransitions: [] });
+
+      const statuses = (await historyOf(ticketId))
+        .filter((event) => event.action === "ticket.status_changed")
+        .map((event) => [event.actor_type, event.before, event.after]);
+      expect(statuses).toEqual([
+        ["agent", { status: "open" }, { status: "pending_customer" }],
+        ["customer", { status: "pending_customer" }, { status: "open" }],
+        ["agent", { status: "open" }, { status: "resolved" }],
+        ["customer", { status: "resolved" }, { status: "open" }],
+        ["agent", { status: "open" }, { status: "resolved" }],
+        ["agent", { status: "resolved" }, { status: "closed" }],
+      ]);
+      const outboxStatuses = (await eventsOf(ticketId)).filter(
+        (event) => event.event_type === "ticket.status_changed",
+      );
+      expect(outboxStatuses).toHaveLength(6);
+
+      // The customer's timeline tells the same story.
+      const view = await request(app.getHttpServer())
+        .get(`/api/v1/customer/tickets/${ticketId}`)
+        .set("cookie", customer.cookie);
+      expect(
+        (view.body as CustomerTicket).timeline.map((entry) => entry.status),
+      ).toEqual([
+        "open",
+        "pending_customer",
+        "open",
+        "resolved",
+        "open",
+        "resolved",
+        "closed",
+      ]);
+    });
+
+    it("refuses a transition outside the table with the allowed targets", async () => {
+      const ticketId = await newTicket(database, {
+        customerId,
+        status: "resolved",
+      });
+      const response = await patch(ticketId, "status", "pending_customer");
+      expect(response.status).toBe(409);
+      expect(response.body).toMatchObject({
+        type: "tag:dsd.example,2026:problems/invalid-status-transition",
+        allowedTransitions: ["open", "closed"],
+      });
+      expect(await historyOf(ticketId)).toEqual([]);
+    });
+
+    it("treats the current status as a no-op: 200 and no history", async () => {
+      const ticketId = await newTicket(database, {
+        customerId,
+        status: "pending_customer",
+      });
+      const response = await patch(ticketId, "status", "pending_customer");
+      expect(response.status).toBe(200);
+      expect(await historyOf(ticketId)).toEqual([]);
+      expect(await eventsOf(ticketId)).toEqual([]);
+    });
+
+    it("changes the priority with its history, and skips a no-op", async () => {
+      const ticketId = await newTicket(database, { customerId });
+      const response = await patch(ticketId, "priority", "urgent");
+      expect(response.status).toBe(200);
+      expect((response.body as StaffTicket).priority).toBe("urgent");
+      expect((await patch(ticketId, "priority", "urgent")).status).toBe(200);
+      expect(await historyOf(ticketId)).toEqual([
+        expect.objectContaining({
+          action: "ticket.priority_changed",
+          actor_type: "agent",
+          before: { priority: "normal" },
+          after: { priority: "urgent" },
+        }),
+      ]);
+      expect(await eventsOf(ticketId)).toEqual([
+        {
+          event_type: "ticket.priority_changed",
+          payload: { ticketId, fromPriority: "normal", toPriority: "urgent" },
+        },
+      ]);
+    });
+
+    it("keeps a closed ticket's priority (409) and refuses an unknown one (400)", async () => {
+      const closed = await newTicket(database, {
+        customerId,
+        status: "closed",
+      });
+      expect((await patch(closed, "priority", "high")).status).toBe(409);
+      const open = await newTicket(database, { customerId });
+      expect((await patch(open, "priority", "critical")).status).toBe(400);
+    });
+
+    it("serialises two simultaneous changes: the second sees the first", async () => {
+      const ticketId = await newTicket(database, { customerId });
+      const responses = await Promise.all([
+        patch(ticketId, "status", "closed"),
+        patch(ticketId, "status", "pending_customer"),
+      ]);
+      // Either order ends closed. If closing ran first, the other change was
+      // checked against a closed ticket and refused; if it ran second, it
+      // was checked against pending_customer, from which closing is allowed.
+      expect((await ticketRow(ticketId)).status).toBe("closed");
+      const changes = await historyOf(ticketId);
+      const codes = responses.map((response) => response.status).sort();
+      expect(codes).toEqual(changes.length === 2 ? [200, 200] : [200, 409]);
+      // Each recorded change starts where the one before it ended.
+      for (let index = 1; index < changes.length; index += 1) {
+        expect(changes[index]?.before).toEqual(changes[index - 1]?.after);
+      }
+    });
+  });
 });

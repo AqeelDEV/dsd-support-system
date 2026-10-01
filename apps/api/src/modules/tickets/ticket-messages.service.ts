@@ -23,7 +23,7 @@ import {
   assertNotClosed,
   statusAfterCustomerReply,
 } from "./domain/ticket-status.js";
-import { TicketChanges } from "./ticket-changes.js";
+import { staffContext, TicketChanges } from "./ticket-changes.js";
 import {
   scopeOf,
   TicketQueriesService,
@@ -186,11 +186,3 @@ export class TicketMessagesService {
     if (!visible) throw ticketNotFound();
   }
 }
-
-export const staffContext = (
-  principal: StaffPrincipal,
-  requestId: string,
-): ChangeContext => ({
-  actor: { type: "agent", agentId: principal.agent.id },
-  requestId,
-});

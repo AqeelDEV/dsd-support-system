@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import type { MessageVisibility, TicketStatus } from "@dsd/shared";
+import type {
+  MessageVisibility,
+  TicketPriority,
+  TicketStatus,
+} from "@dsd/shared";
 
+import type { StaffPrincipal } from "../../auth/principal.js";
 import type { Executor } from "../../infrastructure/database.js";
 import type { StoredFile } from "../attachments/attachment-intake.js";
 import {
@@ -15,6 +20,15 @@ import { OutboxRepository } from "../outbox/outbox.repository.js";
 import { timestampChanges } from "./domain/ticket-status.js";
 import { MessagesRepository } from "./messages.repository.js";
 import { TicketsRepository } from "./tickets.repository.js";
+
+/** The change context for a staff member's request: they are the actor. */
+export const staffContext = (
+  principal: StaffPrincipal,
+  requestId: string,
+): ChangeContext => ({
+  actor: { type: "agent", agentId: principal.agent.id },
+  requestId,
+});
 
 /**
  * The writes every ticket change is made of, each with its audit event and
@@ -146,6 +160,37 @@ export class TicketChanges {
         fromStatus: ticket.status,
         toStatus: to,
         messageId,
+      },
+    });
+  }
+
+  /** A new priority; the current one writes nothing. */
+  async setPriority(
+    tx: Executor,
+    context: ChangeContext,
+    ticket: { id: string; priority: TicketPriority },
+    to: TicketPriority,
+  ): Promise<void> {
+    if (to === ticket.priority) return;
+    await this.tickets.setPriority(tx, ticket.id, to);
+    await this.audit.record(tx, context, [
+      {
+        ticketId: ticket.id,
+        entityType: "ticket",
+        entityId: ticket.id,
+        action: "ticket.priority_changed",
+        before: { priority: ticket.priority },
+        after: { priority: to },
+      },
+    ]);
+    await this.outbox.add(tx, {
+      type: "ticket.priority_changed",
+      aggregateType: "ticket",
+      aggregateId: ticket.id,
+      payload: {
+        ticketId: ticket.id,
+        fromPriority: ticket.priority,
+        toPriority: to,
       },
     });
   }

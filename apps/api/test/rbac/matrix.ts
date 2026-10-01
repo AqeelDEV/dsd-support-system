@@ -292,6 +292,22 @@ export const MATRIX: readonly MatrixRow[] = [
     },
     201,
   ),
+  ...onStaffTickets(
+    {
+      method: "PATCH",
+      path: "/api/v1/staff/tickets/:ticketId/status",
+      body: { status: "pending_customer" },
+    },
+    200,
+  ),
+  ...onStaffTickets(
+    {
+      method: "PATCH",
+      path: "/api/v1/staff/tickets/:ticketId/priority",
+      body: { priority: "high" },
+    },
+    200,
+  ),
   {
     method: "GET",
     path: "/api/v1/staff/customers/:customerId",

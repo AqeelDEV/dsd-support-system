@@ -14,6 +14,7 @@ import { TicketChanges } from "./ticket-changes.js";
 import { TicketMessagesService } from "./ticket-messages.service.js";
 import { TicketQueriesService } from "./ticket-queries.service.js";
 import { TicketSubmissionService } from "./ticket-submission.service.js";
+import { TicketUpdatesService } from "./ticket-updates.service.js";
 import { TicketsRepository } from "./tickets.repository.js";
 
 /** Tickets and their conversations (ADR-0007, ADR-0011). */
@@ -38,6 +39,7 @@ import { TicketsRepository } from "./tickets.repository.js";
     TicketSubmissionService,
     TicketQueriesService,
     TicketMessagesService,
+    TicketUpdatesService,
   ],
 })
 export class TicketsModule {}
