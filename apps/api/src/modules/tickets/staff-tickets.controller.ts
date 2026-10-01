@@ -14,6 +14,7 @@ import {
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
   assignmentRequestSchema,
+  escalationRequestSchema,
   internalNoteFieldsSchema,
   pageOf,
   priorityChangeRequestSchema,
@@ -45,6 +46,7 @@ class StaffTicket extends createZodDto(staffTicketSchema) {}
 class StatusChange extends createZodDto(statusChangeRequestSchema) {}
 class PriorityChange extends createZodDto(priorityChangeRequestSchema) {}
 class Assignment extends createZodDto(assignmentRequestSchema) {}
+class Escalation extends createZodDto(escalationRequestSchema) {}
 
 /**
  * Working tickets (FR-7 to FR-11). Every route needs a staff session and a
@@ -241,6 +243,37 @@ export class StaffTicketsController {
     @Req() request: FastifyRequest,
   ) {
     return this.updates.assign(
+      staffOf(request),
+      params.ticketId,
+      body,
+      request.id,
+    );
+  }
+
+  @Post(":ticketId/escalate")
+  @RequirePermissions("ticket:escalate")
+  @HttpCode(HttpStatus.OK)
+  @ApiSession("staff", { changesState: true })
+  @ApiOperation({
+    summary: "Escalate",
+    description:
+      "Records the reason as an internal note, raises the priority to at least `high`, hands the ticket to `supervisorId` if given, and marks it escalated, all at once. The ticket keeps its status; the queue's `escalated` filter finds it. The customer sees none of it.",
+  })
+  @ApiProblem(400, "The reason is missing or invalid (`validation-error`)")
+  @ApiProblem(403, "Missing the `ticket:escalate` permission")
+  @ApiProblem(404, "No such ticket in your brands")
+  @ApiProblem(409, "The ticket is closed (`ticket-closed`)")
+  @ApiProblem(
+    422,
+    "`supervisorId` isn't an active supervisor or admin in the ticket's brand",
+  )
+  @ZodResponse({ status: HttpStatus.OK, type: StaffTicket })
+  escalate(
+    @Param() params: TicketParams,
+    @Body() body: Escalation,
+    @Req() request: FastifyRequest,
+  ) {
+    return this.updates.escalate(
       staffOf(request),
       params.ticketId,
       body,

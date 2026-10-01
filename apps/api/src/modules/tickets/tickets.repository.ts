@@ -139,6 +139,7 @@ export interface LockedTicket {
   status: TicketStatus;
   priority: TicketPriority;
   assigneeAgentId: string | null;
+  escalatedAt: Date | null;
 }
 
 const lockedColumns = {
@@ -148,6 +149,7 @@ const lockedColumns = {
   status: tickets.status,
   priority: tickets.priority,
   assigneeAgentId: tickets.assigneeAgentId,
+  escalatedAt: tickets.escalatedAt,
 };
 
 const timestamp = (change: TimestampChange) =>
@@ -456,6 +458,18 @@ export class TicketsRepository {
       )
       .where(and(eq(agents.id, agentId), isNull(agents.deactivatedAt)));
     return row;
+  }
+
+  /** Records who escalated the ticket and when; a later escalation replaces both. */
+  async markEscalated(
+    executor: Executor,
+    ticketId: string,
+    agentId: string,
+  ): Promise<void> {
+    await executor
+      .update(tickets)
+      .set({ escalatedAt: sql`now()`, escalatedByAgentId: agentId })
+      .where(eq(tickets.id, ticketId));
   }
 
   /** The new status, with the lifecycle timestamps it moves. */

@@ -331,6 +331,14 @@ export const MATRIX: readonly MatrixRow[] = [
       },
     }),
   },
+  ...onStaffTickets(
+    {
+      method: "POST",
+      path: "/api/v1/staff/tickets/:ticketId/escalate",
+      body: { reason: "Escalated by the RBAC matrix" },
+    },
+    200,
+  ),
   {
     method: "GET",
     path: "/api/v1/staff/customers/:customerId",

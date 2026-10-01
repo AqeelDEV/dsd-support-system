@@ -485,6 +485,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/tickets/{ticketId}/escalate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Escalate
+         * @description Records the reason as an internal note, raises the priority to at least `high`, hands the ticket to `supervisorId` if given, and marks it escalated, all at once. The ticket keeps its status; the queue's `escalated` filter finds it. The customer sees none of it.
+         */
+        post: operations["StaffTicketsController_escalate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/customers/{customerId}": {
         parameters: {
             query?: never;
@@ -827,6 +847,15 @@ export interface components {
              * @description The agent to assign; required with `assign`, and only then
              */
             agentId?: string;
+        };
+        Escalation: {
+            /** @description Why it needs a supervisor; kept as an internal note */
+            reason: string;
+            /**
+             * Format: uuid
+             * @description A supervisor or admin in the ticket's brand to hand the ticket to
+             */
+            supervisorId?: string;
         };
         StaffCustomer_Output: {
             customer: {
@@ -2424,6 +2453,89 @@ export interface operations {
                 };
             };
             /** @description The agent is deactivated, doesn't exist, or isn't in the ticket's brand */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffTicketsController_escalate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Escalation"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTicket_Output"];
+                };
+            };
+            /** @description The reason is missing or invalid (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `ticket:escalate` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The ticket is closed (`ticket-closed`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description `supervisorId` isn't an active supervisor or admin in the ticket's brand */
             422: {
                 headers: {
                     [name: string]: unknown;
