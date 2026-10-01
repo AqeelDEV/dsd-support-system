@@ -9,13 +9,18 @@ import {
   Res,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { loginRequestSchema, staffMeSchema } from "@dsd/shared";
+import {
+  inviteCompleteRequestSchema,
+  loginRequestSchema,
+  staffMeSchema,
+} from "@dsd/shared";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { createZodDto, ZodResponse } from "nestjs-zod";
 
 import { SessionCookies } from "./cookies.js";
 import { CsrfTokens } from "./csrf.js";
 import { Public, Realm } from "./decorators.js";
+import { EmailedLinksService } from "./emailed-links.service.js";
 import { RateLimit } from "./guards/rate-limit.guard.js";
 import { staffMe } from "./me.js";
 import { RATE_LIMITS } from "./rate-limit/policies.js";
@@ -24,6 +29,7 @@ import { SessionService } from "./sessions/session.service.js";
 import { SignInService } from "./sign-in.service.js";
 
 class LoginBody extends createZodDto(loginRequestSchema) {}
+class InviteCompleteBody extends createZodDto(inviteCompleteRequestSchema) {}
 class StaffMe extends createZodDto(staffMeSchema) {}
 
 /** Staff sign-in (ADR-0003). Customer sessions are never accepted here. */
@@ -33,6 +39,7 @@ class StaffMe extends createZodDto(staffMeSchema) {}
 export class StaffAuthController {
   constructor(
     private readonly signIn: SignInService,
+    private readonly links: EmailedLinksService,
     private readonly sessions: SessionService,
     private readonly cookies: SessionCookies,
     private readonly csrf: CsrfTokens,
@@ -54,6 +61,31 @@ export class StaffAuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const { session, principal } = await this.signIn.staff(
+      body,
+      clientOf(request),
+      this.cookies.sessionToken(request, "staff"),
+    );
+    const csrfToken = this.csrf.tokenFor(session.id);
+    this.cookies.issue(reply, "staff", session, csrfToken);
+    return staffMe(principal, csrfToken);
+  }
+
+  @Post("invite/complete")
+  @Public()
+  @RateLimit(RATE_LIMITS.inviteCompletion)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Accept an invite",
+    description:
+      "Sets the invited agent's first password from the emailed link and signs them in. The link works once, and only for an active agent without a password.",
+  })
+  @ZodResponse({ status: HttpStatus.OK, type: StaffMe })
+  async acceptInvite(
+    @Body() body: InviteCompleteBody,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const { session, principal } = await this.links.acceptInvite(
       body,
       clientOf(request),
       this.cookies.sessionToken(request, "staff"),

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { authTokens, customers, tickets } from "@dsd/db/schema";
+import { agents, authTokens, customers, tickets } from "@dsd/db/schema";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 
 import type { Executor } from "../infrastructure/database.js";
@@ -34,6 +34,56 @@ export class EmailedLinksRepository {
       .returning({ customerId: authTokens.customerId });
     // The token table's CHECK guarantees a sign-up token names a customer.
     return row?.customerId ? { customerId: row.customerId } : undefined;
+  }
+
+  /** Spends a single-use invite token; undefined if it is unknown, expired or used. */
+  async consumeInviteToken(
+    executor: Executor,
+    tokenHash: Buffer,
+  ): Promise<{ agentId: string } | undefined> {
+    const [row] = await executor
+      .update(authTokens)
+      .set({ consumedAt: sql`now()` })
+      .where(
+        and(
+          eq(authTokens.tokenHash, tokenHash),
+          eq(authTokens.purpose, "agent_invite"),
+          isNull(authTokens.consumedAt),
+          gt(authTokens.expiresAt, sql`now()`),
+        ),
+      )
+      .returning({ agentId: authTokens.agentId });
+    // The token table's CHECK guarantees an invite names an agent.
+    return row?.agentId ? { agentId: row.agentId } : undefined;
+  }
+
+  /**
+   * Sets an invited agent's first password, which also counts as their
+   * first sign-in. Only for an active agent without a password: an invite
+   * can't reset an existing account or revive a deactivated one.
+   */
+  async acceptInvite(
+    executor: Executor,
+    agentId: string,
+    passwordHash: string,
+  ) {
+    const [row] = await executor
+      .update(agents)
+      .set({ passwordHash, lastLoginAt: sql`now()` })
+      .where(
+        and(
+          eq(agents.id, agentId),
+          isNull(agents.passwordHash),
+          isNull(agents.deactivatedAt),
+        ),
+      )
+      .returning({
+        id: agents.id,
+        email: agents.email,
+        displayName: agents.displayName,
+        role: agents.role,
+      });
+    return row;
   }
 
   /** Uses a guest link, which stays valid until it expires; undefined if it is unknown or expired. */

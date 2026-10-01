@@ -224,6 +224,39 @@
         ]
       }
     },
+    "/api/v1/auth/staff/invite/complete": {
+      "post": {
+        "description": "Sets the invited agent's first password from the emailed link and signs them in. The link works once, and only for an active agent without a password.",
+        "operationId": "StaffAuthController_acceptInvite",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteCompleteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMe_Output"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Accept an invite",
+        "tags": [
+          "Staff sign-in"
+        ]
+      }
+    },
     "/api/v1/auth/staff/logout": {
       "post": {
         "description": "Revokes this session and clears its cookies.",
@@ -556,6 +589,27 @@
           "agent",
           "permissions",
           "csrfToken"
+        ],
+        "additionalProperties": false
+      },
+      "InviteCompleteBody": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "description": "The token from the emailed link"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128,
+            "description": "12 to 128 characters"
+          }
+        },
+        "required": [
+          "token",
+          "password"
         ],
         "additionalProperties": false
       },

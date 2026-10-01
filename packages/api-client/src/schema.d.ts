@@ -164,6 +164,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/staff/invite/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invite
+         * @description Sets the invited agent's first password from the emailed link and signs them in. The link works once, and only for an active agent without a password.
+         */
+        post: operations["StaffAuthController_acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/staff/logout": {
         parameters: {
             query?: never;
@@ -305,6 +325,12 @@ export interface components {
             permissions: ("ticket:read:any" | "ticket:reply" | "ticket:note:create" | "ticket:status:update" | "ticket:priority:update" | "ticket:assign" | "ticket:reassign:any" | "ticket:escalate" | "ticket:audit:read" | "customer:read" | "kb:read" | "kb:write" | "kb:publish" | "canned:use" | "canned:manage" | "report:view" | "user:read" | "user:manage" | "ai:suggestion:read" | "ai:suggestion:request" | "ai:suggestion:feedback")[];
             /** @description Send this back in the X-CSRF-Token header on every POST, PUT, PATCH and DELETE */
             csrfToken: string;
+        };
+        InviteCompleteBody: {
+            /** @description The token from the emailed link */
+            token: string;
+            /** @description 12 to 128 characters */
+            password: string;
         };
         Liveness_Output: {
             /** @constant */
@@ -507,6 +533,29 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["LoginBody"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMe_Output"];
+                };
+            };
+        };
+    };
+    StaffAuthController_acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteCompleteBody"];
             };
         };
         responses: {

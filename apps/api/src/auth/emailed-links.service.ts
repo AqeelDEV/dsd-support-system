@@ -1,7 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   type GuestAccessRequest,
+  type InviteCompleteRequest,
   normalizeEmail,
+  permissionsFor,
   PROBLEM_TYPES,
   type SignupCompleteRequest,
 } from "@dsd/shared";
@@ -12,7 +14,7 @@ import { DB } from "../infrastructure/tokens.js";
 import { OutboxRepository } from "../modules/outbox/outbox.repository.js";
 import { EmailedLinksRepository } from "./emailed-links.repository.js";
 import { PasswordHasher } from "./password-hasher.js";
-import type { CustomerPrincipal } from "./principal.js";
+import type { CustomerPrincipal, StaffPrincipal } from "./principal.js";
 import { type ClientInfo, SessionService } from "./sessions/session.service.js";
 import type { SignedIn } from "./sign-in.service.js";
 import { hashToken } from "./tokens.js";
@@ -25,10 +27,11 @@ const invalidLink = () =>
   );
 
 /**
- * Everything a customer does through an emailed link (ADR-0003, sections 6
- * and 7): email-first sign-up and guest access to one ticket. The API only
- * records that a link is wanted, as an outbox event; the worker creates the
- * token when it sends the email, so no raw token is ever stored.
+ * Everything done through an emailed link (ADR-0003, sections 6 to 8):
+ * customers' email-first sign-up and guest access to one ticket, and
+ * agents accepting an invite. The API only records that a link is wanted,
+ * as an outbox event; the worker creates the token when it sends the email,
+ * so no raw token is ever stored.
  */
 @Injectable()
 export class EmailedLinksService {
@@ -124,6 +127,47 @@ export class EmailedLinksService {
         aggregateId: ticket.ticketId,
         payload: { ticketId: ticket.ticketId, customerId: ticket.customerId },
       });
+    });
+  }
+
+  /**
+   * Sets an invited agent's first password from the emailed invite and
+   * signs them in. Staff can't register themselves; a supervisor or admin
+   * creates the agent and the invite (Phase 5).
+   */
+  async acceptInvite(
+    request: InviteCompleteRequest,
+    client: ClientInfo,
+    replacing: string | undefined,
+  ): Promise<SignedIn<StaffPrincipal>> {
+    const passwordHash = await this.hasher.hash(request.password);
+    if (replacing !== undefined) await this.sessions.revokeToken(replacing);
+    return this.db.transaction(async (tx) => {
+      const token = await this.links.consumeInviteToken(
+        tx,
+        hashToken(request.token),
+      );
+      if (token === undefined) throw invalidLink();
+      const agent = await this.links.acceptInvite(
+        tx,
+        token.agentId,
+        passwordHash,
+      );
+      if (agent === undefined) throw invalidLink();
+      const session = await this.sessions.create(
+        { kind: "staff", agentId: agent.id },
+        client,
+        tx,
+      );
+      return {
+        session,
+        principal: {
+          realm: "staff",
+          sessionId: session.id,
+          agent,
+          permissions: new Set(permissionsFor(agent.role)),
+        },
+      };
     });
   }
 
