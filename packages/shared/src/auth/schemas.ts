@@ -10,10 +10,10 @@ import { permissionSchema } from "./permissions.js";
  * nothing can be smuggled into an endpoint that doesn't expect it.
  */
 
-const email = z
-  .email()
-  .max(254)
-  .describe("Compared case-insensitively, after trimming");
+const email = z.email().max(254).meta({
+  description: "Compared case-insensitively",
+  example: "customer@example.com",
+});
 
 /**
  * Sign-in only checks the upper bound: a long "password" would burn CPU on

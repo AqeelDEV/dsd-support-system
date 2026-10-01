@@ -268,7 +268,8 @@ export interface components {
         LoginBody: {
             /**
              * Format: email
-             * @description Compared case-insensitively, after trimming
+             * @description Compared case-insensitively
+             * @example customer@example.com
              */
             email: string;
             password: string;
@@ -288,7 +289,8 @@ export interface components {
         SignupBody: {
             /**
              * Format: email
-             * @description Compared case-insensitively, after trimming
+             * @description Compared case-insensitively
+             * @example customer@example.com
              */
             email: string;
         };
@@ -302,7 +304,8 @@ export interface components {
         GuestAccessRequestBody: {
             /**
              * Format: email
-             * @description Compared case-insensitively, after trimming
+             * @description Compared case-insensitively
+             * @example customer@example.com
              */
             email: string;
             /** @description The ticket reference from an earlier email, like DSD-000123 */
