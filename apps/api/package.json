@@ -30,6 +30,7 @@
     "@node-rs/argon2": "catalog:",
     "drizzle-orm": "catalog:",
     "fastify": "catalog:",
+    "file-type": "catalog:",
     "ioredis": "catalog:",
     "nestjs-pino": "catalog:",
     "nestjs-zod": "catalog:",
