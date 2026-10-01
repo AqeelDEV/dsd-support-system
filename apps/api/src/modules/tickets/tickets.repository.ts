@@ -402,6 +402,16 @@ export class TicketsRepository {
     return row !== undefined;
   }
 
+  /** Records the first public agent reply; later ones leave it as it was (ADR-0007, section 3). */
+  async markFirstResponse(executor: Executor, ticketId: string): Promise<void> {
+    await executor
+      .update(tickets)
+      .set({
+        firstResponseAt: sql`coalesce(${tickets.firstResponseAt}, now())`,
+      })
+      .where(eq(tickets.id, ticketId));
+  }
+
   /** The new status, with the lifecycle timestamps it moves. */
   async setStatus(
     executor: Executor,

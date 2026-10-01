@@ -1,5 +1,5 @@
 import type { TestDatabase } from "@dsd/db/testing";
-import type { CustomerTicket, TicketStatus } from "@dsd/shared";
+import type { CustomerTicket, StaffTicket, TicketStatus } from "@dsd/shared";
 import type { NestFastifyApplication } from "@nestjs/platform-fastify";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -39,12 +39,16 @@ describe("ticket lifecycle", () => {
   let app: NestFastifyApplication;
   let customerId: string;
   let customer: Credentials;
+  let agentId: string;
+  let agent: Credentials;
 
   beforeAll(async () => {
     database = await createSeededDatabase("dsd_test_api_ticket_lifecycle");
     app = await startAppOn(database);
     customerId = await idOf(database, "customers", DEMO.customer);
     customer = await sessionFor(app, { kind: "customer", customerId });
+    agentId = await idOf(database, "agents", DEMO.agent);
+    agent = await sessionFor(app, { kind: "staff", agentId });
   });
 
   afterAll(async () => {
@@ -69,6 +73,19 @@ describe("ticket lifecycle", () => {
       "body",
       body,
     );
+
+  const agentReply = (
+    ticketId: string,
+    body: string,
+    status?: TicketStatus,
+  ) => {
+    const call = send(
+      "post",
+      `/api/v1/staff/tickets/${ticketId}/replies`,
+      agent,
+    ).field("body", body);
+    return status === undefined ? call : call.field("status", status);
+  };
 
   const ticketRow = async (ticketId: string) => {
     const [row] = await asOwner<TicketRow>(
@@ -229,6 +246,80 @@ describe("ticket lifecycle", () => {
     });
   });
 
+  describe("an agent's reply", () => {
+    it("records the first response once, and an internal note doesn't count", async () => {
+      const ticketId = await newTicket(database, { customerId });
+      const note = await send(
+        "post",
+        `/api/v1/staff/tickets/${ticketId}/notes`,
+        agent,
+      ).field("body", "Checking the logs first.");
+      expect(note.status).toBe(201);
+      expect((await ticketRow(ticketId)).first_response_at).toBeNull();
+
+      expect(
+        (await agentReply(ticketId, "Can you restart the hub?")).status,
+      ).toBe(201);
+      const first = (await ticketRow(ticketId)).first_response_at;
+      expect(first).toBeInstanceOf(Date);
+      expect((await agentReply(ticketId, "Any luck?")).status).toBe(201);
+      expect((await ticketRow(ticketId)).first_response_at).toEqual(first);
+      // Neither the timestamp nor a reply without a status moves the status.
+      expect((await ticketRow(ticketId)).status).toBe("open");
+    });
+
+    it("can move the ticket in the same request, as the agent", async () => {
+      const ticketId = await newTicket(database, { customerId });
+      const response = await agentReply(
+        ticketId,
+        "Please try the steps below and let us know.",
+        "pending_customer",
+      );
+      expect(response.status).toBe(201);
+      const view = response.body as StaffTicket;
+      expect(view.status).toBe("pending_customer");
+      expect(view.allowedTransitions).toEqual(["open", "resolved", "closed"]);
+
+      const [message] = await asOwner<{ id: string }>(
+        database,
+        "SELECT id FROM messages WHERE ticket_id = $1",
+        [ticketId],
+      );
+      expect((await historyOf(ticketId)).map((event) => event.action)).toEqual([
+        "message.created",
+        "ticket.status_changed",
+      ]);
+      expect((await eventsOf(ticketId)).at(-1)).toEqual({
+        event_type: "ticket.status_changed",
+        payload: {
+          ticketId,
+          fromStatus: "open",
+          toStatus: "pending_customer",
+          messageId: message?.id,
+        },
+      });
+    });
+
+    it("refuses a status the state machine doesn't allow, and sends nothing", async () => {
+      const ticketId = await newTicket(database, {
+        customerId,
+        status: "resolved",
+      });
+      const response = await agentReply(
+        ticketId,
+        "Waiting on you",
+        "pending_customer",
+      );
+      expect(response.status).toBe(409);
+      expect(response.body).toMatchObject({
+        type: "tag:dsd.example,2026:problems/invalid-status-transition",
+        allowedTransitions: ["open", "closed"],
+      });
+      expect(await historyOf(ticketId)).toEqual([]);
+      expect((await ticketRow(ticketId)).first_response_at).toBeNull();
+    });
+  });
+
   describe("a guest's reply", () => {
     it("works on the guest's own ticket, through the emailed link, and nowhere else", async () => {
       await resetRateLimits(app);
@@ -259,22 +350,48 @@ describe("ticket lifecycle", () => {
       expect(opened.status).toBe(200);
       const guest = credentialsFrom(app, "customer", opened).credentials;
 
+      // The agent answers and waits for the customer.
+      expect(
+        (
+          await agentReply(
+            ticket.id,
+            "Which chime model is it?",
+            "pending_customer",
+          )
+        ).status,
+      ).toBe(201);
+
       const reply = await customerReply(
         ticket.id,
         guest,
         "Here is a recording.",
       ).attach("attachments", FILES.log, "chime-test.txt");
       expect(reply.status).toBe(201);
+      // The guest's reply reopens the ticket.
+      expect((reply.body as CustomerTicket).status).toBe("open");
+      expect(
+        (reply.body as CustomerTicket).messages.map(
+          (message) => message.author.type,
+        ),
+      ).toEqual(["agent", "customer"]);
       const [message] = await asOwner<{ author_customer_id: string }>(
         database,
-        "SELECT author_customer_id FROM messages WHERE ticket_id = $1",
+        "SELECT author_customer_id FROM messages WHERE ticket_id = $1 AND author_type = 'customer'",
         [ticket.id],
       );
       expect(message?.author_customer_id).toBe(ticket.customer_id);
-      expect((await historyOf(ticket.id)).at(-2)).toMatchObject({
-        action: "message.created",
-        actor_customer_id: ticket.customer_id,
-      });
+      expect((await historyOf(ticket.id)).slice(-3)).toEqual([
+        expect.objectContaining({
+          action: "message.created",
+          actor_customer_id: ticket.customer_id,
+        }),
+        expect.objectContaining({ action: "attachment.created" }),
+        expect.objectContaining({
+          action: "ticket.status_changed",
+          actor_customer_id: ticket.customer_id,
+          after: { status: "open" },
+        }),
+      ]);
 
       // Another ticket of the same customer is outside the link's reach.
       const sibling = await newTicket(database, {
