@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-01 (see [Amendments](#amendments))
 - Requirements: FR-1, FR-10, FR-19, NFR-7, NFR-8
 
 ## Context
@@ -96,3 +97,15 @@ Content-Security-Policy: default-src 'none'; sandbox
 - Integration, access: a customer requesting an internal-note attachment gets 404, and so does another customer requesting someone else's attachment.
 - Integration, headers: download responses carry exactly the headers above.
 - Integration, storage: the object key never contains the original filename, and an anonymous S3 GET on the bucket is refused.
+
+## Amendments
+
+### 2026-10-01, Phase 4
+
+1. **Checked in full before it is stored (section 3).** Rather than being validated while it streams to the object store, each file is read into memory up to the 10 MB cap (the parser stops at the first byte over it, which is a 413), checked completely, and only then stored. Files are taken one at a time, so a request holds at most one file in memory. The plain-text rule can only be decided at a file's last byte, so checking while streaming would let a file that fails at the end reach the bucket before being deleted; this way nothing that failed a check is ever stored. At much larger volumes, direct uploads with a quarantine step (Alternatives) remain the plan.
+2. **Text formats with a signature (section 1).** The detection library also recognises some text formats by their opening line: XML (and so SVG with an XML prologue), iCalendar, WebVTT and PostScript. The allowlisted binary signatures are checked first; anything else that passes the strict plain-text rule is stored as `text/plain; charset=utf-8`, whatever the library called it, exactly as SVG and HTML without a prologue are. Everything else is refused.
+3. **Filenames (section 2).** Only the last path segment is kept (`C:\fakepath\receipt.pdf` becomes `receipt.pdf`), so browsers that send a path don't produce a run-together name. Invisible formatting characters are removed along with control characters, because a right-to-left override can make `invoice‮fdp.exe` display as a PDF. A name cut to 255 bytes keeps its extension, and is never cut inside a character.
+4. **No file chosen.** An empty value in the `attachments` field, which is how browsers and Swagger UI send an unused file input, means no file rather than an empty one ([ADR-0011](0011-ticket-api.md), section 2). A real empty file is still refused.
+5. **The orphan sweep (section 3, step 4)** is a worker cleanup job and arrives in Phase 6 with the other cleanup jobs. Until then, a process that dies between storing a file and committing its row leaves an object without a row. Such an object can't be downloaded, because downloads look files up by their row.
+6. **Downloads (section 4)** also send `Content-Length`. Through the web apps, the pages' security headers no longer replace the API's on `/api/` responses, so a download keeps its sandboxing policy in the browser ([ADR-0011](0011-ticket-api.md), section 9).
+7. **The object store on the host.** Compose publishes SeaweedFS's S3 port on `127.0.0.1:58333`, like Postgres and Redis, so the integration tests run against the real store. It still refuses any request without the access key, which the smoke test and the `attachments` test check. Browsers still never talk to it.

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
+- Amended: 2026-10-01 (see [Amendments](#amendments))
 - Requirements: FR-1, FR-3, FR-7, FR-8, FR-9, FR-11, FR-13
 
 ## Context
@@ -133,3 +134,17 @@ All metrics use calendar time; business hours are not modelled in v1. They are c
 - Integration, assignment: two simultaneous claims give one success and one 409; an agent can't take a colleague's ticket (403); a supervisor can; deactivating an agent unassigns their open tickets.
 - Integration, escalation: the reason becomes an internal note, priority rises to at least `high`, `escalated_at` is set, the queue filter finds the ticket, and the customer view shows none of it.
 - Integration, reporting: a fixed seeded dataset produces volume, averages, medians and per-agent counts that match values worked out by hand.
+
+## Amendments
+
+### 2026-10-01, Phase 4
+
+1. **A closed ticket takes internal notes and nothing else (section 2).** Besides public replies, a change of priority, an assignment and an escalation on a closed ticket answer 409 with the problem type `ticket-closed`. A closed ticket is finished: reassigning it would also move it between agents in the "tickets resolved while assigned" report. A status change answers 409 `invalid-status-transition` with no allowed targets.
+2. **Claims use the row lock (section 5).** Every change to a ticket, claims included, locks the row first and checks its rules against the locked row ([ADR-0011](0011-ticket-api.md), section 6). Two simultaneous claims still give one success and one 409 (`already-assigned`), as the conditional update would; one mechanism now serves every change.
+3. **An unusable assignee is a 422 (section 5).** Assigning to an agent who doesn't exist, is deactivated or isn't a member of the ticket's brand answers 422, the status the API uses for a well-formed request that refers to something unusable.
+4. **Escalation details (section 6).**
+   - The reason is kept as an internal note prefixed `Escalated:`, so it reads as an escalation in the thread.
+   - The chosen supervisor must be active, a member of the ticket's brand and hold `ticket:reassign:any` (a permission, not a role name), or the request is a 422. The escalation assigns them even if a colleague held the ticket: handing it to a supervisor is what escalating means.
+   - A ticket can be escalated again. `escalated_at` and `escalated_by_agent_id` then record the latest escalation, and the audit trail keeps every one.
+   - Closed tickets can't be escalated (item 1).
+5. **Unassigning a deactivated agent's tickets (section 5)** arrives with agent management in Phase 5, which is where agents are deactivated.

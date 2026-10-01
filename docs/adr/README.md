@@ -16,6 +16,7 @@ This folder records the significant design decisions for the DSD Unified Custome
 | [0008](0008-data-integrity-and-db-roles.md)         | Append-only history and least-privilege database roles             | Accepted |
 | [0009](0009-attachments.md)                         | Attachment validation, storage and download                        | Accepted |
 | [0010](0010-client-address-behind-the-web-proxy.md) | The client's address behind the web apps' proxy                    | Accepted |
+| [0011](0011-ticket-api.md)                          | The ticket API: submissions, files, reading and concurrency        | Accepted |
 
 ## Conventions
 
