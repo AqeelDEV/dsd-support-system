@@ -1,7 +1,8 @@
 /*
- * Design tokens shared by the customer app and the agent app. Components use
- * the semantic names (bg-primary, text-muted-foreground, border-border), so
- * the palette can change here without touching markup.
+ * Design tokens shared by the customer app and the agent app (ADR-0013,
+ * section 1). Components use semantic names only (bg-card, text-muted-
+ * foreground, border-border, bg-tone-success-soft), so the palette, the
+ * accent and the type scale change here without touching markup.
  *
  * Each app imports Tailwind first, then this file, and adds an @source for
  * this package so the classes used by its components are generated.
@@ -14,68 +15,188 @@
   --color-card-foreground: var(--card-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-tone-neutral: var(--tone-neutral);
+  --color-tone-neutral-soft: var(--tone-neutral-soft);
+  --color-tone-neutral-fg: var(--tone-neutral-fg);
+  --color-tone-info: var(--tone-info);
+  --color-tone-info-soft: var(--tone-info-soft);
+  --color-tone-info-fg: var(--tone-info-fg);
+  --color-tone-success: var(--tone-success);
+  --color-tone-success-soft: var(--tone-success-soft);
+  --color-tone-success-fg: var(--tone-success-fg);
+  --color-tone-warning: var(--tone-warning);
+  --color-tone-warning-soft: var(--tone-warning-soft);
+  --color-tone-warning-fg: var(--tone-warning-fg);
+  --color-tone-danger: var(--tone-danger);
+  --color-tone-danger-soft: var(--tone-danger-soft);
+  --color-tone-danger-fg: var(--tone-danger-fg);
+
+  --color-note: var(--note);
+  --color-note-border: var(--note-border);
+  --color-note-foreground: var(--note-foreground);
+
+  --color-chart: var(--chart);
+  --color-chart-muted: var(--chart-muted);
+
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
 
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --shadow-overlay: var(--overlay-shadow);
+
+  --animate-fade-in: fade-in 120ms ease-out;
+  --animate-pop-in: pop-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      scale: 0.97;
+    }
+  }
 }
 
-/* Contrast pairs meet WCAG AA for body text (UI-2). */
+/* One type scale for both apps (ADR-0013): size / line height. */
+@theme {
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas,
+    monospace;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.25rem;
+  --text-md: 1rem;
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 2rem;
+  --text-2xl: 1.875rem;
+  --text-2xl--line-height: 2.25rem;
+}
+
+/*
+ * Light theme. Text pairs meet WCAG AA (UI-2): foreground and muted text on
+ * card and background, tone foregrounds on their soft fills, and primary
+ * foreground on primary.
+ */
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.99 0.002 247);
-  --foreground: oklch(0.21 0.03 264);
+  --radius: 0.375rem;
+
+  --background: oklch(0.975 0.003 255);
+  --foreground: oklch(0.22 0.018 262);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.03 264);
-  --muted: oklch(0.96 0.006 247);
-  --muted-foreground: oklch(0.45 0.03 257);
-  --primary: oklch(0.45 0.16 262);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.94 0.02 255);
-  --secondary-foreground: oklch(0.27 0.06 262);
-  --accent: oklch(0.93 0.04 190);
-  --accent-foreground: oklch(0.3 0.06 200);
-  --destructive: oklch(0.52 0.2 27);
+  --card-foreground: oklch(0.22 0.018 262);
+  --muted: oklch(0.96 0.004 255);
+  --muted-foreground: oklch(0.48 0.018 260);
+  --subtle: oklch(0.6 0.014 258);
+  --primary: oklch(0.46 0.17 272);
+  --primary-foreground: oklch(0.99 0.004 272);
+  --accent: oklch(0.955 0.018 272);
+  --accent-foreground: oklch(0.4 0.16 272);
+  --destructive: oklch(0.53 0.19 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.01 255);
-  --input: oklch(0.86 0.015 255);
-  --ring: oklch(0.55 0.16 262);
+  --border: oklch(0.92 0.005 258);
+  --border-strong: oklch(0.86 0.008 258);
+  --input: oklch(0.87 0.008 258);
+  --ring: oklch(0.55 0.17 272);
+
+  --tone-neutral: oklch(0.62 0.012 258);
+  --tone-neutral-soft: oklch(0.955 0.004 258);
+  --tone-neutral-fg: oklch(0.42 0.015 260);
+  --tone-info: oklch(0.58 0.14 255);
+  --tone-info-soft: oklch(0.955 0.022 255);
+  --tone-info-fg: oklch(0.42 0.13 258);
+  --tone-success: oklch(0.6 0.13 155);
+  --tone-success-soft: oklch(0.96 0.03 155);
+  --tone-success-fg: oklch(0.42 0.1 155);
+  --tone-warning: oklch(0.72 0.15 70);
+  --tone-warning-soft: oklch(0.965 0.04 85);
+  --tone-warning-fg: oklch(0.46 0.1 60);
+  --tone-danger: oklch(0.6 0.19 27);
+  --tone-danger-soft: oklch(0.96 0.025 27);
+  --tone-danger-fg: oklch(0.47 0.17 27);
+
+  --note: oklch(0.982 0.024 88);
+  --note-border: oklch(0.88 0.07 85);
+  --note-foreground: oklch(0.32 0.04 70);
+
+  --chart: oklch(0.55 0.15 272);
+  --chart-muted: oklch(0.9 0.02 272);
+
+  --overlay-shadow:
+    0 1px 2px oklch(0.2 0.02 262 / 0.06), 0 8px 24px oklch(0.2 0.02 262 / 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.17 0.02 265);
-    --foreground: oklch(0.96 0.005 250);
-    --card: oklch(0.21 0.025 265);
-    --card-foreground: oklch(0.96 0.005 250);
-    --muted: oklch(0.26 0.025 265);
-    --muted-foreground: oklch(0.74 0.02 255);
-    --primary: oklch(0.7 0.14 260);
-    --primary-foreground: oklch(0.18 0.03 265);
-    --secondary: oklch(0.29 0.04 262);
-    --secondary-foreground: oklch(0.94 0.01 250);
-    --accent: oklch(0.33 0.05 200);
-    --accent-foreground: oklch(0.94 0.02 190);
-    --destructive: oklch(0.64 0.19 25);
-    --destructive-foreground: oklch(0.99 0 0);
-    --border: oklch(0.32 0.025 265);
-    --input: oklch(0.36 0.03 265);
-    --ring: oklch(0.7 0.14 260);
+    --background: oklch(0.16 0.008 262);
+    --foreground: oklch(0.95 0.004 258);
+    --card: oklch(0.2 0.009 262);
+    --card-foreground: oklch(0.95 0.004 258);
+    --muted: oklch(0.24 0.01 262);
+    --muted-foreground: oklch(0.72 0.012 258);
+    --subtle: oklch(0.6 0.012 258);
+    --primary: oklch(0.7 0.13 272);
+    --primary-foreground: oklch(0.17 0.02 272);
+    --accent: oklch(0.27 0.04 272);
+    --accent-foreground: oklch(0.86 0.07 272);
+    --destructive: oklch(0.65 0.18 25);
+    --destructive-foreground: oklch(0.15 0.02 25);
+    --border: oklch(0.28 0.01 262);
+    --border-strong: oklch(0.34 0.012 262);
+    --input: oklch(0.36 0.012 262);
+    --ring: oklch(0.7 0.13 272);
+
+    --tone-neutral: oklch(0.62 0.012 258);
+    --tone-neutral-soft: oklch(0.26 0.008 262);
+    --tone-neutral-fg: oklch(0.8 0.01 258);
+    --tone-info: oklch(0.68 0.13 255);
+    --tone-info-soft: oklch(0.27 0.05 258);
+    --tone-info-fg: oklch(0.84 0.08 255);
+    --tone-success: oklch(0.7 0.13 155);
+    --tone-success-soft: oklch(0.27 0.045 155);
+    --tone-success-fg: oklch(0.84 0.1 155);
+    --tone-warning: oklch(0.78 0.14 75);
+    --tone-warning-soft: oklch(0.29 0.045 70);
+    --tone-warning-fg: oklch(0.87 0.1 80);
+    --tone-danger: oklch(0.68 0.17 27);
+    --tone-danger-soft: oklch(0.28 0.06 27);
+    --tone-danger-fg: oklch(0.85 0.09 27);
+
+    --note: oklch(0.24 0.03 80);
+    --note-border: oklch(0.42 0.07 80);
+    --note-foreground: oklch(0.92 0.04 85);
+
+    --chart: oklch(0.68 0.13 272);
+    --chart-muted: oklch(0.3 0.03 272);
+
+    --overlay-shadow:
+      0 1px 2px oklch(0 0 0 / 0.4), 0 8px 24px oklch(0 0 0 / 0.5);
   }
 }
 
@@ -86,18 +207,45 @@
 
   html {
     color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.012em;
   }
 
   /* Keyboard focus is always visible (UI-2). */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
