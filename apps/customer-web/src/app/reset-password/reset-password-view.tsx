@@ -38,8 +38,8 @@ export function ResetPasswordView() {
   const reset = useMutation({
     mutationFn: (body: { token: string; password: string }) =>
       ok(api.POST("/api/v1/auth/customer/password-reset/complete", { body })),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       toast.success("Password changed", {
         description: "You're signed in, and signed out everywhere else.",
       });

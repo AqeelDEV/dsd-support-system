@@ -31,10 +31,15 @@ export function useSession() {
 /** After signing in or out: store the new session and drop everything cached for the old one. */
 export function useSetSession() {
   const client = useQueryClient();
-  return (session: CustomerMe | null) => {
+  return async (session: CustomerMe | null): Promise<void> => {
     client.removeQueries({
       predicate: (query) => query.queryKey[0] !== SESSION_KEY[0],
     });
+    // A `me` read sent before the new cookie existed (the header asks on
+    // every page) may still be in flight; its "signed out" answer must not
+    // land after this and undo the sign-in. Callers wait for this before
+    // navigating.
+    await client.cancelQueries({ queryKey: SESSION_KEY });
     client.setQueryData(SESSION_KEY, session);
   };
 }

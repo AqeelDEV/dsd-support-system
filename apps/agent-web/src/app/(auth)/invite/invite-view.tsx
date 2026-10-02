@@ -37,8 +37,8 @@ export function InviteView() {
   const accept = useMutation({
     mutationFn: (body: { token: string; password: string }) =>
       ok(api.POST("/api/v1/auth/staff/invite/complete", { body })),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       toast.success(`Welcome, ${session.agent.displayName}`);
       router.replace("/queue");
     },

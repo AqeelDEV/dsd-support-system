@@ -34,8 +34,8 @@ export function SignInView() {
   const signIn = useMutation({
     mutationFn: (body: { email: string; password: string }) =>
       ok(api.POST("/api/v1/auth/staff/login", { body })),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       router.replace(next);
     },
   });

@@ -42,8 +42,8 @@ export function SignupCompleteView() {
       displayName: string;
       password: string;
     }) => ok(api.POST("/api/v1/auth/customer/signup/complete", { body })),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       toast.success("Your account is ready");
       router.replace("/tickets");
     },

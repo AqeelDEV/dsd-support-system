@@ -35,8 +35,8 @@ export function AccessView() {
           body: { token },
         }),
       ),
-    onSuccess: (session) => {
-      setSession(session);
+    onSuccess: async (session) => {
+      await setSession(session);
       router.replace(
         session.guestTicketId === null
           ? "/tickets"

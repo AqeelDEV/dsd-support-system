@@ -56,7 +56,7 @@ export function SiteHeader() {
     } catch {
       // Already signed out on the server, or it can't be reached: forget the session here either way.
     }
-    setSession(null);
+    await setSession(null);
     router.push("/");
     toast("You're signed out.");
   };

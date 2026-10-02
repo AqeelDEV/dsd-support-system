@@ -226,7 +226,7 @@ function UserMenu({ onShortcuts }: { onShortcuts: () => void }) {
     } catch {
       // Already signed out on the server, or it can't be reached: forget the session here either way.
     }
-    setSession(null);
+    await setSession(null);
     router.replace("/sign-in");
     toast("You're signed out.");
   };
