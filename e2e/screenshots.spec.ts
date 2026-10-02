@@ -9,8 +9,9 @@ import {
   test,
 } from "@playwright/test";
 
-import { CUSTOMER_URL, DEMO } from "./support/env";
+import { AGENT_URL, CUSTOMER_URL, DEMO } from "./support/env";
 import { settled } from "./support/pages";
+import { staffState } from "./support/staff";
 
 /*
  * Screenshots of the key screens for the README (docs/screenshots). Run
@@ -27,6 +28,8 @@ const reviewing = process.env.SCREENSHOT_REVIEW === "1";
 interface Shot {
   name: string;
   signedIn?: boolean;
+  /** Signed in as the demo supervisor, in the agent app. */
+  staff?: boolean;
   /** Opens the screen and waits for its content. */
   open: (page: Page) => Promise<void>;
   /** The width used for the README copy. */
@@ -116,12 +119,73 @@ const CUSTOMER_SHOTS: Shot[] = [
   },
 ];
 
+const AGENT_SHOTS: Shot[] = [
+  {
+    name: "agent-queue",
+    width: 1280,
+    staff: true,
+    open: async (page) => {
+      await page.goto(`${AGENT_URL}/queue`);
+    },
+  },
+  {
+    name: "agent-ticket",
+    width: 1280,
+    staff: true,
+    open: async (page) => {
+      await page.goto(`${AGENT_URL}/queue`);
+      await page
+        .locator('a[href^="/tickets/"]:visible', {
+          hasText: "Order 3030-9011 is past its delivery date",
+        })
+        .click();
+      await expect(
+        page.getByRole("list", { name: "Conversation" }),
+      ).toBeVisible();
+    },
+  },
+  {
+    name: "agent-reports",
+    width: 1280,
+    staff: true,
+    open: async (page) => {
+      await page.goto(`${AGENT_URL}/reports`);
+    },
+  },
+  {
+    name: "agent-team",
+    width: 1280,
+    staff: true,
+    open: async (page) => {
+      await page.goto(`${AGENT_URL}/team`);
+    },
+  },
+  {
+    name: "agent-kb-editor",
+    width: 1280,
+    staff: true,
+    open: async (page) => {
+      await page.goto(`${AGENT_URL}/kb?status=published`);
+      await page.getByRole("table").getByRole("link").first().click();
+      await expect(page.getByLabel("Body (markdown)")).not.toHaveValue("");
+    },
+  },
+  {
+    name: "agent-queue-mobile",
+    width: 390,
+    staff: true,
+    open: async (page) => {
+      await page.goto(`${AGENT_URL}/queue`);
+    },
+  },
+];
+
 const SIZES = {
   390: { width: 390, height: 844 },
   1280: { width: 1280, height: 800 },
 };
 
-for (const shot of CUSTOMER_SHOTS) {
+for (const shot of [...CUSTOMER_SHOTS, ...AGENT_SHOTS]) {
   test(shot.name, async ({ browser }) => {
     const variants = reviewing
       ? ([390, 1280] as const).flatMap((width) =>
@@ -136,6 +200,9 @@ for (const shot of CUSTOMER_SHOTS) {
         deviceScaleFactor: 2,
         ...(shot.signedIn === true
           ? { storageState: await customerState() }
+          : {}),
+        ...(shot.staff === true
+          ? { storageState: staffState("supervisor") }
           : {}),
       });
       const page = await context.newPage();
