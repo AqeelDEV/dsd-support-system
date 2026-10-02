@@ -80,3 +80,8 @@ export {
   PanelHeader,
 } from "./surfaces";
 export { Thread, ThreadEvent, ThreadMessage } from "./thread";
+export {
+  describeProblem,
+  type ProblemLike,
+  type ProblemMessage,
+} from "./problem";
