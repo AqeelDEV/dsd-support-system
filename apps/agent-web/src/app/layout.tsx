@@ -1,16 +1,15 @@
+import "@fontsource-variable/inter";
+import "./globals.css";
+
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
-import "./globals.css";
+import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: {
-    default: "DSD Support Desk",
-    template: "%s | DSD Support Desk",
-  },
-  description: "The workspace for DSD support agents, supervisors and admins.",
-  // A staff tool: keep it out of search engines.
+  title: { default: "Support Desk", template: "%s · Support Desk" },
+  description: "The workspace for DSD support staff.",
   robots: { index: false, follow: false },
 };
 
@@ -24,33 +23,18 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
-  // Rendered per request so each page carries the proxy's script nonce.
+  // Rendered per request so each page carries the proxy's script nonce (ADR-0013).
   await connection();
   return (
     <html lang="en">
-      <body className="flex min-h-dvh flex-col">
+      <body className="min-h-dvh text-sm">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:shadow"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:shadow-overlay"
         >
           Skip to content
         </a>
-        <header className="border-b border-border bg-card">
-          <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6">
-            <span
-              aria-hidden="true"
-              className="grid size-7 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground"
-            >
-              D
-            </span>
-            <span className="text-sm font-semibold tracking-tight">
-              DSD Support Desk
-            </span>
-          </div>
-        </header>
-        <main id="main" className="flex-1">
-          {children}
-        </main>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

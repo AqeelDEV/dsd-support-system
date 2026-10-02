@@ -57,7 +57,8 @@ expect_body "proxy reaches the API (problem details from the API)" '"detail":"Ca
 expect_body "proxy refuses staff routes itself" '"detail":"No such API route in this app\."' "$CUSTOMER/api/v1/staff/tickets"
 
 echo "Agent app"
-expect_status "home page" 200 "$AGENT/"
+expect_status "sign-in page" 200 "$AGENT/sign-in"
+expect_status "the home page opens the queue" 307 "$AGENT/"
 expect_status "healthcheck" 200 "$AGENT/healthz"
 expect_body "proxy reaches the API (problem details from the API)" '"detail":"Cannot GET /api/v1/staff/no-such-route"' "$AGENT/api/v1/staff/no-such-route"
 expect_body "proxy refuses customer routes itself" '"detail":"No such API route in this app\."' "$AGENT/api/v1/customer/tickets"
