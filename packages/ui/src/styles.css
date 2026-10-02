@@ -113,7 +113,7 @@
   --card-foreground: oklch(0.22 0.018 262);
   --muted: oklch(0.96 0.004 255);
   --muted-foreground: oklch(0.48 0.018 260);
-  --subtle: oklch(0.6 0.014 258);
+  --subtle: oklch(0.54 0.014 258);
   --primary: oklch(0.46 0.17 272);
   --primary-foreground: oklch(0.99 0.004 272);
   --accent: oklch(0.955 0.018 272);

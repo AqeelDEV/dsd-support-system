@@ -37,6 +37,7 @@ export {
   Input,
   type InputProps,
   Label,
+  PasswordInput,
   Select,
   type SelectProps,
   Textarea,

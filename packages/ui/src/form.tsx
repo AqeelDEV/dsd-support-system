@@ -1,8 +1,8 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { ChevronDown } from "lucide-react";
-import { type ComponentProps, type ReactNode, useId } from "react";
+import { ChevronDown, Eye, EyeOff } from "lucide-react";
+import { type ComponentProps, type ReactNode, useId, useState } from "react";
 
 import { cn } from "./cn";
 
@@ -29,6 +29,36 @@ export type InputProps = Omit<ComponentProps<"input">, "size"> & {
 export function Input({ className, size, ...props }: InputProps) {
   return (
     <input className={cn(controlVariants({ size }), className)} {...props} />
+  );
+}
+
+/** A password field with a show/hide toggle, so people can check what they typed. */
+export function PasswordInput({ className, size, ...props }: InputProps) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className={cn("relative block", className)}>
+      <Input
+        {...props}
+        size={size}
+        type={visible ? "text" : "password"}
+        className="pr-11"
+      />
+      <button
+        type="button"
+        onClick={() => {
+          setVisible((value) => !value);
+        }}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        className="absolute top-1/2 right-1.5 grid size-8 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        {visible ? (
+          <EyeOff aria-hidden="true" className="size-4" />
+        ) : (
+          <Eye aria-hidden="true" className="size-4" />
+        )}
+      </button>
+    </span>
   );
 }
 
