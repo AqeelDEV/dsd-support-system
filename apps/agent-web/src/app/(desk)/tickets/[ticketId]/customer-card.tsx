@@ -53,9 +53,11 @@ export function CustomerCard({ ticket }: { ticket: StaffTicket }) {
           ) : (
             <p className="truncate text-sm font-medium">{name}</p>
           )}
-          <p className="truncate text-xs text-muted-foreground">
-            {ticket.customer.email}
-          </p>
+          {ticket.customer.displayName === null ? null : (
+            <p className="truncate text-xs text-muted-foreground">
+              {ticket.customer.email}
+            </p>
+          )}
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {ticket.contactVerified ? (
               <Tooltip content="They opened a link we emailed to this address">

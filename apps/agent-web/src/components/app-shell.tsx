@@ -110,18 +110,20 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh">
       <aside
         aria-label="Sections"
-        className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-border bg-card lg:flex"
+        className="hidden w-56 shrink-0 border-r border-border bg-card lg:block"
       >
-        <div className="flex h-12 items-center border-b border-border px-4">
-          <Wordmark />
-        </div>
-        <Nav items={nav} pathname={pathname} />
-        <div className="mt-auto border-t border-border p-2">
-          <UserMenu
-            onShortcuts={() => {
-              setShortcuts(true);
-            }}
-          />
+        <div className="sticky top-0 flex h-dvh flex-col">
+          <div className="flex h-12 items-center border-b border-border px-4">
+            <Wordmark />
+          </div>
+          <Nav items={nav} pathname={pathname} />
+          <div className="mt-auto border-t border-border p-2">
+            <UserMenu
+              onShortcuts={() => {
+                setShortcuts(true);
+              }}
+            />
+          </div>
         </div>
       </aside>
       <ShortcutsDialog open={shortcuts} onOpenChange={setShortcuts} />
