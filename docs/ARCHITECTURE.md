@@ -58,6 +58,8 @@ Customers receive notifications by email, sent by the worker through the SMTP pr
 | `api`          | Every business rule, authentication and authorisation, validation, audit trail, outbox events, attachment upload and download                   | PostgreSQL, Redis, the object store    | SMTP, LLM providers (that is worker work)        |
 | `worker`       | Outbox dispatch, notifications, knowledge-base chunking and embedding, AI suggestions, cleanup jobs                                             | PostgreSQL, Redis, SMTP, LLM providers | The API's code; the `messages` table for writing |
 
+Both apps are client-rendered pages over the API: each page reads and writes through the app's same-origin `/api` proxy, every page gets a fresh script nonce from the app's middleware, and the UI kit, design tokens and markdown renderer are shared from `packages/ui` ([ADR-0013](adr/0013-web-apps.md)). The agent app's ticket rail reserves the slot for the Phase 9 AI suggestion panel.
+
 The front ends never talk to a data store. Everything they show comes from the documented API (FR-16), and they hold no business rules (NFR-12). Code layout and the rules that enforce these boundaries are in [ADR-0002](adr/0002-monorepo-layout.md).
 
 ## Inside the API

@@ -46,13 +46,22 @@ Open http://localhost:3000. Without signing in you can search the help centre, r
 
 Sign in as `customer@example.com` to see **My requests** with the seeded history, or create an account from **Sign in**: sign-up is email-first, so the link to finish it arrives in Mailpit, and any requests sent earlier from that address appear in the account. **Forgot your password?** works the same way.
 
-The agent app arrives in the next phase. Until then, staff routes can be tried from Swagger UI: open `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests. Routes that take files use a multipart form with the fields first and up to five files in `attachments`.
+### The agent app
 
-For staff, the API serves knowledge-base authoring under `/api/v1/staff/kb`, canned responses filled in for a ticket under `/api/v1/staff/canned-responses`, reports under `/api/v1/staff/reports` (volume, response times, tickets per agent) and agent management under `/api/v1/staff/agents`. Agents can read and use these; writing, publishing, reporting and managing people need the supervisor or admin account.
+Open http://localhost:3001 and sign in as `agent@dsd.example`, `supervisor@dsd.example` or `admin@dsd.example`.
+
+- **Queue:** saved views (my tickets, unassigned, all open, awaiting customer, escalated, resolved), filters and sorting kept in the address, background refresh, and the keyboard: `j` and `k` move, `Enter` opens, `?` lists every shortcut.
+- **Ticket:** the conversation with internal notes on an amber surface and status changes on the rail; a composer for replies and notes with canned responses filled in for the ticket (`r`, `n`, `Ctrl+Enter`); status, priority, assignment and escalation; the customer's other tickets; and the full activity history.
+- **Knowledge base:** articles with a live preview that matches the help centre, publishing, and categories. **Canned responses** with a variable picker.
+- **Reports** (volume over time, first-response and resolution times, tickets per agent) and **Team** (invite, change role, deactivate) for supervisors and admins.
+
+What each person sees comes from the API: the sections from the permissions `/me` reports, and every control on a ticket from its `allowedActions` and `allowedTransitions`. An agent who opens `/reports` by address is told they don't have access, because the API refuses it.
+
+The API's routes can still be tried from Swagger UI at http://localhost:4000/api/docs: sign in with "Try it out" on a `login` route, and Swagger UI adds the CSRF token to later requests.
 
 ### Emails
 
-Every email the system sends goes to Mailpit, a local mail catcher: open http://localhost:8025 to read them. Raise a ticket as a guest and the acknowledgement arrives with a link that opens it; an agent's reply, a status change, sign-up, a password reset and an agent invite each send theirs. Each link opens its page in the customer app. The agent invite's page arrives with the agent app; until then its token can be posted to `POST /api/v1/auth/staff/invite/complete` from Swagger UI.
+Every email the system sends goes to Mailpit, a local mail catcher: open http://localhost:8025 to read them. Raise a ticket as a guest and the acknowledgement arrives with a link that opens it; an agent's reply, a status change, sign-up, a password reset and an agent invite each send theirs. Each link opens its page in the customer app, and an invite opens the agent app, where the new colleague chooses a password.
 
 Emails are sent by the worker, never by a request: if the mail server is down, tickets and replies still go through and the emails follow once it is back. A job that keeps failing ends up in a dead-letter queue: `docker compose exec worker node dist/cli/dead-letter.js list` shows it and `... replay --all` sends it again.
 
@@ -65,6 +74,10 @@ Customers and staff are separate realms: a customer session is refused by every 
 | ![The customer app's home page](docs/screenshots/customer-home.png)                 | ![The contact form suggesting articles](docs/screenshots/customer-new-request.png) |
 | **A request on a phone**                                                            | **My requests**                                                                    |
 | ![A request's conversation on a phone](docs/screenshots/customer-thread-mobile.png) | ![The signed-in customer's requests](docs/screenshots/customer-my-requests.png)    |
+| **The agent's queue**                                                               | **A ticket, with notes, history and the customer**                                 |
+| ![The agent queue](docs/screenshots/agent-queue.png)                                | ![An agent's ticket view](docs/screenshots/agent-ticket.png)                       |
+| **Reports**                                                                         | **The knowledge-base editor**                                                      |
+| ![The reporting dashboard](docs/screenshots/agent-reports.png)                      | ![Editing an article with a live preview](docs/screenshots/agent-kb-editor.png)    |
 
 ## Development
 

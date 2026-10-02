@@ -1,6 +1,7 @@
 # ADR-0013: The web apps: visual direction, data flow and page security
 
 - Status: Accepted
+- Amended: 2026-10-02 (see [Amendments](#amendments))
 - Date: 2026-10-02
 - Requirements: UI-1, UI-2, FR-1 to FR-4, FR-7 to FR-15, FR-16, NFR-7, NFR-12
 
@@ -105,3 +106,14 @@ Headings are semibold with slightly negative tracking. Nothing is bold for empha
 - Integration: `customer-ticket-view` checks `canReply` for every status; `http-conventions` checks every page cursor in the OpenAPI document.
 - e2e: `guest-flow`, `account-flow`, `kb-search`, `xss`, `responsive` (390 and 1280 px: no overflow, no CSP violation or script error), `a11y` (axe in light and dark, keyboard-only submission).
 - Smoke: a nonce-based policy on pages, a new nonce on every response, no referrer on `/access`.
+
+## Amendments
+
+### 2026-10-02, Phase 8 (the agent app)
+
+1. **The agent app's shell.** A sidebar on desktop and a menu sheet on phones. Its sections come from the permissions `/me` reports (`visibleNav`, unit-tested against the API's role map); a section reached by address that the API refuses shows "You don't have access" from the API's 403, never a client-side guess.
+2. **Working the queue all day.** Filters and saved views live in the address, the queue refreshes every 30 seconds, rows are 44 px with a sticky header (not the 36 px section 1 planned: each row carries the customer under the subject, which saves opening a ticket to see who asked), and the keyboard covers the common path: `j`/`k`, `Enter`, `r`, `n`, `Ctrl+Enter`, `?`. Low and normal priorities are quiet text; only high and urgent are tinted.
+3. **Ticket controls from the ticket.** Every control appears only when `allowedActions` allows it, and the status list is `allowedTransitions`. A change answers with the updated ticket, which replaces the cached one; a 409 refreshes the ticket and says why. Names in the history come from the ticket, its audit actors and the assignable colleagues (ADR-0012 amendment), so the app never needs `user:read` to show who did what.
+4. **The AI slot.** `AssistPanelSlot` at the top of the ticket's side rail is where the Phase 9 suggestion panel goes. It renders nothing until then, so nothing is presented as a feature that isn't built; the component's comment states the guardrail the panel must keep (it only fills the composer).
+5. **Knowledge-base editing.** The preview uses the help centre's `Markdown`. After a save the editor shows what the API stored, and says so when the sanitiser removed something, including on a new article's first save (carried through the address as `?markup=removed`).
+6. **Browser tests across both apps.** Staff tests start from sessions the global setup saves once per role. A context that must be signed out is created with an explicitly empty session: `browser.newContext()` inherits the file's session, and an invite accepted in such a context revoked the shared supervisor session.
