@@ -5633,11 +5633,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [
@@ -6063,11 +6068,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [
@@ -6703,11 +6713,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [
@@ -6908,11 +6923,16 @@
                 }
               },
               "nextCursor": {
-                "description": "Pass as `cursor` for the next page; null on the last page",
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Pass as `cursor` for the next page; null on the last page"
               }
             },
             "required": [
@@ -7077,11 +7097,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [
@@ -7389,11 +7414,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [
@@ -7620,11 +7650,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [
@@ -8152,11 +8187,16 @@
             }
           },
           "nextCursor": {
-            "description": "Pass as `cursor` for the next page; null on the last page",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last page"
           }
         },
         "required": [

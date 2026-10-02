@@ -25,8 +25,12 @@ const timestamp = z.iso.datetime();
 export const pageOf = <Item extends z.ZodType>(item: Item) =>
   z.object({
     items: z.array(item),
+    // The length bound keeps zod's JSON Schema an `anyOf`. A bare nullable
+    // string becomes `type: ["string", "null"]`, which @nestjs/swagger
+    // misreads as an array of strings in the OpenAPI document.
     nextCursor: z
       .string()
+      .max(512)
       .nullable()
       .describe("Pass as `cursor` for the next page; null on the last page"),
   });

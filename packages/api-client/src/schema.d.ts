@@ -1213,7 +1213,7 @@ export interface components {
                 createdAt: string;
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         CustomerTicket_Output: {
             /** Format: uuid */
@@ -1315,7 +1315,7 @@ export interface components {
                 updatedAt: string;
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         StaffTicket_Output: {
             /** Format: uuid */
@@ -1471,7 +1471,7 @@ export interface components {
                 createdAt: string;
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         StaffCustomer_Output: {
             customer: {
@@ -1554,7 +1554,7 @@ export interface components {
                 grantableRoles: ("agent" | "supervisor" | "admin")[];
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         AgentView_Output: {
             /** Format: uuid */
@@ -1630,7 +1630,7 @@ export interface components {
                 }[] | null;
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         PublicArticle_Output: {
             slug: string;
@@ -1682,7 +1682,7 @@ export interface components {
                 updatedAt: string;
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         StaffArticle_Output: {
             /** Format: uuid */
@@ -1824,7 +1824,7 @@ export interface components {
                 updatedAt: string;
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
-            nextCursor: string[];
+            nextCursor: string | null;
         };
         Rendered_Output: {
             /** @description The template filled in for the ticket: put it in the composer */

@@ -147,5 +147,29 @@ describe("HTTP conventions", () => {
       );
       expect(document.components.schemas).toHaveProperty("ProblemDetails");
     });
+
+    it("describes every page's nextCursor as a string or null", async () => {
+      const response = await http().get("/api/docs/openapi.json").expect(200);
+      const schemas = (
+        response.body as {
+          components: {
+            schemas: Record<string, { properties?: Record<string, unknown> }>;
+          };
+        }
+      ).components.schemas;
+      const cursors = Object.entries(schemas).filter(
+        ([, schema]) => schema.properties?.nextCursor !== undefined,
+      );
+      expect(cursors.length).toBeGreaterThan(5);
+      for (const [name, schema] of cursors) {
+        const cursor = schema.properties?.nextCursor as {
+          anyOf?: { type?: string }[];
+        };
+        expect(
+          { name, types: cursor.anyOf?.map((option) => option.type) },
+          name,
+        ).toEqual({ name, types: ["string", "null"] });
+      }
+    });
   });
 });
