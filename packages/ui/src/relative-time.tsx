@@ -29,7 +29,7 @@ export function RelativeTime({
     <time
       dateTime={value}
       title={dateTime(value)}
-      className={cn("tabular", className)}
+      className={cn("tabular whitespace-nowrap", className)}
       suppressHydrationWarning
     >
       {relativeTime(value, now)}

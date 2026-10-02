@@ -32,7 +32,7 @@ export function ReferenceChip({
   }, [copied]);
 
   const chip =
-    "inline-flex h-5 items-center gap-1 rounded-sm border border-border-strong bg-muted px-1.5 font-mono text-[0.6875rem] leading-none font-medium tracking-tight text-muted-foreground shadow-[inset_0_1px_0_oklch(0_0_0/0.04)] tabular";
+    "inline-flex h-5 shrink-0 items-center gap-1 whitespace-nowrap rounded-sm border border-border-strong bg-muted px-1.5 font-mono text-[0.6875rem] leading-none font-medium tracking-tight text-muted-foreground shadow-[inset_0_1px_0_oklch(0_0_0/0.04)] tabular";
 
   if (!copyable) {
     return <span className={cn(chip, className)}>{reference}</span>;

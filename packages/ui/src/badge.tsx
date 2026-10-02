@@ -157,6 +157,22 @@ export function PriorityBadge({
   priority: TicketPriority;
   className?: string;
 }) {
+  if (PRIORITY_TONES[priority] === "neutral") {
+    return (
+      <span
+        className={cn(
+          "inline-flex h-5 shrink-0 items-center gap-1.5 px-2 text-xs whitespace-nowrap text-muted-foreground",
+          className,
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className="size-1.5 rounded-full bg-tone-neutral/60"
+        />
+        {PRIORITY_LABELS[priority]}
+      </span>
+    );
+  }
   return (
     <Badge tone={PRIORITY_TONES[priority]} dot className={className}>
       {PRIORITY_LABELS[priority]}
