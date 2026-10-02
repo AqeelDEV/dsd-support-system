@@ -79,6 +79,7 @@ export {
   Kbd,
   Panel,
   PanelHeader,
+  ProblemAlert,
 } from "./surfaces";
 export { Thread, ThreadEvent, ThreadMessage } from "./thread";
 export {

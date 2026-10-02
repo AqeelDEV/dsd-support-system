@@ -9,6 +9,7 @@ import {
 import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "./cn";
+import { describeProblem } from "./problem";
 
 /*
  * Hairlines and layers (ADR-0013, signature detail 3): content sits on a
@@ -197,5 +198,27 @@ export function Kbd({ className, ...props }: ComponentProps<"kbd">) {
       )}
       {...props}
     />
+  );
+}
+
+/** A failed action, in the words `describeProblem` chooses, with the request ID to quote. */
+export function ProblemAlert({
+  problem,
+  className,
+}: {
+  problem: unknown;
+  className?: string;
+}) {
+  if (problem === null || problem === undefined) return null;
+  const message = describeProblem(problem);
+  return (
+    <Alert tone="danger" title={message.title} className={className}>
+      {message.description}
+      {message.requestId === undefined ? null : (
+        <span className="mt-1 block font-mono text-[0.6875rem] opacity-80">
+          Reference: {message.requestId}
+        </span>
+      )}
+    </Alert>
   );
 }
