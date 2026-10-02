@@ -649,6 +649,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/agents/assignable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Colleagues a ticket can go to
+         * @description Active staff who share a brand with you, you included, with name and role only. For the agent app's assign and escalate pickers; it needs `ticket:assign`, not `user:read`. Assigning still checks the colleague against the ticket's brand.
+         */
+        get: operations["AgentsController_assignable"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/agents/{agentId}": {
         parameters: {
             query?: never;
@@ -1555,6 +1575,16 @@ export interface components {
             }[];
             /** @description Pass as `cursor` for the next page; null on the last page */
             nextCursor: string | null;
+        };
+        AssignableAgents_Output: {
+            /** @description Ordered by name */
+            items: {
+                /** Format: uuid */
+                id: string;
+                displayName: string;
+                /** @enum {string} */
+                role: "agent" | "supervisor" | "admin";
+            }[];
         };
         AgentView_Output: {
             /** Format: uuid */
@@ -4053,6 +4083,43 @@ export interface operations {
             };
             /** @description A staff account with that email exists (`already-exists`) */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AgentsController_assignable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignableAgents_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `ticket:assign` permission */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -116,6 +116,25 @@ export class AgentsRepository {
       .limit(page.limit + 1);
   }
 
+  /**
+   * Active colleagues who share a brand with the viewer, the viewer
+   * included, by name: who a ticket can be handed to (FR-11).
+   */
+  async assignable(
+    executor: Executor,
+    viewerId: string,
+  ): Promise<{ id: string; displayName: string; role: AgentRole }[]> {
+    return executor
+      .select({
+        id: agents.id,
+        displayName: agents.displayName,
+        role: agents.role,
+      })
+      .from(agents)
+      .where(and(hasStatus("active"), sharesBrandWith(viewerId)))
+      .orderBy(asc(agents.displayName), asc(agents.id));
+  }
+
   /** The colleague, if they share a brand with the viewer. */
   async visible(
     executor: Executor,

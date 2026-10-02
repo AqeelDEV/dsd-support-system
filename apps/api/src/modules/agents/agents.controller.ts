@@ -17,6 +17,7 @@ import {
   agentRoleChangeRequestSchema,
   agentSchema,
   agentUpdateRequestSchema,
+  assignableAgentsSchema,
   pageOf,
 } from "@dsd/shared";
 import type { FastifyRequest } from "fastify";
@@ -35,6 +36,7 @@ class AgentView extends createZodDto(agentSchema) {}
 class AgentInvite extends createZodDto(agentInviteRequestSchema) {}
 class AgentUpdate extends createZodDto(agentUpdateRequestSchema) {}
 class AgentRoleChange extends createZodDto(agentRoleChangeRequestSchema) {}
+class AssignableAgents extends createZodDto(assignableAgentsSchema) {}
 
 const RANK_RULES =
   "Supervisors manage agents; admins manage everyone else. Nobody manages their own account, and no change may leave the system without an active admin.";
@@ -63,6 +65,20 @@ export class AgentsController {
   @ZodResponse({ status: HttpStatus.OK, type: AgentPage })
   list(@Query() query: AgentListQuery, @Req() request: FastifyRequest) {
     return this.agents.list(staffOf(request), query);
+  }
+
+  @Get("assignable")
+  @RequirePermissions("ticket:assign")
+  @ApiSession("staff", { changesState: false })
+  @ApiOperation({
+    summary: "Colleagues a ticket can go to",
+    description:
+      "Active staff who share a brand with you, you included, with name and role only. For the agent app's assign and escalate pickers; it needs `ticket:assign`, not `user:read`. Assigning still checks the colleague against the ticket's brand.",
+  })
+  @ApiProblem(403, "Missing the `ticket:assign` permission")
+  @ZodResponse({ status: HttpStatus.OK, type: AssignableAgents })
+  assignable(@Req() request: FastifyRequest) {
+    return this.agents.assignable(staffOf(request));
   }
 
   @Get(":agentId")

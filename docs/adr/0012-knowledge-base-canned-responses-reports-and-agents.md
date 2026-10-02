@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-01
+- Amended: 2026-10-02 (see [Amendments](#amendments))
 - Requirements: FR-4, FR-11, FR-12, FR-13, FR-14, FR-15, FR-16, NFR-6, NFR-7, API-1
 
 ## Context
@@ -106,3 +107,9 @@ When PostgreSQL cancels a transaction to break a deadlock (SQLSTATE 40P01), noth
 - RBAC: every new route in the matrix, against all ten callers.
 - Database: `seed` (the starter knowledge base), `generate` (seeded articles are already sanitised), `indexes` (browsing published articles).
 - Smoke: the help centre lists and searches the seeded articles through the customer app, and a draft stays private.
+
+## Amendments
+
+### 2026-10-02, Phase 8
+
+1. **Colleagues a ticket can go to (section 7, FR-11).** `GET /api/v1/staff/agents/assignable` lists the active staff who share a brand with the caller, the caller included, by name, with id, name and role only. It needs `ticket:assign`, which every staff role holds, rather than `user:read`, which agents lack: without it an agent could be allowed to assign a ticket (`allowedActions.assign`) but have no way to name a colleague, and the escalation dialog couldn't offer a supervisor. It shows no email, status or management actions, so it widens nothing that `user:read` protects. Assigning still checks the chosen colleague against the ticket's brand (422).

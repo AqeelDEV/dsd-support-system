@@ -2936,6 +2936,54 @@
         ]
       }
     },
+    "/api/v1/staff/agents/assignable": {
+      "get": {
+        "description": "Active staff who share a brand with you, you included, with name and role only. For the agent app's assign and escalate pickers; it needs `ticket:assign`, not `user:read`. Assigning still checks the colleague against the ticket's brand.",
+        "operationId": "AgentsController_assignable",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignableAgents_Output"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid session for this realm",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing the `ticket:assign` permission",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffSession": []
+          }
+        ],
+        "summary": "Colleagues a ticket can go to",
+        "tags": [
+          "Agents"
+        ]
+      }
+    },
     "/api/v1/staff/agents/{agentId}": {
       "get": {
         "operationId": "AgentsController_view",
@@ -7112,6 +7160,46 @@
         "required": [
           "items",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "AssignableAgents_Output": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "agent",
+                    "supervisor",
+                    "admin"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "displayName",
+                "role"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Ordered by name"
+          }
+        },
+        "required": [
+          "items"
         ],
         "additionalProperties": false
       },

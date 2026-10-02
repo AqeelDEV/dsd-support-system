@@ -104,6 +104,11 @@ export class AgentsService {
     );
   }
 
+  /** Who this agent can hand a ticket to; the assignment itself checks again (ADR-0012 amendment). */
+  async assignable(principal: StaffPrincipal) {
+    return { items: await this.agents.assignable(this.db, principal.agent.id) };
+  }
+
   async get(principal: StaffPrincipal, agentId: string): Promise<Agent> {
     const row = await this.agents.visible(this.db, principal.agent.id, agentId);
     if (row === undefined) throw agentNotFound();

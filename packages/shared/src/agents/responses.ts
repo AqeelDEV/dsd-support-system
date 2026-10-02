@@ -37,5 +37,21 @@ export const agentSchema = z.object({
     .describe("The roles you may give this colleague now; empty if none"),
 });
 
+/**
+ * A colleague a ticket can be handed to: active, sharing a brand with you.
+ * Names and roles only, so any agent can fill an "Assign to" or "Escalate
+ * to" picker without `user:read` (FR-11).
+ */
+export const assignableAgentSchema = z.object({
+  id: z.uuid(),
+  displayName: z.string(),
+  role: agentRoleSchema,
+});
+
+export const assignableAgentsSchema = z.object({
+  items: z.array(assignableAgentSchema).describe("Ordered by name"),
+});
+
+export type AssignableAgent = z.infer<typeof assignableAgentSchema>;
 export type AgentAllowedActions = z.infer<typeof agentAllowedActionsSchema>;
 export type Agent = z.infer<typeof agentSchema>;

@@ -224,6 +224,12 @@ const managersOnly = (status: number): Record<Actor, number> => ({
 const AGENT_ROWS: MatrixRow[] = [
   {
     method: "GET",
+    path: "/api/v1/staff/agents/assignable",
+    rule: "The assign picker needs ticket:assign, which every staff role has",
+    expected: staffOnly(200),
+  },
+  {
+    method: "GET",
     path: "/api/v1/staff/agents",
     rule: "Listing colleagues needs user:read (supervisors, admins)",
     expected: managersOnly(200),

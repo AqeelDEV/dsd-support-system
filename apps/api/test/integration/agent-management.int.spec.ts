@@ -156,6 +156,39 @@ describe("agent management", () => {
     });
   });
 
+  describe("assignable colleagues", () => {
+    it("lists active colleagues by name for any agent, with no contact details", async () => {
+      const outsider = await newAgent(database, {
+        brandIds: [await otherBrandId(database)],
+      });
+      const response = await get("/assignable", agent);
+      expect(response.status).toBe(200);
+      const items = (
+        response.body as {
+          items: { id: string; displayName: string; role: string }[];
+        }
+      ).items;
+      const ids = items.map((item) => item.id);
+      expect(ids).toEqual(expect.arrayContaining([supervisorId, adminId]));
+      expect(ids).not.toContain(outsider.id);
+      const seeded = await asOwner<{ id: string }>(
+        database,
+        `SELECT id FROM agents WHERE email IN ($1, $2)`,
+        [DEMO.formerAgent, DEMO.invitedAgent],
+      );
+      for (const row of seeded) expect(ids).not.toContain(row.id);
+      expect(Object.keys(items[0] ?? {}).sort()).toEqual([
+        "displayName",
+        "id",
+        "role",
+      ]);
+      const names = items.map((item) => item.displayName);
+      expect(names).toEqual(
+        [...names].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+      );
+    });
+  });
+
   describe("inviting", () => {
     it("creates an invited account in the inviter's brands and asks for the email", async () => {
       const response = await send("post", "", supervisor, {
