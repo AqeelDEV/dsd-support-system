@@ -1,4 +1,4 @@
-import type { Nodes } from "mdast";
+import type { Nodes, Root } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
@@ -92,11 +92,20 @@ function unsafeNodes(node: Nodes, source: string, edits: Edit[]): void {
   }
 }
 
-function sanitisePass(markdown: string): string {
-  const tree = fromMarkdown(markdown, {
+/**
+ * Parses markdown with GFM into a syntax tree. The sanitiser and the help
+ * centre's renderer both use it, so they always agree on what a piece of
+ * text is: the renderer can't see a link the sanitiser didn't.
+ */
+export function parseMarkdown(markdown: string): Root {
+  return fromMarkdown(markdown, {
     extensions: [gfm()],
     mdastExtensions: [gfmFromMarkdown()],
   });
+}
+
+function sanitisePass(markdown: string): string {
+  const tree = parseMarkdown(markdown);
   const edits: Edit[] = [];
   unsafeNodes(tree, markdown, edits);
   let result = markdown;

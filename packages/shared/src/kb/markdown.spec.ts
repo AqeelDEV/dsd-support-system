@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isSafeUrl, sanitizeMarkdown } from "./markdown.js";
+import { isSafeUrl, parseMarkdown, sanitizeMarkdown } from "./markdown.js";
 
 describe("isSafeUrl", () => {
   it.each([
@@ -94,5 +94,19 @@ describe("sanitizeMarkdown", () => {
 
   it("removes the search snippet markers", () => {
     expect(sanitizeMarkdown("a\uE000b\uE001c")).toBe("abc");
+  });
+});
+
+describe("parseMarkdown", () => {
+  it("parses GFM, so tables and strikethrough reach the renderer as nodes", () => {
+    const tree = parseMarkdown("| a |\n| - |\n| b |\n\n~~old~~");
+    expect(tree.children.map((node) => node.type)).toEqual([
+      "table",
+      "paragraph",
+    ]);
+    const paragraph = tree.children[1];
+    expect(paragraph?.type === "paragraph" && paragraph.children[0]?.type).toBe(
+      "delete",
+    );
   });
 });
