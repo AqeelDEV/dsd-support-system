@@ -60,8 +60,9 @@ describe("customer response schemas", () => {
   it("are a strict subset of what staff see", () => {
     const staff = new Set(propertyNames(z.toJSONSchema(staffTicketSchema)));
     const customer = propertyNames(z.toJSONSchema(customerTicketSchema)).filter(
-      // The customer view adds its own status timeline.
-      (name) => !["timeline", "at"].includes(name),
+      // The customer view adds its own status timeline, and `canReply`,
+      // the customer's side of the staff `allowedActions.reply`.
+      (name) => !["timeline", "at", "canReply"].includes(name),
     );
     expect(customer.filter((name) => !staff.has(name))).toEqual([]);
     expect(propertyNames(z.toJSONSchema(staffMessageSchema))).toContain(
