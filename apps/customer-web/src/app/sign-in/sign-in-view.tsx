@@ -9,6 +9,7 @@ import {
   type FieldErrors,
   Input,
   PasswordInput,
+  safeNext,
   validateForm,
 } from "@dsd/ui";
 import { useMutation } from "@tanstack/react-query";
@@ -19,7 +20,6 @@ import { useState } from "react";
 import { AuthCard } from "@/components/auth-card";
 import { FormProblem } from "@/components/page";
 import { api } from "@/lib/api";
-import { safeNext } from "@/lib/links";
 import { useSetSession } from "@/lib/session";
 
 type FieldName = "email" | "password";

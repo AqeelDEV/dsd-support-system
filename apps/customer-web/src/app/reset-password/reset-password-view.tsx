@@ -6,7 +6,14 @@ import {
   passwordResetCompleteRequestSchema,
   PROBLEM_TYPES,
 } from "@dsd/shared";
-import { Button, Field, PasswordInput, toast, validateForm } from "@dsd/ui";
+import {
+  Button,
+  Field,
+  PasswordInput,
+  toast,
+  useHashToken,
+  validateForm,
+} from "@dsd/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,7 +23,6 @@ import { LinkProblem, TokenPending } from "@/components/link-states";
 import { FormProblem } from "@/components/page";
 import { api } from "@/lib/api";
 import { useSetSession } from "@/lib/session";
-import { useHashToken } from "@/lib/use-hash-token";
 
 /**
  * The page behind a password-reset email. Completing it signs this browser

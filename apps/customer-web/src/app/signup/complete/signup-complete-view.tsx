@@ -13,6 +13,7 @@ import {
   Input,
   PasswordInput,
   toast,
+  useHashToken,
   validateForm,
 } from "@dsd/ui";
 import { useMutation } from "@tanstack/react-query";
@@ -24,7 +25,6 @@ import { LinkProblem, TokenPending } from "@/components/link-states";
 import { FormProblem } from "@/components/page";
 import { api } from "@/lib/api";
 import { useSetSession } from "@/lib/session";
-import { useHashToken } from "@/lib/use-hash-token";
 
 type FieldName = "displayName" | "password";
 

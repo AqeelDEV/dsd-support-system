@@ -87,3 +87,5 @@ export {
   type ProblemMessage,
 } from "./problem";
 export { type FieldErrors, validateForm } from "./validate";
+export { safeNext, tokenFromHash } from "./links";
+export { type HashToken, useHashToken } from "./use-hash-token";

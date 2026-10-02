@@ -1,7 +1,13 @@
 "use client";
 
 import { ApiProblem, ok } from "@dsd/api-client";
-import { buttonVariants, describeProblem, ErrorState, Spinner } from "@dsd/ui";
+import {
+  buttonVariants,
+  describeProblem,
+  ErrorState,
+  Spinner,
+  useHashToken,
+} from "@dsd/ui";
 import { PROBLEM_TYPES } from "@dsd/shared";
 import { useMutation } from "@tanstack/react-query";
 import Link from "next/link";
@@ -11,7 +17,6 @@ import { useEffect, useRef } from "react";
 import { Container } from "@/components/page";
 import { api } from "@/lib/api";
 import { useSetSession } from "@/lib/session";
-import { useHashToken } from "@/lib/use-hash-token";
 
 /**
  * The guest link from a ticket email (FR-2; ADR-0003, section 6). The
