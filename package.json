@@ -22,8 +22,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
+    "@playwright/test": "catalog:",
     "eslint": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",

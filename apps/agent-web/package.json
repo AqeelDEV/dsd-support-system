@@ -15,7 +15,11 @@
   },
   "dependencies": {
     "@dsd/api-client": "workspace:*",
+    "@dsd/shared": "workspace:*",
     "@dsd/ui": "workspace:*",
+    "@fontsource-variable/inter": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "lucide-react": "catalog:",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
