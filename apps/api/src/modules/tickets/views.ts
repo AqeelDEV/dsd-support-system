@@ -16,6 +16,7 @@ import {
   allowedTransitionsFor,
   type StaffView,
 } from "./domain/ticket-actions.js";
+import { customerMayReply } from "./domain/ticket-status.js";
 import type { ThreadMessage } from "./messages.repository.js";
 
 /*
@@ -96,6 +97,7 @@ export function toCustomerTicket(
         at: iso(change.at),
       })),
     ],
+    canReply: customerMayReply(ticket.status),
   };
 }
 

@@ -1269,6 +1269,8 @@ export interface components {
                 /** Format: date-time */
                 at: string;
             }[];
+            /** @description Whether the customer can reply now. The customer app shows its reply box from this and never decides itself; the API enforces the same rule. */
+            canReply: boolean;
         };
         CustomerTicketSummary_Output: {
             /** Format: uuid */

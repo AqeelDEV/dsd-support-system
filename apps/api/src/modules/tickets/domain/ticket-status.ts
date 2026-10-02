@@ -51,8 +51,13 @@ export function assertAgentTransition(
  * in a resolved ticket. Closed tickets refuse it.
  */
 export function statusAfterCustomerReply(from: TicketStatus): TicketStatus {
-  if (from === "closed") throw ticketClosed();
+  if (!customerMayReply(from)) throw ticketClosed();
   return "open";
+}
+
+/** Whether a customer can reply in this status; the customer view reports it as `canReply`. */
+export function customerMayReply(status: TicketStatus): boolean {
+  return status !== "closed";
 }
 
 /**

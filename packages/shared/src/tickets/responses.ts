@@ -69,6 +69,11 @@ export const customerTicketSchema = customerTicketSummarySchema.extend({
   timeline: z
     .array(z.object({ status: ticketStatusSchema, at: timestamp }))
     .describe("Each status the ticket has had, starting with `open`"),
+  canReply: z
+    .boolean()
+    .describe(
+      "Whether the customer can reply now. The customer app shows its reply box from this and never decides itself; the API enforces the same rule.",
+    ),
 });
 
 const agentRefSchema = z.object({ id: z.uuid(), displayName: z.string() });

@@ -186,6 +186,25 @@ describe("customer ticket view", () => {
       }
     });
 
+    it("says whether the customer can reply: every status but closed", async () => {
+      const rows = await asOwner<{ id: string; status: string }>(
+        database,
+        `SELECT DISTINCT ON (status) id, status FROM tickets
+          WHERE customer_id = $1 ORDER BY status, number`,
+        [customerId],
+      );
+      expect(rows.map((row) => row.status)).toContain("closed");
+      for (const row of rows) {
+        const response = await get(
+          `/api/v1/customer/tickets/${row.id}`,
+          customer,
+        );
+        expect((response.body as CustomerTicket).canReply).toBe(
+          row.status !== "closed",
+        );
+      }
+    });
+
     it("names who wrote each reply, by display name only", async () => {
       const ticketId = await workedTicket();
       const response = await get(

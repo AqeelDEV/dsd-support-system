@@ -5,6 +5,7 @@ import { ProblemException } from "../../../common/problem-details.js";
 import {
   agentTransitions,
   assertAgentTransition,
+  customerMayReply,
   statusAfterCustomerReply,
   timestampChanges,
 } from "./ticket-status.js";
@@ -78,6 +79,15 @@ describe("a customer's reply (ADR-0007, section 2)", () => {
     const error = thrown(() => statusAfterCustomerReply("closed"));
     expect(error.getStatus()).toBe(409);
     expect(error.problemType).toBe(PROBLEM_TYPES.ticketClosed);
+  });
+
+  it.each([
+    ["open", true],
+    ["pending_customer", true],
+    ["resolved", true],
+    ["closed", false],
+  ] as const)("is offered on a %s ticket: %s", (status, offered) => {
+    expect(customerMayReply(status)).toBe(offered);
   });
 });
 

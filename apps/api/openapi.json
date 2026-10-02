@@ -5851,6 +5851,10 @@
               "additionalProperties": false
             },
             "description": "Each status the ticket has had, starting with `open`"
+          },
+          "canReply": {
+            "type": "boolean",
+            "description": "Whether the customer can reply now. The customer app shows its reply box from this and never decides itself; the API enforces the same rule."
           }
         },
         "required": [
@@ -5862,7 +5866,8 @@
           "description",
           "attachments",
           "messages",
-          "timeline"
+          "timeline",
+          "canReply"
         ],
         "additionalProperties": false
       },
