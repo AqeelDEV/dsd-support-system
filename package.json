@@ -19,13 +19,13 @@
     "openapi:generate": "turbo run openapi:generate",
     "openapi:check": "turbo run openapi:generate && git diff --exit-code -- apps/api/openapi.json packages/api-client/src/schema.d.ts",
     "db:check": "pnpm --filter @dsd/db db:check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:e2e": "pnpm --filter @dsd/e2e test:e2e",
+    "screenshots": "pnpm --filter @dsd/e2e screenshots"
   },
   "devDependencies": {
-    "@axe-core/playwright": "catalog:",
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
-    "@playwright/test": "catalog:",
     "eslint": "catalog:",
     "husky": "catalog:",
     "lint-staged": "catalog:",

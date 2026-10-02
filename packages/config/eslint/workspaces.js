@@ -28,4 +28,6 @@ export const WORKSPACES = Object.freeze({
   "@dsd/db": { dir: "packages/db", allow: ["@dsd/shared"] },
   "@dsd/ui": { dir: "packages/ui", allow: ["@dsd/shared"] },
   "@dsd/config": { dir: "packages/config", allow: [] },
+  // Browser tests drive the running apps from outside, like a user would.
+  "@dsd/e2e": { dir: "e2e", allow: [] },
 });

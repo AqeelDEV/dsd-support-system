@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - e2e
 
 # Install scripts are blocked unless listed here. @scarf/scarf (pulled in
 # by swagger-ui-dist) only sends install telemetry. esbuild (pulled in by

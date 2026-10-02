@@ -9,6 +9,8 @@ out/
 next-env.d.ts
 
 # Tooling caches
+e2e/test-results/
+e2e/playwright-report/
 .turbo/
 coverage/
 .eslintcache

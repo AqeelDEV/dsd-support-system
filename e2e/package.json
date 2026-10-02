@@ -1,0 +1,21 @@
+{
+  "name": "@dsd/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright end-to-end tests against the running Compose stack",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "screenshots": "playwright test --project=screenshots"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "catalog:",
+    "@dsd/config": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}
