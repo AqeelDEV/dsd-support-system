@@ -11,6 +11,7 @@ next-env.d.ts
 # Tooling caches
 e2e/test-results/
 e2e/playwright-report/
+e2e/.auth/
 .turbo/
 coverage/
 .eslintcache
