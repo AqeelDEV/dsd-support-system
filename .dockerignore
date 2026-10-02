@@ -6,6 +6,9 @@
 !pnpm-lock.yaml
 !pnpm-workspace.yaml
 !turbo.json
+# The browser-test workspace is in the lockfile, so its manifest must be
+# here for a frozen install; its tests never are.
+!e2e/package.json
 
 # Build output and dependencies are always recreated inside the image.
 **/node_modules
