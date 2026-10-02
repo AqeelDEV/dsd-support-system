@@ -51,6 +51,16 @@ export function HomeView() {
               our support team.
             </p>
             <HelpSearch className="mt-7" />
+            {/* Phones get the header's call to action here, under the search. */}
+            <Link
+              href="/new"
+              className={buttonVariants({
+                size: "lg",
+                className: "mt-4 w-full sm:hidden",
+              })}
+            >
+              Contact support
+            </Link>
             {popular.length === 0 ? null : (
               <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Popular:</span>
