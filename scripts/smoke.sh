@@ -42,7 +42,16 @@ expect_body "unknown routes answer with problem details" '"status":404.*"request
 
 echo "Customer app"
 expect_status "home page" 200 "$CUSTOMER/"
-expect_body "pages send the app's security headers" "^[Cc]ontent-[Ss]ecurity-[Pp]olicy: frame-ancestors 'none'" "$CUSTOMER/" --dump-header - --output /dev/null
+expect_body "pages send a nonce-based script policy" "^[Cc]ontent-[Ss]ecurity-[Pp]olicy: .*script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'" "$CUSTOMER/" --dump-header - --output /dev/null
+expect_body "pages refuse framing" "^[Cc]ontent-[Ss]ecurity-[Pp]olicy: .*frame-ancestors 'none'" "$CUSTOMER/" --dump-header - --output /dev/null
+nonce_of() { curl -sS -D - -o /dev/null "$1" | grep -ioE "'nonce-[^']+'" | head -n 1; }
+first_nonce=$(nonce_of "$CUSTOMER/")
+if [[ -n "$first_nonce" && "$first_nonce" != "$(nonce_of "$CUSTOMER/")" ]]; then
+  pass "every page response gets a new nonce"
+else
+  fail "every page response gets a new nonce (got '$first_nonce' twice)"
+fi
+expect_body "the guest access page sends no referrer" "^[Rr]eferrer-[Pp]olicy: no-referrer" "$CUSTOMER/access" --dump-header - --output /dev/null
 expect_status "healthcheck" 200 "$CUSTOMER/healthz"
 expect_body "proxy reaches the API (problem details from the API)" '"detail":"Cannot GET /api/v1/customer/no-such-route"' "$CUSTOMER/api/v1/customer/no-such-route"
 expect_body "proxy refuses staff routes itself" '"detail":"No such API route in this app\."' "$CUSTOMER/api/v1/staff/tickets"

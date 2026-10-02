@@ -11,6 +11,10 @@
     "./next": {
       "types": "./next/index.d.ts",
       "default": "./next/index.js"
+    },
+    "./next/csp": {
+      "types": "./next/csp.d.ts",
+      "default": "./next/csp.js"
     }
   },
   "scripts": {

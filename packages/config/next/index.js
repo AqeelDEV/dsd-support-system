@@ -1,16 +1,11 @@
 import path from "node:path";
 
 /**
- * Response headers for every page (NFR-7). The CSP here only covers what
- * needs no per-request nonce: framing, plugins, base URLs and form targets.
- * A nonce-based script-src comes with the real pages.
+ * Response headers for every page (NFR-7). The Content Security Policy
+ * needs a fresh nonce per response, so each app's proxy sets it
+ * (`./csp.js`); these headers are the same on every response.
  */
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value:
-      "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
-  },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
