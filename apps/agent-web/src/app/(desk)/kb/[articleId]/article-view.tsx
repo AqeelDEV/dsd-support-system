@@ -7,7 +7,13 @@ import { useStaffArticle } from "@/lib/kb";
 
 import { ArticleEditor } from "../article-editor";
 
-export function ArticleView({ articleId }: { articleId: string }) {
+export function ArticleView({
+  articleId,
+  markupRemoved,
+}: {
+  articleId: string;
+  markupRemoved: boolean;
+}) {
   const article = useStaffArticle(articleId);
   if (article.isPending) {
     return (
@@ -30,5 +36,11 @@ export function ArticleView({ articleId }: { articleId: string }) {
     );
   }
   // The editor keeps its own draft and replaces it with what the API stored after each save.
-  return <ArticleEditor key={article.data.id} article={article.data} />;
+  return (
+    <ArticleEditor
+      key={article.data.id}
+      article={article.data}
+      markupRemoved={markupRemoved}
+    />
+  );
 }

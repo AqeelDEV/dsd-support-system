@@ -56,14 +56,21 @@ const tagsOf = (text: string) =>
  * saves, and returns what it stored: if that differs from what was typed,
  * the editor says so and shows the stored text.
  */
-export function ArticleEditor({ article }: { article?: KbStaffArticle }) {
+export function ArticleEditor({
+  article,
+  markupRemoved = false,
+}: {
+  article?: KbStaffArticle;
+  /** The first save of a new article removed markup; it told this page through the address. */
+  markupRemoved?: boolean;
+}) {
   const can = useCan();
   const router = useRouter();
   const client = useQueryClient();
   const categories = useCategories();
   const [draft, setDraft] = useState<Draft>(() => fromArticle(article));
   const [view, setView] = useState<"write" | "preview">("write");
-  const [stripped, setStripped] = useState(false);
+  const [stripped, setStripped] = useState(markupRemoved);
   const editable =
     can("kb:write") && (article?.status !== "published" || can("kb:publish"));
 
@@ -71,8 +78,12 @@ export function ArticleEditor({ article }: { article?: KbStaffArticle }) {
     setDraft((current) => ({ ...current, [field]: value }));
   };
 
+  /** Whether the API removed something from the body it was sent. */
+  const removed = (stored: KbStaffArticle, sent: string) =>
+    stored.bodyMarkdown !== sent.trim();
+
   const saved = (stored: KbStaffArticle, sent: string) => {
-    setStripped(stored.bodyMarkdown !== sent.trim());
+    setStripped(removed(stored, sent));
     setDraft(fromArticle(stored));
     client.setQueryData(["kb", "article", stored.id], stored);
     void client.invalidateQueries({ queryKey: ["kb", "articles"] });
@@ -104,7 +115,11 @@ export function ArticleEditor({ article }: { article?: KbStaffArticle }) {
           ? `Saved and published as version ${stored.version}`
           : "Draft saved",
       );
-      if (article === undefined) router.replace(`/kb/${stored.id}`);
+      if (article === undefined) {
+        router.replace(
+          `/kb/${stored.id}${removed(stored, draft.bodyMarkdown) ? "?markup=removed" : ""}`,
+        );
+      }
     },
   });
 
