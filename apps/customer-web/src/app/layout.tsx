@@ -1,14 +1,19 @@
-import type { Metadata, Viewport } from "next";
-import type { ReactNode } from "react";
-
+import "@fontsource-variable/inter";
 import "./globals.css";
 
+import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
+import type { ReactNode } from "react";
+
+import { PRODUCT_NAME } from "@/components/brand";
+import { Providers } from "@/components/providers";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+
 export const metadata: Metadata = {
-  title: {
-    default: "DSD Customer Support",
-    template: "%s | DSD Customer Support",
-  },
-  description: "Get help with your DSD account, orders and deliveries.",
+  title: { default: PRODUCT_NAME, template: `%s · ${PRODUCT_NAME}` },
+  description:
+    "Get help with your DSD account, orders and devices: search the help centre or contact support.",
 };
 
 export const viewport: Viewport = {
@@ -16,37 +21,31 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  // Every page renders per request, so each one gets the nonce from the
+  // proxy's CSP header (ADR-0013). A page prerendered at build time would
+  // carry no nonce, and the browser would block its scripts.
+  await connection();
   return (
     <html lang="en">
-      <body className="flex min-h-dvh flex-col">
+      <body className="flex min-h-dvh flex-col text-md">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:shadow"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-card focus:px-4 focus:py-2 focus:text-base focus:shadow-overlay"
         >
           Skip to content
         </a>
-        <header className="border-b border-border bg-card">
-          <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-4 sm:px-6">
-            <span
-              aria-hidden="true"
-              className="grid size-8 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground"
-            >
-              D
-            </span>
-            <span className="text-base font-semibold tracking-tight">
-              DSD Customer Support
-            </span>
-          </div>
-        </header>
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <footer className="border-t border-border">
-          <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted-foreground sm:px-6">
-            DSD Unified Customer Support
-          </div>
-        </footer>
+        <Providers>
+          <SiteHeader />
+          <main id="main" className="flex flex-1 flex-col">
+            {children}
+          </main>
+          <SiteFooter />
+        </Providers>
       </body>
     </html>
   );
