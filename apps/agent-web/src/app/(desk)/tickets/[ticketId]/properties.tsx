@@ -229,6 +229,7 @@ function Assignee({ ticket }: { ticket: StaffTicket }) {
                       <button
                         type="button"
                         disabled={agent.id === ticket.assignee?.id}
+                        aria-label={`${agent.displayName}${agent.id === me ? " (you)" : ""}, ${ROLE_LABELS[agent.role]}`}
                         onClick={() => {
                           setOpen(false);
                           actions.assignment.mutate(
