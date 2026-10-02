@@ -40,20 +40,31 @@ The stack starts with synthetic demo data. Every demo account's password is `dsd
 
 Two more staff accounts exist for testing the edges: `former.agent@dsd.example` has been deactivated, and `new.starter@dsd.example` was invited but hasn't set a password. Neither can sign in.
 
-The apps' sign-in screens aren't built yet. Until they are, sign in from Swagger UI: open `POST /api/v1/auth/customer/login` or `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests, so `me`, `logout` and every staff or customer route work from the same page. Routes that take files (raising a ticket, replies and internal notes) use a multipart form with the fields first and up to five files in `attachments`.
+### The customer app
 
-Beyond tickets, the API serves:
+Open http://localhost:3000. Without signing in you can search the help centre, read articles and contact support: a request needs only an email, a subject and a description, with up to five files. The acknowledgement email carries a link that opens the request, where you can follow the replies and answer. **Find a request** emails a fresh link for an earlier one.
 
-- **The help centre**, without signing in: `GET /api/v1/public/kb/articles` browses the published articles, and with `q` searches them (for example `q=refund`), each result with a snippet showing where the words matched.
-- **For staff:** knowledge-base authoring under `/api/v1/staff/kb`, canned responses filled in for a ticket under `/api/v1/staff/canned-responses`, reports under `/api/v1/staff/reports` (volume, response times, tickets per agent) and agent management under `/api/v1/staff/agents`. Agents can read and use these; writing, publishing, reporting and managing people need the supervisor or admin account.
+Sign in as `customer@example.com` to see **My requests** with the seeded history, or create an account from **Sign in**: sign-up is email-first, so the link to finish it arrives in Mailpit, and any requests sent earlier from that address appear in the account. **Forgot your password?** works the same way.
+
+The agent app arrives in the next phase. Until then, staff routes can be tried from Swagger UI: open `POST /api/v1/auth/staff/login`, choose "Try it out", and send the email and password. The browser keeps the session cookie, and Swagger UI adds the CSRF token to later requests. Routes that take files use a multipart form with the fields first and up to five files in `attachments`.
+
+For staff, the API serves knowledge-base authoring under `/api/v1/staff/kb`, canned responses filled in for a ticket under `/api/v1/staff/canned-responses`, reports under `/api/v1/staff/reports` (volume, response times, tickets per agent) and agent management under `/api/v1/staff/agents`. Agents can read and use these; writing, publishing, reporting and managing people need the supervisor or admin account.
 
 ### Emails
 
-Every email the system sends goes to Mailpit, a local mail catcher: open http://localhost:8025 to read them. Raise a ticket as a guest and the acknowledgement arrives with a link that opens it; an agent's reply, a status change, sign-up, a password reset and an agent invite each send theirs. The links point at the customer and agent apps, whose pages for them arrive with the apps; until then, the token in a link can be posted to its API route from Swagger UI (for example `POST /api/v1/auth/customer/guest-access/exchange`).
+Every email the system sends goes to Mailpit, a local mail catcher: open http://localhost:8025 to read them. Raise a ticket as a guest and the acknowledgement arrives with a link that opens it; an agent's reply, a status change, sign-up, a password reset and an agent invite each send theirs. Each link opens its page in the customer app. The agent invite's page arrives with the agent app; until then its token can be posted to `POST /api/v1/auth/staff/invite/complete` from Swagger UI.
 
 Emails are sent by the worker, never by a request: if the mail server is down, tickets and replies still go through and the emails follow once it is back. A job that keeps failing ends up in a dead-letter queue: `docker compose exec worker node dist/cli/dead-letter.js list` shows it and `... replay --all` sends it again.
 
 Customers and staff are separate realms: a customer session is refused by every staff route and the other way round ([ADR-0003](docs/adr/0003-authentication-and-sessions.md), [ADR-0004](docs/adr/0004-authorization-rbac.md)). Because this stack runs on plain `http://localhost`, its cookies leave out the `Secure` flag and the `__Host-` prefix, which browsers refuse there. A real deployment keeps both, and the API refuses to start without them unless every trusted origin is on localhost.
+
+### Screenshots
+
+| Help centre                                                                         | Contact support                                                                    |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| ![The customer app's home page](docs/screenshots/customer-home.png)                 | ![The contact form suggesting articles](docs/screenshots/customer-new-request.png) |
+| **A request on a phone**                                                            | **My requests**                                                                    |
+| ![A request's conversation on a phone](docs/screenshots/customer-thread-mobile.png) | ![The signed-in customer's requests](docs/screenshots/customer-my-requests.png)    |
 
 ## Development
 
@@ -61,11 +72,13 @@ You need Node.js 24 and pnpm 12. The exact versions are pinned in `.nvmrc` and i
 
 ```bash
 pnpm install
-docker compose up --detach --wait postgres redis seaweedfs
+docker compose up --detach --wait postgres redis seaweedfs mailpit
 pnpm test
 ```
 
 The tests run against real PostgreSQL, Redis and the S3-compatible object store, started from the same `compose.yaml`, because the design depends on database constraints, triggers, privileges and storage access rules that a mock would hide.
+
+The browser tests drive the production builds of both apps on the full stack, with Mailpit for the emails: start it with `docker compose up --build --wait`, run `pnpm --filter @dsd/e2e exec playwright install chromium` once, then `pnpm test:e2e`.
 
 | Command                 | What it does                                                           |
 | ----------------------- | ---------------------------------------------------------------------- |
@@ -77,6 +90,8 @@ The tests run against real PostgreSQL, Redis and the S3-compatible object store,
 | `pnpm format`           | Formats everything with Prettier                                       |
 | `pnpm openapi:generate` | Regenerates `apps/api/openapi.json` and the typed client from the code |
 | `pnpm openapi:check`    | Fails if the committed OpenAPI document or client is out of date       |
+| `pnpm test:e2e`         | Playwright browser tests against the running Compose stack             |
+| `pnpm screenshots`      | Regenerates the screenshots in `docs/screenshots`                      |
 | `pnpm dev`              | Runs the web apps in development mode                                  |
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Git hooks format and lint staged files and check commit messages, and CI checks the same rules on every push.
@@ -95,6 +110,7 @@ packages/
   db/             Database access (server only)
   ui/             Shared React components and theme
   config/         TypeScript, ESLint and Next.js presets
+e2e/              Playwright browser tests of both apps
 docs/             Requirements, architecture, data model and decision records
 ```
 

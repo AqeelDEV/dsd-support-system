@@ -1,6 +1,6 @@
 # ADR-0013: The web apps: visual direction, data flow and page security
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-02
 - Requirements: UI-1, UI-2, FR-1 to FR-4, FR-7 to FR-15, FR-16, NFR-7, NFR-12
 
@@ -10,7 +10,7 @@ The customer app and the agent app are the first thing anyone sees of this syste
 
 The two apps serve very different people. A customer visits rarely, reads carefully and may be on a phone. An agent works the queue all day on a desktop and wants to see many tickets at once and move quickly with the keyboard. One visual language has to serve both.
 
-This record is written in two steps. Section 1, the visual direction, is settled before any screen is built, so every screen is built against it and reviewed against it at the end of each phase. The technical decisions follow as they are made.
+Section 1, the visual direction, was settled before any screen was built, so every screen is built against it and reviewed against it at the end of each phase. Sections 2 to 7 record the technical decisions made while building the customer app; the agent app follows them.
 
 ## Decision
 
@@ -47,16 +47,61 @@ Headings are semibold with slightly negative tracking. Nothing is bold for empha
 
 **Review gate.** At the end of each phase the key screens are captured at 390 px and 1280 px, in light and dark, and checked against this section: the accent is used sparingly, the type scale and spacing are respected, the density fits the app, the signature details are present, and no screen shows an unstyled or default-looking state (loading, empty, error included). Anything generic or inconsistent is fixed before the phase closes.
 
+### 2. Data comes from the API in the browser, through the app's proxy
+
+- Pages are client components that read and write through `createBrowserClient` (`@dsd/api-client`), which calls the app's own `/api` proxy (ADR-0003, section 4). Server components only lay out the page; they never call the API. That keeps one path for every call, so the client-address hook (ADR-0010), CSRF and rate limits behave the same for every request.
+- TanStack Query holds the data: loading and error states come from it, a failed read retries once unless it was a 4xx, and an answer from a mutation (the updated ticket) replaces the cached copy instead of triggering a reload. Open threads refresh once a minute.
+- The CSRF token is read from the realm's script-readable cookie at the moment of each state-changing request, rather than kept in memory, so a sign-in in another tab never leaves a tab with a stale token.
+- Every failure becomes an `ApiProblem` (problem details plus status, request ID and `Retry-After`), and `describeProblem` in `packages/ui` words it the same way in both apps: a field error goes next to its field, a 429 says how long to wait, a 503 says the service is briefly unavailable, and anything else shows the request ID to quote.
+
+### 3. No rules in the apps
+
+- What a person may do comes from the API: staff `permissions` from `/me`, `allowedActions` and `allowedTransitions` on a staff ticket, and `canReply` on a customer ticket. `canReply` was added for this app: a customer ticket can't carry `allowedActions` (the customer-schema guard forbids staff-shaped fields), and without it the app would have had to know that closed tickets refuse replies.
+- Forms check input with the same zod schemas the API validates with (`packages/shared`), through `validateForm`, which only chooses the words. The API checks again.
+- Labels for statuses, priorities and roles live once in `packages/ui`, so the two apps can't name a state differently.
+
+### 4. The page Content Security Policy uses a nonce
+
+- Each app's `src/proxy.ts` (Next.js middleware) gives every page response a fresh nonce: `script-src 'self' 'nonce-…' 'strict-dynamic'`, plus `default-src 'self'`, `connect-src 'self'`, `img-src 'self' data: blob:`, `font-src 'self'` and the framing, plugin, base and form rules. Next.js reads the nonce from the request's CSP header and puts it on its own scripts; an injected script has no nonce and never runs.
+- The root layout calls `connection()`, so every page renders per request. A page prerendered at build time would carry no nonce and its scripts would be blocked.
+- `style-src` allows `'unsafe-inline'`: React writes `style` attributes (chart bars, table alignment) and a nonce can't cover attributes. Injected styles can't run code; scripts are what the policy is for.
+- The proxy's matcher skips `/api/`, so downloads keep the API's own `default-src 'none'; sandbox` (ADR-0011, section 9). Pages reached from emailed links (`/access`, `/signup/complete`, `/reset-password`, `/invite`) also send `Referrer-Policy: no-referrer`.
+- Fonts are self-hosted (`@fontsource-variable/inter`), so no third-party origin is allowed anywhere. Knowledge-base images from other sites are shown as links rather than loaded.
+
+### 5. Emailed links
+
+- Tokens travel in the URL fragment (ADR-0003), which never reaches a server or a `Referer`. The page reads it once, removes it from the address bar and history, and posts it to the API. An exchange runs once even when React runs effects twice in development.
+- An expired, used or malformed link gets a page that says so and offers the way to a new one.
+
+### 6. Knowledge-base markdown
+
+- `Markdown` in `packages/ui` builds React elements from the same mdast tree the sanitiser uses (`parseMarkdown` in `packages/shared`), so the renderer can't see a link the sanitiser didn't. It never sets HTML: raw HTML in the source is shown as text, every link and image URL is checked again with `isSafeUrl`, an unsafe link keeps its text and loses its destination, and an unsafe image is dropped. Markdown headings start at h2 under the article's h1.
+- Search snippets arrive as segments; the app wraps the matched ones in its own `<mark>` and strips markdown punctuation from the preview.
+
+### 7. Charts and browser tests
+
+- Charts (Phase 8 reports) are small SVG and HTML components on the design tokens, with a visually hidden data table for screen readers, rather than a chart library: they follow the theme and dark mode for free and add no dependency.
+- Browser tests live in the `e2e` workspace and drive the production builds on the Compose stack, with Mailpit for the emails. Each test makes its own customers with unique addresses; a global setup clears the rate-limit counters (only counters) so local reruns don't trip NFR-9's limits. `pnpm screenshots` captures the README screenshots, and `SCREENSHOT_REVIEW=1` captures every screen at both widths in both themes for the review gate.
+
 ## Consequences
 
 - Both apps share one token file and one component package, so a change of accent or radius is one edit.
 - Two densities from one set of components means components take a size rather than hard-coding one.
+- Client-side data means a page shows a skeleton for a moment before its content. In exchange, every call takes the one audited path through the proxy, and nothing the API says about permissions is cached on a server.
+- Every page is rendered per request because of the nonce. The pages are small and their data comes from the API anyway, so static rendering would have saved little.
 
 ## Alternatives considered
 
 - **Stock shadcn/ui styling.** Fast and accessible, but instantly recognisable as a template. We keep its structure (Radix primitives, cva variants, semantic tokens) and replace its look.
 - **A different accent per app.** It would separate the apps visually, but they are one product for one company; the separation is already structural (ADR-0001).
+- **Server components calling the API directly.** Faster first paint, but a second path to the API that skips the proxy, so the client address and the CSRF rules would need handling twice.
+- **A hash-based script policy, or `'unsafe-inline'`.** Hashes don't fit the scripts Next.js generates per page, and `'unsafe-inline'` would make the policy decorative.
+- **A chart library.** Heavier than three simple charts need, and harder to theme to the tokens.
 
 ## Verification
 
 - The review gate above, recorded in the phase's delivery notes, with screenshots kept in `docs/screenshots/`.
+- Unit: `csp` (`packages/config`), each app's `proxy` (a new nonce per response, the matcher equals the shared one, no referrer on token pages), `browser` (CSRF from the cookie, problem parsing, multipart order), `markdown` (raw HTML as text, unsafe URLs), `links` (safe redirects, fragment tokens), `validate`, `problem`.
+- Integration: `customer-ticket-view` checks `canReply` for every status; `http-conventions` checks every page cursor in the OpenAPI document.
+- e2e: `guest-flow`, `account-flow`, `kb-search`, `xss`, `responsive` (390 and 1280 px: no overflow, no CSP violation or script error), `a11y` (axe in light and dark, keyboard-only submission).
+- Smoke: a nonce-based policy on pages, a new nonce on every response, no referrer on `/access`.
