@@ -100,12 +100,14 @@ export function SiteHeader() {
               Opened from your email link
             </Badge>
           ) : null}
-          <Link
-            href="/new"
-            className={cn(buttonVariants(), "hidden sm:inline-flex")}
-          >
-            Contact support
-          </Link>
+          {pathname === "/new" ? null : (
+            <Link
+              href="/new"
+              className={cn(buttonVariants(), "hidden sm:inline-flex")}
+            >
+              Contact support
+            </Link>
+          )}
           {session.isPending ? (
             <Skeleton className="hidden size-8 rounded-full sm:block" />
           ) : account === undefined ? (

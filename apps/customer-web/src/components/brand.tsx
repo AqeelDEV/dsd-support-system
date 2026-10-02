@@ -7,6 +7,7 @@ export function Wordmark() {
   return (
     <Link
       href="/"
+      aria-label="DSD Support home"
       className="flex items-center gap-2.5 rounded-md text-base font-semibold tracking-tight"
     >
       <span
@@ -15,9 +16,7 @@ export function Wordmark() {
       >
         DSD
       </span>
-      <span>
-        Support<span className="sr-only">, home</span>
-      </span>
+      <span>Support</span>
     </Link>
   );
 }

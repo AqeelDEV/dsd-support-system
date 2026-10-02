@@ -283,7 +283,7 @@ export function NewTicketView() {
                   <Textarea
                     {...control}
                     size="lg"
-                    rows={8}
+                    rows={6}
                     maxLength={20_000}
                     value={description}
                     onChange={(event) => {
