@@ -93,7 +93,7 @@ Tickets you sent from that email address before you signed up appear in your acc
 
 ## Already have an account?
 
-If you sign up with an address that already has an account, we email you a sign-in link instead. Use [Reset your password](/kb/reset-your-password) if you have forgotten it.`,
+If you sign up with an address that already has an account, we email you a sign-in link instead. Use [Reset your password](/help/reset-your-password) if you have forgotten it.`,
   },
   {
     category: "billing",
@@ -179,7 +179,7 @@ Every device has a **2-year warranty**. Tell us what is wrong and we will try to
 
 ## Refunds
 
-See [How long refunds take](/kb/refund-timescales).`,
+See [How long refunds take](/help/refund-timescales).`,
   },
   {
     category: "troubleshooting",
