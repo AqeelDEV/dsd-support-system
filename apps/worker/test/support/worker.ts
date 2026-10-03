@@ -225,14 +225,28 @@ export const fixtures = {
   async ticket(
     database: TestDatabase,
     customerId: string,
+    options: {
+      subject?: string;
+      description?: string;
+      status?: "open" | "pending_customer" | "resolved" | "closed";
+    } = {},
   ): Promise<{ id: string; reference: string }> {
+    const status = options.status ?? "open";
     const [row] = await asOwner<{ id: string; reference: string }>(
       database,
-      `INSERT INTO tickets (brand_id, customer_id, channel, subject, description)
-       SELECT id, $1, 'web', 'Hub keeps going offline', 'It drops every evening.'
+      `INSERT INTO tickets (brand_id, customer_id, channel, subject, description, status,
+                            resolved_at, closed_at)
+       SELECT id, $1, 'web', $2, $3, $4::ticket_status,
+              CASE WHEN $4 IN ('resolved', 'closed') THEN now() END,
+              CASE WHEN $4 = 'closed' THEN now() END
          FROM brands WHERE slug = 'dsd'
        RETURNING id, reference`,
-      [customerId],
+      [
+        customerId,
+        options.subject ?? "Hub keeps going offline",
+        options.description ?? "It drops every evening.",
+        status,
+      ],
     );
     return { id: row?.id ?? "", reference: row?.reference ?? "" };
   },
