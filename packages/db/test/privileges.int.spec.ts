@@ -373,6 +373,23 @@ describe("database roles and privileges", () => {
       expect(error.code).toBe(SQLSTATE.insufficientPrivilege);
     });
 
+    it("reads AI suggestions but can't write one, so every draft comes from the worker (ADR-0006)", async () => {
+      await inRolledBackTransaction(db.pool("dsd_api"), async (client) => {
+        await client.query("SELECT id, draft_body FROM ai_suggestions");
+      });
+      for (const statement of [
+        "INSERT INTO ai_suggestions (ticket_id, trigger_event_id, provider, model, prompt_version, retrieval_mode, status, draft_body) VALUES ('00000000-0000-7000-8000-000000000001', gen_random_uuid(), 'mock', 'mock-1', 'reply-draft/v1', 'hybrid', 'ready', 'Planted by the API')",
+        "UPDATE ai_suggestions SET draft_body = 'Rewritten by the API'",
+        "DELETE FROM ai_suggestions",
+      ]) {
+        const error = await inRolledBackTransaction(
+          db.pool("dsd_api"),
+          (client) => expectPgError(client, statement),
+        );
+        expect(error.code).toBe(SQLSTATE.insufficientPrivilege);
+      }
+    });
+
     it("can write outbox events but not read or dispatch them", async () => {
       await inRolledBackTransaction(db.pool("dsd_api"), async (client) => {
         await client.query(

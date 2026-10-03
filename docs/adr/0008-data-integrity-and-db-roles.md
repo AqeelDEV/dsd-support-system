@@ -131,3 +131,7 @@ Database tests in `packages/db/test/`, run against real Postgres:
 ### 2026-10-02, Phase 6
 
 1. **The worker's role (section 5) no longer reads `messages`.** Its SELECT on the table is revoked (migration 0004). It reads public agent replies, the only message text it needs, through the view `public_reply_bodies`, which is owned by `dsd_migrator` and isn't `security_invoker`, so the worker's grant is on the view alone. DATA_MODEL.md lists views beside the privilege matrix, and the migration and privilege tests check both ([ADR-0006](0006-ai-suggestions-and-guardrail.md), amended).
+
+### 2026-10-03, Phase 10
+
+1. **The API reads `ai_suggestions` and no longer inserts into it** (migration 0007). Migration 0003 granted `dsd_api` INSERT on the table, which no API code ever used: the worker writes suggestions, and the API lists them for staff and records the one a reply used on the message. Without the grant, even a compromised API can't plant a suggestion for an agent to send, so every draft comes from the pipeline that grounds and validates it. The privilege matrix in DATA_MODEL.md says `S`, and the privilege test tries the insert as `dsd_api`.
