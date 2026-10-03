@@ -7,10 +7,13 @@
 # file next to this one (see .env.example). Never reuse these values in a
 # real deployment.
 #
-# Data stores publish uncommon host ports (55432, 56379, 58333) so they
+# Data stores publish uncommon host ports (15432, 16379, 18333) so they
 # don't clash with anything already installed on the machine, and so the
-# tests and a host-run API can reach them. Everything is bound to 127.0.0.1
-# only.
+# tests and a host-run API can reach them. They stay below 49152 because
+# Windows reserves blocks of its dynamic range (49152-65535) for Hyper-V,
+# WSL and Docker, which makes binding there fail at random. Override them
+# with POSTGRES_PORT, REDIS_PORT and S3_PORT. Everything is bound to
+# 127.0.0.1 only.
 
 name: dsd-support
 
@@ -38,7 +41,7 @@ services:
       - postgres-data:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
     ports:
-      - 127.0.0.1:${POSTGRES_PORT:-55432}:5432
+      - 127.0.0.1:${POSTGRES_PORT:-15432}:5432
     healthcheck:
       # TCP, not the socket: during first-time initialisation the server
       # listens only on the socket, so this stays unhealthy until the init
@@ -55,7 +58,7 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - 127.0.0.1:${REDIS_PORT:-56379}:6379
+      - 127.0.0.1:${REDIS_PORT:-16379}:6379
     healthcheck:
       test: [CMD, redis-cli, ping]
       interval: 2s
@@ -80,7 +83,7 @@ services:
     volumes:
       - seaweedfs-data:/data
     ports:
-      - 127.0.0.1:${S3_PORT:-58333}:8333
+      - 127.0.0.1:${S3_PORT:-18333}:8333
     healthcheck:
       test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8333/healthz]
       interval: 3s

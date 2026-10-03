@@ -26,7 +26,9 @@ export function testEnv(
     NODE_ENV: "test",
     LOG_LEVEL: "info",
     DATABASE_URL: database.url("dsd_worker"),
-    REDIS_URL: process.env.TEST_REDIS_URL ?? "redis://127.0.0.1:56379",
+    REDIS_URL:
+      process.env.TEST_REDIS_URL ??
+      `redis://127.0.0.1:${process.env.REDIS_PORT ?? "16379"}`,
     QUEUE_PREFIX: `test-${database.name}-${randomUUID()}`,
     OUTBOX_POLL_INTERVAL_MS: "50",
     STARTUP_TIMEOUT_SECONDS: "10",
@@ -34,7 +36,9 @@ export function testEnv(
     SMTP_PORT: process.env.TEST_SMTP_PORT ?? "1025",
     CUSTOMER_APP_URL: "http://customer.test",
     AGENT_APP_URL: "http://agent.test",
-    S3_ENDPOINT: process.env.TEST_S3_ENDPOINT ?? "http://127.0.0.1:58333",
+    S3_ENDPOINT:
+      process.env.TEST_S3_ENDPOINT ??
+      `http://127.0.0.1:${process.env.S3_PORT ?? "18333"}`,
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? "dsd-dev-access-key",
     S3_SECRET_ACCESS_KEY:
       process.env.S3_SECRET_ACCESS_KEY ?? "dsd-dev-secret-key",

@@ -16,7 +16,7 @@ import { runMigrations } from "../migrate.js";
 const settings = {
   adminUrl:
     process.env.TEST_DATABASE_ADMIN_URL ??
-    `postgres://postgres:${process.env.POSTGRES_PASSWORD ?? "postgres-dev-password"}@127.0.0.1:${process.env.POSTGRES_PORT ?? "55432"}/postgres`,
+    `postgres://postgres:${process.env.POSTGRES_PASSWORD ?? "postgres-dev-password"}@127.0.0.1:${process.env.POSTGRES_PORT ?? "15432"}/postgres`,
   passwords: {
     dsd_migrator: process.env.DSD_MIGRATOR_PASSWORD ?? "migrator-dev-password",
     dsd_api: process.env.DSD_API_PASSWORD ?? "api-dev-password",

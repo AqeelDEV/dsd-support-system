@@ -109,6 +109,27 @@ The browser tests drive the production builds of both apps on the full stack, wi
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/). Git hooks format and lint staged files and check commit messages, and CI checks the same rules on every push.
 
+## Troubleshooting
+
+### A port is already in use on Windows
+
+On Windows, Hyper-V, WSL 2 and Docker Desktop reserve blocks of TCP ports, and the reservations change after a reboot or an update. `docker compose up` then fails with "ports are not available" or "An attempt was made to access a socket in a way forbidden by its access permissions", even though nothing is listening on the port. The data stores' default host ports (15432, 16379 and 18333) sit below Windows' dynamic range (49152–65535), where most of these reservations land, but a reservation can still cover them or one of the app ports.
+
+To see the reserved ranges, run this in PowerShell or Command Prompt:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+Restarting the Windows NAT service releases the reservations. Run these in an administrator terminal, then start the stack again:
+
+```powershell
+net stop winnat
+net start winnat
+```
+
+This briefly drops networking for WSL and running containers. If a port stays reserved, choose another one in `.env` instead: `POSTGRES_PORT`, `REDIS_PORT`, `S3_PORT`, `API_PORT`, `CUSTOMER_WEB_PORT` or `AGENT_WEB_PORT`. The tests follow `POSTGRES_PORT`, `REDIS_PORT` and `S3_PORT` automatically; a host-run API or worker reads the URLs in `.env`, so change those to match.
+
 ## Repository layout
 
 ```text

@@ -108,7 +108,7 @@ Content-Security-Policy: default-src 'none'; sandbox
 4. **No file chosen.** An empty value in the `attachments` field, which is how browsers and Swagger UI send an unused file input, means no file rather than an empty one ([ADR-0011](0011-ticket-api.md), section 2). A real empty file is still refused.
 5. **The orphan sweep (section 3, step 4)** is a worker cleanup job and arrives in Phase 6 with the other cleanup jobs. Until then, a process that dies between storing a file and committing its row leaves an object without a row. Such an object can't be downloaded, because downloads look files up by their row.
 6. **Downloads (section 4)** also send `Content-Length`. Through the web apps, the pages' security headers no longer replace the API's on `/api/` responses, so a download keeps its sandboxing policy in the browser ([ADR-0011](0011-ticket-api.md), section 9).
-7. **The object store on the host.** Compose publishes SeaweedFS's S3 port on `127.0.0.1:58333`, like Postgres and Redis, so the integration tests run against the real store. It still refuses any request without the access key, which the smoke test and the `attachments` test check. Browsers still never talk to it.
+7. **The object store on the host.** Compose publishes SeaweedFS's S3 port on `127.0.0.1:18333`, like Postgres and Redis, so the integration tests run against the real store. It still refuses any request without the access key, which the smoke test and the `attachments` test check. Browsers still never talk to it.
 
 ### 2026-10-02, Phase 6
 
