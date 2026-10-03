@@ -15,6 +15,10 @@ const optional = <Schema extends z.ZodType>(schema: Schema) =>
     schema.optional(),
   );
 
+/** A setting with a default, where empty means unset, as above. */
+const orDefault = <Schema extends z.ZodType>(schema: Schema) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema);
+
 /** Who drafts AI reply suggestions (ADR-0006, section 2). */
 export const LLM_PROVIDERS = ["mock", "gemini", "anthropic", "openai"] as const;
 /** Who embeds knowledge-base chunks; `none` means keyword retrieval only. */
@@ -105,20 +109,19 @@ export const envSchema = z
      * mock drafts from the retrieved sources and the mock embeddings hash
      * words, so no API key is needed and no ticket text leaves the system.
      */
-    LLM_PROVIDER: z.enum(LLM_PROVIDERS).default("mock"),
+    LLM_PROVIDER: orDefault(z.enum(LLM_PROVIDERS).default("mock")),
     /** The chat model; each provider has a default. */
     LLM_MODEL: optional(z.string().min(1)),
     /** How long one draft may take before the attempt fails and is retried. */
-    LLM_TIMEOUT_MS: z.coerce
-      .number()
-      .int()
-      .min(1_000)
-      .max(120_000)
-      .default(30_000),
-    EMBEDDINGS_PROVIDER: z.enum(EMBEDDINGS_PROVIDERS).default("mock"),
+    LLM_TIMEOUT_MS: orDefault(
+      z.coerce.number().int().min(1_000).max(120_000).default(30_000),
+    ),
+    EMBEDDINGS_PROVIDER: orDefault(
+      z.enum(EMBEDDINGS_PROVIDERS).default("mock"),
+    ),
     /** The embedding model; each provider has a default. */
     EMBEDDINGS_MODEL: optional(z.string().min(1)),
-    MOCK_LLM_MODE: z.enum(MOCK_LLM_MODES).default("grounded"),
+    MOCK_LLM_MODE: orDefault(z.enum(MOCK_LLM_MODES).default("grounded")),
     /**
      * How much the chat model reasons before it answers. Gemini defaults to
      * `low` and Anthropic to `medium`; OpenAI gets none unless it is set,
@@ -139,7 +142,9 @@ export const envSchema = z
      * them, so a burst of short messages gets one draft that reads them all
      * (ADR-0005, section 6).
      */
-    AI_DEBOUNCE_MS: z.coerce.number().int().min(0).max(120_000).default(10_000),
+    AI_DEBOUNCE_MS: orDefault(
+      z.coerce.number().int().min(0).max(120_000).default(10_000),
+    ),
     /**
      * The confidence gate's thresholds (ADR-0006, section 5). Each
      * embedding model has defaults set from the evaluation set; these

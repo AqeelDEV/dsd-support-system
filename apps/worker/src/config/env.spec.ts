@@ -60,6 +60,31 @@ describe("parseEnv", () => {
     );
   });
 
+  it("reads every empty AI setting as unset, as Docker Compose passes them", () => {
+    expect(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "",
+        EMBEDDINGS_PROVIDER: "",
+        LLM_TIMEOUT_MS: "",
+        LLM_EFFORT: "",
+        MOCK_LLM_MODE: "",
+        AI_DEBOUNCE_MS: "",
+        GEMINI_API_KEY: "",
+        ANTHROPIC_API_KEY: "",
+        OPENAI_API_KEY: "",
+      }),
+    ).toMatchObject({
+      LLM_PROVIDER: "mock",
+      EMBEDDINGS_PROVIDER: "mock",
+      LLM_TIMEOUT_MS: 30_000,
+      LLM_EFFORT: undefined,
+      MOCK_LLM_MODE: "grounded",
+      AI_DEBOUNCE_MS: 10_000,
+      GEMINI_API_KEY: undefined,
+    });
+  });
+
   it("needs a provider's key only when that provider is in use", () => {
     expect(() => parseEnv({ ...REQUIRED, LLM_PROVIDER: "gemini" })).toThrow(
       /LLM_PROVIDER=gemini needs GEMINI_API_KEY/,

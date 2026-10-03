@@ -187,6 +187,19 @@ services:
       S3_ENDPOINT: http://seaweedfs:8333
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-dsd-dev-access-key}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-dsd-dev-secret-key}
+      # AI suggestions run on the offline mock unless .env picks a provider
+      # and gives its key (README, "AI-assisted replies"). Empty means unset.
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_EFFORT: ${LLM_EFFORT:-}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-mock}
+      EMBEDDINGS_MODEL: ${EMBEDDINGS_MODEL:-}
+      MOCK_LLM_MODE: ${MOCK_LLM_MODE:-}
+      AI_DEBOUNCE_MS: ${AI_DEBOUNCE_MS:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       migrate:
         condition: service_completed_successfully
