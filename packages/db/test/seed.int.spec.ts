@@ -243,16 +243,12 @@ describe("seed with an object store (attachments, ADR-0009)", () => {
   });
 
   it("writes a row for every stored file, and stores nothing without a row", async () => {
-    const { rows } = await db
-      .pool("dsd_migrator")
-      .query<{
-        object_key: string;
-        content_type: string;
-        size_bytes: number;
-        sha256: Buffer;
-      }>(
-        "SELECT object_key, content_type, size_bytes, sha256 FROM attachments ORDER BY object_key",
-      );
+    const { rows } = await db.pool("dsd_migrator").query<{
+      object_key: string;
+      content_type: string;
+      size_bytes: number;
+      sha256: Buffer;
+    }>("SELECT object_key, content_type, size_bytes, sha256 FROM attachments ORDER BY object_key");
     expect(attachments).toBeGreaterThanOrEqual(8);
     expect(rows).toHaveLength(attachments);
     expect([...store.objects.keys()].sort()).toEqual(
