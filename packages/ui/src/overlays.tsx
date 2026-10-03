@@ -8,14 +8,16 @@ import {
   Tabs as TabsPrimitive,
   Tooltip as TooltipPrimitive,
 } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useRef } from "react";
 import { Toaster as Sonner, toast } from "sonner";
 
 import { cn } from "./cn";
 
 /*
  * Overlays are the only surfaces that cast a shadow (ADR-0013). Focus
- * trapping, Escape to close, focus return and ARIA roles come from Radix.
+ * trapping, Escape to close and ARIA roles come from Radix; so does focus
+ * return, but only for a dialog opened through a DialogTrigger, which is
+ * why DialogContent handles it itself (below).
  */
 
 const overlaySurface =
@@ -31,17 +33,43 @@ export function DialogContent({
   children,
   className,
   footer,
+  returnFocusTo,
 }: {
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /**
+   * Where focus goes when the dialog closes, for a dialog opened from a
+   * menu item, which is gone by then. Otherwise it goes back to whatever
+   * had focus when the dialog opened.
+   */
+  returnFocusTo?: () => HTMLElement | null | undefined;
 }) {
+  // Radix returns focus to the DialogTrigger when a dialog closes; a dialog
+  // opened from state (a menu item, a shortcut) has none, and focus fell to
+  // the page. So remember what had focus as the dialog opened, and give it
+  // back on close if it is still on the page (WCAG 2.4.3, found in the
+  // Phase 10 accessibility pass).
+  const returnTo = useRef<HTMLElement | null>(null);
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/25 backdrop-blur-[1px] animate-fade-in" />
       <DialogPrimitive.Content
+        onOpenAutoFocus={() => {
+          returnTo.current =
+            document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          const target = returnFocusTo?.() ?? returnTo.current;
+          if (target?.isConnected === true && target !== document.body) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
         className={cn(
           overlaySurface,
           "fixed top-1/2 left-1/2 z-50 flex animate-pop-in max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl focus-visible:outline-none",
@@ -107,7 +135,15 @@ export function SheetContent({
   );
 }
 
-export const DropdownMenu = MenuPrimitive.Root;
+/**
+ * Menus are not modal: Radix's modal mode hides the rest of the page from
+ * assistive technology while leaving it focusable (the skip link, for one),
+ * which axe reports as aria-hidden-focus. A menu button doesn't need to trap
+ * anyone (WAI-ARIA APG): Escape, a click outside or Tab closes it.
+ */
+export function DropdownMenu(props: ComponentProps<typeof MenuPrimitive.Root>) {
+  return <MenuPrimitive.Root modal={false} {...props} />;
+}
 export const DropdownMenuTrigger = MenuPrimitive.Trigger;
 
 export function DropdownMenuContent({

@@ -39,7 +39,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { MoreHorizontal, Plus, Users } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { LoadError, PageBody, PageHeader } from "@/components/page";
 import { api } from "@/lib/api";
@@ -63,6 +63,9 @@ export function TeamView() {
   const [status, setStatus] = useState<AgentStatus | "">("");
   const [role, setRole] = useState<AgentRole | "">("");
   const [dialog, setDialog] = useState<Dialogs>();
+  // Each row's actions button, so a dialog opened from its menu can hand
+  // focus back to it (the menu item that opened it is gone by then).
+  const actionButtons = useRef(new Map<string, HTMLButtonElement>());
   const team = useInfiniteQuery({
     queryKey: ["team", status, role],
     queryFn: ({ pageParam }) =>
@@ -223,6 +226,13 @@ export function TeamView() {
                             size="icon"
                             variant="ghost"
                             aria-label={`Actions for ${agent.displayName}`}
+                            ref={(element) => {
+                              if (element === null) {
+                                actionButtons.current.delete(agent.id);
+                              } else {
+                                actionButtons.current.set(agent.id, element);
+                              }
+                            }}
                           >
                             <MoreHorizontal aria-hidden="true" />
                           </Button>
@@ -292,6 +302,11 @@ export function TeamView() {
       {dialog === undefined ? null : (
         <TeamDialog
           dialog={dialog}
+          returnFocusTo={
+            dialog.kind === "invite"
+              ? undefined
+              : () => actionButtons.current.get(dialog.agent.id)
+          }
           onClose={() => {
             setDialog(undefined);
           }}
@@ -303,9 +318,11 @@ export function TeamView() {
 
 function TeamDialog({
   dialog,
+  returnFocusTo,
   onClose,
 }: {
   dialog: NonNullable<Dialogs>;
+  returnFocusTo: (() => HTMLElement | undefined) | undefined;
   onClose: () => void;
 }) {
   const client = useQueryClient();
@@ -389,6 +406,7 @@ function TeamDialog({
       }}
     >
       <DialogContent
+        returnFocusTo={returnFocusTo}
         title={titles[dialog.kind]}
         description={descriptions[dialog.kind]}
         footer={
