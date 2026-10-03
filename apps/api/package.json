@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\""
+    "test:unit": "vitest run --exclude \"**/*.int.spec.ts\"",
+    "perf": "vitest run --config vitest.perf.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "catalog:",
