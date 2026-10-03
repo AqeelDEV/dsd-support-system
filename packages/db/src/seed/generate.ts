@@ -486,7 +486,12 @@ function planTicket(context: TicketContext): PlannedTicket {
       key: `${ticketKey}-attachment-${String(attachments.length)}`,
       kind: scenario.attachment.kind,
       filename: scenario.attachment.filename,
-      details: values,
+      details: {
+        product: values.product,
+        order: values.order,
+        amount: values.amount,
+        date: values.date,
+      },
       messageKey,
       customerKey,
       createdAt: time,

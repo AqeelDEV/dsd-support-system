@@ -29,12 +29,14 @@ describe("generateSeedPlan", () => {
       ) as unknown;
     const original = generateSeedPlan(ANCHOR);
     const shifted = generateSeedPlan(later);
-    // Dates written into message text (for example "22 September") move too,
-    // so compare the structure without free text.
+    // Dates written into message text and files (for example "22
+    // September") move too, so compare the structure without free text.
     const withoutText = (plan: unknown) =>
       JSON.parse(
         JSON.stringify(plan, (key, value: unknown) =>
-          ["body", "subject", "description"].includes(key) ? "" : value,
+          ["body", "subject", "description", "details"].includes(key)
+            ? ""
+            : value,
         ),
       ) as unknown;
     expect(withoutText(shift(original, 86_400_000))).toEqual(
