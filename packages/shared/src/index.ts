@@ -1,5 +1,6 @@
 export * from "./agents/requests.js";
 export * from "./agents/responses.js";
+export * from "./ai/suggestions.js";
 export * from "./auth/email.js";
 export * from "./auth/permissions.js";
 export * from "./auth/schemas.js";

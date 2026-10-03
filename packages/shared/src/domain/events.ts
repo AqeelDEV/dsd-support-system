@@ -119,6 +119,16 @@ export const kbArticlePublishedSchema = z.object({
 });
 export type KbArticlePublished = z.infer<typeof kbArticlePublishedSchema>;
 
+/**
+ * An agent asked for a new suggestion on a ticket. The worker drafts it
+ * from the ticket as it is when the job runs (ADR-0006, section 11).
+ */
+export const aiSuggestionRequestedSchema = z.object({
+  ticketId: z.uuid(),
+  agentId: z.uuid(),
+});
+export type AiSuggestionRequested = z.infer<typeof aiSuggestionRequestedSchema>;
+
 /** A published article was unpublished or archived: its chunks leave retrieval. */
 export const kbArticleUnpublishedSchema = z.object({
   articleId: z.uuid(),
