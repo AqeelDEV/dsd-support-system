@@ -47,8 +47,25 @@ export interface CaseResult {
   outputTokens: number | null;
 }
 
+/** How many of how many: the counts behind a percentage. */
+export interface Count {
+  count: number;
+  total: number;
+}
+
 export interface Summary {
   cases: number;
+  /** The counts behind each ratio below, so a report can show both. */
+  counts: {
+    hitAt1: Count;
+    hitAtK: Count;
+    answered: Count;
+    citationValidity: Count;
+    abstention: Count;
+    adversarialSafe: Count;
+    /** Ready drafts with citations, which the precision is averaged over. */
+    precisionDrafts: number;
+  };
   /** Answerable and adversarial cases whose expected article ranked first. */
   hitAt1: number;
   /** ... or anywhere in the retrieved set. */
@@ -90,6 +107,14 @@ export const K = 6;
 
 const ratio = (count: number, total: number): number | null =>
   total === 0 ? null : count / total;
+
+const countOf = <T>(
+  items: readonly T[],
+  test: (item: T) => boolean,
+): Count => ({
+  count: items.filter(test).length,
+  total: items.length,
+});
 
 function percentile(values: readonly number[], p: number): number | null {
   if (values.length === 0) return null;
@@ -249,8 +274,18 @@ export function summarise(results: readonly CaseResult[]): Summary {
   const latencies = results.flatMap((result) =>
     result.latencyMs === null ? [] : [result.latencyMs],
   );
+  const counts = {
+    hitAt1: countOf(grounded, (r) => r.hitAt1),
+    hitAtK: countOf(grounded, (r) => r.hitAtK),
+    answered: countOf(answerable, (r) => r.status === "ready"),
+    citationValidity: countOf(called, (r) => r.citationsValid === true),
+    abstention: countOf(unanswerable, (r) => r.status === "no_grounded_answer"),
+    adversarialSafe: countOf(adversarial, (r) => r.forbiddenFound.length === 0),
+    precisionDrafts: precisions.length,
+  };
   return {
     cases: results.length,
+    counts,
     hitAt1:
       ratio(grounded.filter((r) => r.hitAt1).length, grounded.length) ?? 0,
     hitAtK:
@@ -303,6 +338,8 @@ export interface SweepRow {
   passed: number;
   /** Unanswerable cases the gate would stop before the model. */
   abstained: number;
+  passedCount: Count;
+  abstainedCount: Count;
 }
 
 /**
@@ -347,14 +384,14 @@ export async function sweep(
     const thresholds = { ...setup.thresholds, minVectorSimilarity };
     const passes = (s: (typeof signals)[number]) =>
       s.retrieval.chunks.length > 0 && isGrounded(s.retrieval, thresholds);
+    const passedCount = countOf(grounded, passes);
+    const abstainedCount = countOf(unanswerable, (s) => !passes(s));
     return {
       minVectorSimilarity,
-      passed: ratio(grounded.filter(passes).length, grounded.length) ?? 0,
-      abstained:
-        ratio(
-          unanswerable.filter((s) => !passes(s)).length,
-          unanswerable.length,
-        ) ?? 0,
+      passed: ratio(passedCount.count, passedCount.total) ?? 0,
+      abstained: ratio(abstainedCount.count, abstainedCount.total) ?? 0,
+      passedCount,
+      abstainedCount,
     };
   });
   return {
@@ -365,6 +402,9 @@ export async function sweep(
 
 const pct = (value: number | null) =>
   value === null ? "n/a" : `${(value * 100).toFixed(0)}%`;
+/** "19/20 (95%)": the count, then the percentage it makes. */
+const fraction = ({ count, total }: Count) =>
+  `${String(count)}/${String(total)} (${pct(ratio(count, total))})`;
 const num = (value: number | null, digits = 2) =>
   value === null ? "" : value.toFixed(digits);
 
@@ -379,13 +419,13 @@ export function report(
     "",
     "| Metric | Result |",
     "| --- | --- |",
-    `| Retrieval hit@1 (answerable and adversarial) | ${pct(summary.hitAt1)} |`,
-    `| Retrieval hit@${String(K)} | ${pct(summary.hitAtK)} |`,
-    `| Answerable cases with a ready draft | ${pct(summary.answered)} |`,
-    `| Citation validity (answers citing only retrieved sources) | ${pct(summary.citationValidity)} |`,
-    `| Citation precision (cited articles that were expected) | ${pct(summary.citationPrecision)} |`,
-    `| Abstention on unanswerable cases | ${pct(summary.abstention)} |`,
-    `| Adversarial cases with no forbidden text in the draft | ${pct(summary.adversarialSafe)} |`,
+    `| Retrieval hit@1 (answerable and adversarial) | ${fraction(summary.counts.hitAt1)} |`,
+    `| Retrieval hit@${String(K)} | ${fraction(summary.counts.hitAtK)} |`,
+    `| Answerable cases with a ready draft | ${fraction(summary.counts.answered)} |`,
+    `| Citation validity (answers citing only retrieved sources) | ${fraction(summary.counts.citationValidity)} |`,
+    `| Citation precision (cited articles that were expected) | ${pct(summary.citationPrecision)}, averaged over ${String(summary.counts.precisionDrafts)} drafts |`,
+    `| Abstention on unanswerable cases | ${fraction(summary.counts.abstention)} |`,
+    `| Adversarial cases with no forbidden text in the draft | ${fraction(summary.counts.adversarialSafe)} |`,
     `| Cases that retrieved a draft or archived article | ${String(summary.unpublishedRetrieved)} |`,
     `| Model latency p50 / p95 | ${summary.latencyP50Ms === null ? "n/a" : `${String(summary.latencyP50Ms)} ms / ${String(summary.latencyP95Ms)} ms`} |`,
     `| Tokens in / out (all cases) | ${String(summary.inputTokens)} / ${String(summary.outputTokens)} |`,
@@ -410,7 +450,7 @@ export function sweepReport(title: string, rows: readonly SweepRow[]): string {
     "| --- | --- | --- |",
     ...rows.map(
       (row) =>
-        `| ${row.minVectorSimilarity.toFixed(2)} | ${pct(row.passed)} | ${pct(row.abstained)} |`,
+        `| ${row.minVectorSimilarity.toFixed(2)} | ${fraction(row.passedCount)} | ${fraction(row.abstainedCount)} |`,
     ),
     "",
   ].join("\n");
