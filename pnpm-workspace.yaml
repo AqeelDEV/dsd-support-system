@@ -108,3 +108,13 @@ peerDependencyRules:
 overrides:
   fastify: "catalog:"
   "@nestjs/swagger>js-yaml": 5.4.2
+
+# `pnpm audit` in CI fails on high and critical advisories. Ignored, with
+# the reason, because no fixed version exists:
+#   GHSA-vfj7-8cjw-p6xm, braces (stack exhaustion on deeply nested
+#   patterns), reaches us only through fast-glob in the Next.js ESLint
+#   plugin. It runs at lint time on this repository's own glob patterns,
+#   never on input from a user, and ships in no image.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-vfj7-8cjw-p6xm
