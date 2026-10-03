@@ -85,6 +85,25 @@ jobs:
         if: failure()
         run: docker compose logs --no-color postgres redis seaweedfs mailpit
 
+  secrets:
+    name: Secret scan of every commit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The whole history: a secret removed in a later commit is still
+          # readable in the one that added it.
+          fetch-depth: 0
+
+      - name: gitleaks finds no secrets in any commit
+        # The official image, pinned by digest so a re-pushed tag can't change
+        # what runs. --redact keeps any match out of the job log.
+        run: >-
+          docker run --rm -v "$PWD:/repo"
+          ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --redact --no-banner --log-opts=--all --exit-code 1
+
   compose-smoke:
     name: Full stack smoke and browser tests
     runs-on: ubuntu-24.04
