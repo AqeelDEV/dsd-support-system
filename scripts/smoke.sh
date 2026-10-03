@@ -215,6 +215,71 @@ if [[ $status == 201 && $reply_status == 201 ]]; then pass "with the mail server
 late=$(wait_for_email "$outage_email" "We've received your request" 120)
 if [[ -n $late ]]; then pass "the delayed email arrives once the mail server is back"; else fail "the delayed email arrives once the mail server is back"; fi
 
+echo "AI suggestions"
+# submit_guest <email> <subject> <description>: prints the new ticket's ID,
+# found in the agent's queue by its reference.
+submit_guest() {
+  local receipt ref
+  receipt=$(curl --silent --max-time 15 -X POST "$CUSTOMER/api/v1/public/tickets" -H "Origin: $CUSTOMER" \
+    -F "email=$1" -F "subject=$2" -F "description=$3" || true)
+  ref=$(grep -oE '"reference":"[A-Z]+-[0-9]+"' <<<"$receipt" | cut -d'"' -f4 || true)
+  [[ -n $ref ]] || return 0
+  curl --silent --max-time 10 --cookie "$jar" "$AGENT/api/v1/staff/tickets?sort=newest&limit=20" |
+    grep -oE "\"id\":\"[0-9a-f-]{36}\",\"reference\":\"$ref\"" | cut -d'"' -f4 || true
+}
+# wait_for_suggestion <ticket ID> [seconds]: prints the ticket's suggestions
+# once the newest is ready, or nothing once the time is up.
+wait_for_suggestion() {
+  local id=$1 seconds=${2:-30} list
+  for ((i = 0; i < seconds * 2; i++)); do
+    list=$(curl --silent --max-time 5 --cookie "$jar" "$AGENT/api/v1/staff/tickets/$id/ai-suggestions?limit=1" || true)
+    if grep -q '"status":"ready"' <<<"$list"; then
+      printf '%s' "$list"
+      return
+    fi
+    sleep 0.5
+  done
+}
+
+# A new ticket the knowledge base covers gets a draft within seconds, citing
+# the article that answers it, for staff only.
+ai_ticket=$(submit_guest "smoke-ai-$(date +%s)-$RANDOM@example.com" "Refund not on my card" \
+  "My refund was issued four days ago but it isn't back on my card yet. How long do refunds take?")
+suggestion=$(wait_for_suggestion "$ai_ticket")
+if grep -q '"slug":"refund-timescales"' <<<"$suggestion"; then
+  pass "a new ticket gets a ready draft citing the article that answers it"
+else
+  fail "a new ticket gets a ready draft citing the article that answers it (got: ${suggestion:0:300})"
+fi
+suggestion_id=$(grep -oE '"id":"[0-9a-f-]{36}","ticketId"' <<<"$suggestion" | head -n 1 | cut -d'"' -f4 || true)
+expect_status "the customer app won't serve suggestions" 404 "$CUSTOMER/api/v1/staff/tickets/$ai_ticket/ai-suggestions" --cookie "$guest_jar"
+expect_status "the API refuses a customer session on suggestion routes" 401 "$API/api/v1/staff/tickets/$ai_ticket/ai-suggestions" --cookie "$guest_jar"
+
+# With the worker stopped, a customer can still submit and an agent can
+# still reply, from the draft too; the next draft arrives once it is back
+# (NFR-10). Nothing an agent does waits for the AI.
+docker compose stop worker >/dev/null 2>&1 || true
+outage_ticket=$(submit_guest "smoke-ai-outage-$(date +%s)-$RANDOM@example.com" "Charged twice for one order" \
+  "My bank shows two identical payments for the same order. Please refund the duplicate.")
+reply_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 \
+  --cookie "$jar" -X POST "$AGENT/api/v1/staff/tickets/$ai_ticket/replies" \
+  -H "Origin: $AGENT" -H "X-CSRF-Token: $(staff_csrf)" \
+  -F "body=Refunds take 3 to 5 working days to reach your card." -F "aiSuggestionId=$suggestion_id" || true)
+docker compose start worker >/dev/null 2>&1 || true
+if [[ -n $outage_ticket && $reply_status == 201 ]]; then
+  pass "with the worker down, submitting and replying from a draft still work"
+else
+  fail "with the worker down, submitting and replying from a draft still work (ticket '$outage_ticket', reply $reply_status)"
+fi
+approved=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc \
+  "SELECT count(*) FROM messages WHERE ai_suggestion_id = '$suggestion_id' AND approved_by_agent_id = author_agent_id" 2>/dev/null | tr -d '[:space:]' || true)
+if [[ $approved == 1 ]]; then pass "the reply records the agent as the draft's approver"; else fail "the reply records the agent as the draft's approver (got '$approved')"; fi
+if [[ -n $(wait_for_suggestion "$outage_ticket" 90) ]]; then
+  pass "the draft for a ticket raised while the worker was down arrives once it is back"
+else
+  fail "the draft for a ticket raised while the worker was down arrives once it is back"
+fi
+
 echo "Knowledge base"
 expect_body "the help centre lists the seeded articles" '"slug":"reset-your-password"' \
   "$CUSTOMER/api/v1/public/kb/articles?limit=100"
