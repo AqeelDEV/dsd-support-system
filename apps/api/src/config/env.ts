@@ -35,6 +35,16 @@ export function isLocalHttpOrigin(value: string): boolean {
   return url?.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname);
 }
 
+/**
+ * The AUTH_SECRET that compose.yaml and .env.example publish for local use.
+ * Anyone can read it, so it is refused unless every origin is on this
+ * machine (the rule COOKIE_SECURE=false follows): a deployment that forgot
+ * to set its own would otherwise sign CSRF tokens and hash rate-limit keys
+ * with a key the whole internet knows.
+ */
+export const PUBLISHED_DEV_AUTH_SECRET =
+  "dev-only-auth-secret-never-use-in-production";
+
 const minutes = (defaultMinutes: number) =>
   z.coerce.number().int().min(1).default(defaultMinutes);
 
@@ -143,6 +153,14 @@ export const envSchema = z
     const remote = [...env.TRUSTED_ORIGINS, ...env.CORS_ORIGINS].filter(
       (value) => !isLocalHttpOrigin(value),
     );
+    if (env.AUTH_SECRET === PUBLISHED_DEV_AUTH_SECRET && remote.length > 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["AUTH_SECRET"],
+        message:
+          "is the published development value; set a random one of your own (for example `openssl rand -base64 48`)",
+      });
+    }
     if (!env.COOKIE_SECURE && remote.length > 0) {
       context.addIssue({
         code: "custom",

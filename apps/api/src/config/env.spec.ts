@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ConfigError, parseEnv } from "./env.js";
+import { ConfigError, parseEnv, PUBLISHED_DEV_AUTH_SECRET } from "./env.js";
 
 const valid = {
   DATABASE_URL: "postgres://dsd_api:s3cret-password@db:5432/dsd",
@@ -158,6 +158,43 @@ describe("parseEnv", () => {
         ]);
       },
     );
+  });
+
+  describe("the development AUTH_SECRET from compose.yaml", () => {
+    it("is accepted when every origin is on this machine, as in the Compose stack", () => {
+      const env = parseEnv({
+        ...valid,
+        TRUSTED_ORIGINS: "http://localhost:3000,http://localhost:3001",
+        AUTH_SECRET: PUBLISHED_DEV_AUTH_SECRET,
+      });
+      expect(env.AUTH_SECRET).toBe(PUBLISHED_DEV_AUTH_SECRET);
+    });
+
+    it.each([
+      [
+        "a real trusted origin",
+        { TRUSTED_ORIGINS: "https://support.example.com" },
+      ],
+      [
+        "a real CORS origin",
+        {
+          TRUSTED_ORIGINS: "http://localhost:3000",
+          CORS_ORIGINS: "https://tools.example.com",
+        },
+      ],
+    ])("is refused with %s, without printing it", (_, origins) => {
+      const error = configError({
+        ...valid,
+        ...origins,
+        AUTH_SECRET: PUBLISHED_DEV_AUTH_SECRET,
+      });
+      expect(error.problems).toEqual([
+        expect.stringMatching(
+          /^AUTH_SECRET: is the published development value/,
+        ),
+      ]);
+      expect(error.message).not.toContain(PUBLISHED_DEV_AUTH_SECRET);
+    });
   });
 
   it("never echoes a value, because values include passwords", () => {
