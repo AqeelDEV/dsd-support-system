@@ -82,6 +82,7 @@ export class SuggestionHandler {
       return;
     }
 
+    await this.suggestions.supersedeOlder(row.id, ticket.ticketId);
     const outcome = await this.drafter.draft(ticket);
     const written = await this.suggestions.finish(row.id, outcome);
     this.logger.info(

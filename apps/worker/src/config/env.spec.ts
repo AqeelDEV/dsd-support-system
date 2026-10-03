@@ -33,6 +33,7 @@ describe("parseEnv", () => {
       LLM_TIMEOUT_MS: 30_000,
       EMBEDDINGS_PROVIDER: "mock",
       MOCK_LLM_MODE: "grounded",
+      AI_DEBOUNCE_MS: 10_000,
     });
   });
 

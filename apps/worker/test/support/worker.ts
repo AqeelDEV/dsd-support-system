@@ -46,6 +46,7 @@ export function testEnv(
       process.env.S3_SECRET_ACCESS_KEY ?? "dsd-dev-secret-key",
     LLM_PROVIDER: "mock",
     EMBEDDINGS_PROVIDER: "mock",
+    AI_DEBOUNCE_MS: "50",
     ...overrides,
   });
 }

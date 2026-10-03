@@ -108,6 +108,31 @@ export class SuggestionsRepository {
     });
   }
 
+  /**
+   * Marks this ticket's older suggestions that are still pending as failed.
+   * A newer message replaces a debounced job while it waits, including one
+   * waiting to retry, and the replaced job never finishes; without this its
+   * suggestion would show as being drafted for ever. Only older rows are
+   * touched, and only one job per ticket runs at a time, so a draft in
+   * progress is never marked.
+   */
+  async supersedeOlder(id: string, ticketId: string): Promise<void> {
+    await this.db
+      .update(aiSuggestions)
+      .set({
+        status: "failed",
+        error: "Superseded by a newer draft for this ticket before it finished",
+        completedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(aiSuggestions.ticketId, ticketId),
+          eq(aiSuggestions.status, "pending"),
+          sql`${aiSuggestions.createdAt} < (SELECT created_at FROM ai_suggestions WHERE id = ${id})`,
+        ),
+      );
+  }
+
   /** Marks a suggestion failed after its job's last attempt (ADR-0005, section 4). */
   async fail(
     ticketId: string,

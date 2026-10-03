@@ -102,6 +102,12 @@ export const envSchema = z
     EMBEDDINGS_MODEL: optional(z.string().min(1)),
     MOCK_LLM_MODE: z.enum(MOCK_LLM_MODES).default("grounded"),
     /**
+     * How long a suggestion waits after a customer's message for more of
+     * them, so a burst of short messages gets one draft that reads them all
+     * (ADR-0005, section 6).
+     */
+    AI_DEBOUNCE_MS: z.coerce.number().int().min(0).max(120_000).default(10_000),
+    /**
      * The confidence gate's thresholds (ADR-0006, section 5). Each
      * embedding model has defaults set from the evaluation set; these
      * replace them.

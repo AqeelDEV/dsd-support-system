@@ -3,6 +3,8 @@ import { type Job, Queue, UnrecoverableError, Worker } from "bullmq";
 import { KnowledgeIndexer } from "./ai/kb/indexer.js";
 import { articleIdOf, reconcileKnowledgeBase } from "./ai/kb/indexing-jobs.js";
 import { KnowledgeIndexRepository } from "./ai/kb/knowledge-index.repository.js";
+import { aiSettings } from "./ai/settings.js";
+import { createSuggestionHandler } from "./ai/suggestions/index.js";
 import type { Env } from "./config/env.js";
 import type { Container } from "./container.js";
 import type { Logger } from "./logger.js";
@@ -45,6 +47,13 @@ const NOTIFICATION_CONCURRENCY = 5;
  */
 const INDEXING_CONCURRENCY = 1;
 
+/**
+ * Suggestions drafted at once. The time goes on waiting for the model, so
+ * a few run side by side; two for the same ticket never do (see
+ * `jobOptionsFor`).
+ */
+const SUGGESTION_CONCURRENCY = 4;
+
 /** The nightly clean-up, at 03:00 UTC (DATA_MODEL.md, "Data lifecycle"). */
 export const CLEANUP_SCHEDULE = {
   id: "nightly-cleanup",
@@ -84,6 +93,7 @@ export async function startJobs(
     });
   const queues = {
     notifications: queueFor("notifications"),
+    "ai-suggestions": queueFor("ai-suggestions"),
     "kb-indexing": queueFor("kb-indexing"),
     maintenance: queueFor("maintenance"),
   };
@@ -105,6 +115,12 @@ export async function startJobs(
   const indexer = new KnowledgeIndexer(
     knowledge,
     container.ai.embeddings,
+    logger,
+  );
+  const suggestions = createSuggestionHandler(
+    container.db,
+    container.ai,
+    aiSettings(env),
     logger,
   );
   const reconcile = () =>
@@ -159,6 +175,19 @@ export async function startJobs(
         connection: container.redis,
         prefix,
         concurrency: NOTIFICATION_CONCURRENCY,
+      },
+    ),
+    new Worker<OutboxJob>(
+      QUEUES.aiSuggestions,
+      withDeadLetter<OutboxJob>(
+        "ai-suggestions",
+        (job) => suggestions.handle(job.data),
+        (job, reason) => suggestions.failed(job.data, reason),
+      ),
+      {
+        connection: container.redis,
+        prefix,
+        concurrency: SUGGESTION_CONCURRENCY,
       },
     ),
     new Worker(
@@ -217,6 +246,7 @@ export async function startJobs(
 
   const dispatcher = new OutboxDispatcher(container.pool, queues, logger, {
     intervalMs: env.OUTBOX_POLL_INTERVAL_MS,
+    aiDebounceMs: env.AI_DEBOUNCE_MS,
   });
   dispatcher.start();
   logger.info("jobs started");

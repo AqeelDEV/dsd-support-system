@@ -7,6 +7,7 @@ import type { BackoffOptions } from "bullmq";
 
 export const QUEUES = {
   notifications: "notifications",
+  aiSuggestions: "ai-suggestions",
   kbIndexing: "kb-indexing",
   maintenance: "maintenance",
   deadLetter: "dead-letter",
@@ -26,12 +27,17 @@ export interface RetryPolicy {
  * Exponential backoff from `delay`, with half of each wait randomised, so
  * a recovering SMTP server or AI provider isn't hit by every failed job at
  * the same instant. Notifications and indexing: 10 s, 20 s, 40 s, 80 s
- * between five attempts.
+ * between five attempts. Suggestions: 5 s, then 10 s, between three, because
+ * a draft is only useful while the agent is still on the ticket.
  */
 export const RETRY_POLICIES: Readonly<Record<WorkQueue, RetryPolicy>> = {
   notifications: {
     attempts: 5,
     backoff: { type: "exponential", delay: 10_000, jitter: 0.5 },
+  },
+  "ai-suggestions": {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5_000, jitter: 0.5 },
   },
   "kb-indexing": {
     attempts: 5,

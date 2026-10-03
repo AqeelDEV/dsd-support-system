@@ -4,7 +4,7 @@ import type { Queue } from "bullmq";
 
 import type { Logger } from "../logger.js";
 import type { WorkQueue } from "../queues/queues.js";
-import { jobIdFor, ROUTES } from "./routes.js";
+import { jobOptionsFor, queuesFor } from "./routes.js";
 
 /** What a queued job carries: the outbox row, IDs and small facts only. */
 export interface OutboxJob {
@@ -23,6 +23,8 @@ export interface DispatcherOptions {
   intervalMs: number;
   /** Rows per transaction (ADR-0005, section 3). */
   batchSize?: number;
+  /** How long a customer's message waits before its suggestion is drafted; 0 if unset. */
+  aiDebounceMs?: number;
 }
 
 /**
@@ -79,7 +81,7 @@ export class OutboxDispatcher {
           );
           continue;
         }
-        for (const queue of ROUTES[type.data]) {
+        for (const queue of queuesFor(type.data, row.payload)) {
           const list = jobs.get(queue) ?? [];
           list.push({ eventId: row.id, type: type.data, payload: row.payload });
           jobs.set(queue, list);
@@ -90,7 +92,7 @@ export class OutboxDispatcher {
           list.map((job) => ({
             name: job.type,
             data: job,
-            opts: { jobId: jobIdFor(job.eventId, queue) },
+            opts: jobOptionsFor(queue, job, this.options.aiDebounceMs ?? 0),
           })),
         );
       }
