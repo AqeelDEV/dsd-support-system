@@ -24,7 +24,31 @@ describe("aiSettings", () => {
         mockMode: "grounded",
       },
       embeddings: { provider: "mock", model: "mock-hash-v1" },
+      thresholds: {
+        minVectorSimilarity: 0.3,
+        minKeywordRank: 0.1,
+        minMatchedTerms: 3,
+      },
     });
+  });
+
+  it("lets the environment replace each confidence threshold", () => {
+    expect(
+      aiSettings(
+        parseEnv({
+          ...REQUIRED,
+          AI_MIN_VECTOR_SIMILARITY: "0.42",
+          AI_MIN_MATCHED_TERMS: "2",
+        }),
+      ).thresholds,
+    ).toEqual({
+      minVectorSimilarity: 0.42,
+      minKeywordRank: 0.1,
+      minMatchedTerms: 2,
+    });
+    expect(() =>
+      parseEnv({ ...REQUIRED, AI_MIN_VECTOR_SIMILARITY: "1.5" }),
+    ).toThrow(/AI_MIN_VECTOR_SIMILARITY/);
   });
 
   it("turns embeddings off with `none`, for keyword-only retrieval", () => {

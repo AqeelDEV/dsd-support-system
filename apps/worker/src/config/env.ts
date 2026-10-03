@@ -101,6 +101,14 @@ export const envSchema = z
     /** The embedding model; each provider has a default. */
     EMBEDDINGS_MODEL: optional(z.string().min(1)),
     MOCK_LLM_MODE: z.enum(MOCK_LLM_MODES).default("grounded"),
+    /**
+     * The confidence gate's thresholds (ADR-0006, section 5). Each
+     * embedding model has defaults set from the evaluation set; these
+     * replace them.
+     */
+    AI_MIN_VECTOR_SIMILARITY: optional(z.coerce.number().min(0).max(1)),
+    AI_MIN_KEYWORD_RANK: optional(z.coerce.number().min(0).max(1)),
+    AI_MIN_MATCHED_TERMS: optional(z.coerce.number().int().min(1).max(20)),
   })
   .superRefine((env, context) => {
     if ((env.SMTP_USER === undefined) !== (env.SMTP_PASSWORD === undefined)) {

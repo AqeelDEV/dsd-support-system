@@ -1,4 +1,5 @@
 import type { Env } from "../config/env.js";
+import { type Thresholds, thresholdsFor } from "./retrieval/confidence.js";
 
 /*
  * What the AI pipeline runs with, worked out once from the environment.
@@ -27,6 +28,8 @@ export interface AiSettings {
   chat: ChatSettings;
   /** Null when no embedding provider is configured: retrieval is keyword-only. */
   embeddings: EmbeddingSettings | null;
+  /** The confidence gate's bars, for the configured embedding model. */
+  thresholds: Thresholds;
 }
 
 const DEFAULT_CHAT_MODELS: Record<LlmProvider, string> = {
@@ -55,5 +58,16 @@ export function aiSettings(env: Env): AiSettings {
       mockMode: env.MOCK_LLM_MODE,
     },
     embeddings,
+    thresholds: thresholdsFor(embeddings?.model ?? null, {
+      ...(env.AI_MIN_VECTOR_SIMILARITY === undefined
+        ? {}
+        : { minVectorSimilarity: env.AI_MIN_VECTOR_SIMILARITY }),
+      ...(env.AI_MIN_KEYWORD_RANK === undefined
+        ? {}
+        : { minKeywordRank: env.AI_MIN_KEYWORD_RANK }),
+      ...(env.AI_MIN_MATCHED_TERMS === undefined
+        ? {}
+        : { minMatchedTerms: env.AI_MIN_MATCHED_TERMS }),
+    }),
   };
 }
