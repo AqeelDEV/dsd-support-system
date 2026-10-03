@@ -16,7 +16,9 @@ test("reports show volume, response times and tickets per agent", async ({
   page,
 }) => {
   await page.goto("/reports");
-  await expect(page.getByText("Tickets received")).toBeVisible();
+  await expect(
+    page.getByText("Tickets received", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("First response (median)")).toBeVisible();
   await expect(
     page.getByRole("table", { name: /Tickets received per day/ }),
