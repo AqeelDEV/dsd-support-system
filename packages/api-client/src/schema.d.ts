@@ -1115,6 +1115,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/tickets/{ticketId}/ai-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A ticket's suggestions
+         * @description Newest first. A new ticket or a customer's message gets one automatically a few seconds later. A `ready` suggestion has a plain-text draft and the knowledge-base articles it cites; the other statuses say why there is no draft, and never show the text of one that failed the checks.
+         */
+        get: operations["AiSuggestionsController_list"];
+        put?: never;
+        /**
+         * Ask for a fresh suggestion
+         * @description Queues a new draft from the ticket as it is now and answers at once. Poll the list until a suggestion created at or after `requestedAt` appears. Limited to 5 per ticket in 10 minutes and 30 per agent an hour.
+         */
+        post: operations["AiSuggestionsController_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/ai-suggestions/{suggestionId}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Rate a suggestion
+         * @description Thumbs up or down, with an optional comment, on a `ready` suggestion. Rating it again replaces your earlier rating.
+         */
+        put: operations["AiSuggestionsController_rate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1967,6 +2011,84 @@ export interface components {
                 /** @description Tickets they hold whose latest resolution falls in the range */
                 resolvedInRange: number;
             }[];
+        };
+        SuggestionPage_Output: {
+            items: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                ticketId: string;
+                /**
+                 * @description `pending` while it is drafted; `ready` with a draft and citations; `no_grounded_answer` when the knowledge base doesn't cover the ticket well enough; `rejected` when a draft failed the checks and was discarded; `failed` when the AI provider couldn't be reached
+                 * @enum {string}
+                 */
+                status: "pending" | "ready" | "no_grounded_answer" | "rejected" | "failed";
+                /** @description Plain text for an agent to check, edit and send as their own reply. Only set when `ready`; show it as text, never as HTML. Nothing is sent to the customer unless an agent sends it */
+                draft: string | null;
+                /** @description The articles the draft cites; empty unless `ready` */
+                citations: {
+                    /** Format: uuid */
+                    articleId: string;
+                    slug: string;
+                    /** @description The article's title as it is now */
+                    title: string;
+                    /** @description Where the cited text sits, for example `How long refunds take > When you see the money` */
+                    headingPath: string;
+                    /** @description The text the draft was based on, exactly as it read then */
+                    excerpt: string;
+                    /** @description The article version the text came from */
+                    articleVersion: number;
+                    /** @description False once the article has been unpublished or published again since; the excerpt is still what the draft used */
+                    current: boolean;
+                }[];
+                /** @description Why the draft was discarded, when `rejected` */
+                rejectionReason: ("invalid_output" | "no_citations" | "citation_not_in_retrieved_set" | "cited_article_unpublished" | "model_refused") | null;
+                /** @description The agent who asked for it; null when a new ticket or a customer's message triggered it */
+                requestedBy: {
+                    /** Format: uuid */
+                    id: string;
+                    displayName: string;
+                } | null;
+                /** @description `mock` unless a real provider is configured */
+                provider: string;
+                model: string;
+                promptVersion: string;
+                /** @enum {string} */
+                retrievalMode: "hybrid" | "fts_only";
+                /** Format: date-time */
+                createdAt: string;
+                completedAt: string | null;
+                /** @description Your rating of it, if you gave one */
+                myFeedback: {
+                    /** @enum {string} */
+                    rating: "up" | "down";
+                    comment: string | null;
+                    /** Format: date-time */
+                    updatedAt: string;
+                } | null;
+            }[];
+            /** @description Pass as `cursor` for the next page; null on the last page */
+            nextCursor: string | null;
+        };
+        RequestAccepted_Output: {
+            /**
+             * Format: date-time
+             * @description Suggestions created at or after this time answer the request; poll the list until one appears
+             */
+            requestedAt: string;
+        };
+        FeedbackRequest: {
+            /** @enum {string} */
+            rating: "up" | "down";
+            /** @description What was good or wrong about it, up to 1,000 characters */
+            comment?: string;
+        };
+        Feedback_Output: {
+            /** @enum {string} */
+            rating: "up" | "down";
+            comment: string[];
+            /** Format: date-time */
+            updatedAt: string;
         };
         ProblemDetails: {
             /** @description Problem type URI; `about:blank` when the HTTP status says it all */
@@ -5712,6 +5834,221 @@ export interface operations {
             };
             /** @description Missing the `report:view` permission */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AiSuggestionsController_list: {
+        parameters: {
+            query?: {
+                /** @description Items per page, 1 to 20 */
+                limit?: number;
+                /** @description `nextCursor` from the previous page */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionPage_Output"];
+                };
+            };
+            /** @description The limit or the cursor is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Missing the `ai:suggestion:read` permission */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AiSuggestionsController_request: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestAccepted_Output"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `ai:suggestion:request` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The ticket is closed (`ticket-closed`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests for this ticket or by you (`rate-limited`) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The rate-limit store is unavailable; try again shortly */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AiSuggestionsController_rate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Feedback_Output"];
+                };
+            };
+            /** @description The body is missing or invalid (`validation-error`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No valid session for this realm */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /**
+             * @description Missing the `ai:suggestion:feedback` permission
+             *
+             *     The Origin or the CSRF token was missing or wrong (`csrf-rejected`)
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description No such suggestion on a ticket in your brands */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The suggestion isn't `ready` */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

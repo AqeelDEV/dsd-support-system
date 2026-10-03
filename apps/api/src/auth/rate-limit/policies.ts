@@ -1,6 +1,9 @@
-/** One counter: at most `max` requests per `windowSeconds` for each IP or each email. */
+/** What a counter counts per: an IP address, an email, a ticket or an agent. */
+export type LimitSubject = "ip" | "email" | "ticket" | "agent";
+
+/** One counter: at most `max` requests per `windowSeconds` for each subject. */
 export interface Limit {
-  by: "ip" | "email";
+  by: LimitSubject;
   max: number;
   windowSeconds: number;
 }
@@ -17,6 +20,7 @@ export interface RateLimitPolicy {
   whenRedisIsDown: "refuse" | "allow";
 }
 
+const MINUTES_10 = 10 * 60;
 const MINUTES_15 = 15 * 60;
 const HOUR = 60 * 60;
 
@@ -72,5 +76,18 @@ export const RATE_LIMITS = {
       { by: "email", max: 5, windowSeconds: HOUR },
     ],
     whenRedisIsDown: "allow",
+  },
+  /**
+   * Agents asking for a fresh AI draft (ADR-0006, section 11). Each one can
+   * cost money with a real provider, so it is limited per ticket and per
+   * agent, and refused while Redis is down: nothing urgent depends on it.
+   */
+  aiSuggestionRequest: {
+    name: "ai-suggestion-request",
+    limits: [
+      { by: "ticket", max: 5, windowSeconds: MINUTES_10 },
+      { by: "agent", max: 30, windowSeconds: HOUR },
+    ],
+    whenRedisIsDown: "refuse",
   },
 } as const satisfies Record<string, RateLimitPolicy>;

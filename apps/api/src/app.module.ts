@@ -9,6 +9,7 @@ import { ProblemDetailsFilter } from "./common/problem-details.js";
 import type { Env } from "./config/env.js";
 import { InfrastructureModule } from "./infrastructure/infrastructure.module.js";
 import { AgentsModule } from "./modules/agents/agents.module.js";
+import { AiSuggestionsModule } from "./modules/ai-suggestions/ai-suggestions.module.js";
 import { CannedResponsesModule } from "./modules/canned-responses/canned-responses.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
 import { KbModule } from "./modules/kb/kb.module.js";
@@ -44,6 +45,7 @@ export class AppModule {
         KbModule,
         CannedResponsesModule,
         ReportsModule,
+        AiSuggestionsModule,
       ],
       providers: [
         { provide: APP_PIPE, useClass: ValidationPipe },

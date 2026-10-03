@@ -163,6 +163,13 @@ describe("rate-limit policies (ADR-0003, section 10)", () => {
     });
   });
 
+  it("limit AI suggestion requests to 5 per ticket in 10 minutes and 30 per agent an hour, and refuse them without Redis", () => {
+    expect(summary(RATE_LIMITS.aiSuggestionRequest)).toEqual({
+      limits: ["ticket 5/600s", "agent 30/3600s"],
+      whenRedisIsDown: "refuse",
+    });
+  });
+
   it("give every policy its own counters", () => {
     const names = Object.values(RATE_LIMITS).map((policy) => policy.name);
     expect(new Set(names).size).toBe(names.length);

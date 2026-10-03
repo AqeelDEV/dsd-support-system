@@ -6,7 +6,7 @@ import type { Redis } from "ioredis";
 import type { Env } from "../../config/env.js";
 import { ENV, REDIS } from "../../infrastructure/tokens.js";
 import { deriveKey } from "../secrets.js";
-import type { RateLimitPolicy } from "./policies.js";
+import type { LimitSubject, RateLimitPolicy } from "./policies.js";
 
 /**
  * Fixed-window counters, all in one atomic step: increment each key, start
@@ -28,10 +28,7 @@ end
 return result
 `;
 
-export interface Subjects {
-  ip?: string;
-  email?: string;
-}
+export type Subjects = Partial<Record<LimitSubject, string>>;
 
 export type Verdict =
   { allowed: true } | { allowed: false; retryAfterSeconds: number };
@@ -46,8 +43,8 @@ export class RateLimitUnavailableError extends Error {
 
 /**
  * Shared counters in Redis (ADR-0003, section 10), so every API instance
- * enforces the same limits. Emails and IP addresses are keyed by an HMAC,
- * never stored as they are: no personal data sits in Redis.
+ * enforces the same limits. Every subject is keyed by an HMAC, never
+ * stored as it is: no email or IP address sits in Redis.
  */
 @Injectable()
 export class RateLimiter {
@@ -63,7 +60,7 @@ export class RateLimiter {
   }
 
   /** The Redis key for one counter. */
-  keyFor(policy: RateLimitPolicy, by: "ip" | "email", value: string): string {
+  keyFor(policy: RateLimitPolicy, by: LimitSubject, value: string): string {
     const digest = createHmac("sha256", this.hashKey)
       .update(value, "utf8")
       .digest("base64url");

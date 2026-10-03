@@ -15,6 +15,7 @@ import {
 } from "../support/database.js";
 import { FILES } from "../support/files.js";
 import { newArticle, newCategory } from "../support/kb.js";
+import { newSuggestion } from "../support/suggestions.js";
 import { newTicket, otherBrandId } from "../support/tickets.js";
 import { headersFor, identities } from "./actors.js";
 import {
@@ -97,6 +98,8 @@ describe("RBAC matrix", () => {
         );
         return row?.id ?? "";
       },
+      newSuggestion: async (ticketId) =>
+        (await newSuggestion(database, ticketId)).id,
     };
   });
 

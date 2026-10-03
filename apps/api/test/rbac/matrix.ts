@@ -55,6 +55,8 @@ export interface Fixtures {
   newCategory: () => Promise<string>;
   /** A fresh canned response in the actors' brand. */
   newCannedResponse: () => Promise<string>;
+  /** A ready AI suggestion on the ticket, as the worker would store it. */
+  newSuggestion: (ticketId: string) => Promise<string>;
 }
 
 /** What one cell sends, worked out by the row's `arrange` step. */
@@ -209,6 +211,39 @@ const withFile = (rows: MatrixRow[]): MatrixRow[] =>
       };
     },
   }));
+
+/**
+ * AI suggestions (FR-21, FR-22; ADR-0006). Staff only: every customer and
+ * guest session gets 401, whatever it sends. Each feedback cell rates a
+ * fresh ready suggestion, on a ticket in the actors' brand or outside it.
+ */
+const AI_SUGGESTION_ROWS: MatrixRow[] = [
+  ...onStaffTickets(
+    { method: "GET", path: "/api/v1/staff/tickets/:ticketId/ai-suggestions" },
+    200,
+  ),
+  ...onStaffTickets(
+    { method: "POST", path: "/api/v1/staff/tickets/:ticketId/ai-suggestions" },
+    202,
+  ),
+  ...onStaffTickets(
+    {
+      method: "PUT",
+      path: "/api/v1/staff/ai-suggestions/:suggestionId/feedback",
+      body: { rating: "up" },
+    },
+    200,
+  ).map((row) => ({
+    ...row,
+    arrange: async (fixtures: Fixtures) => {
+      const cell = (await row.arrange?.(fixtures)) ?? {};
+      const ticketId = cell.params?.ticketId ?? "";
+      return {
+        params: { suggestionId: await fixtures.newSuggestion(ticketId) },
+      };
+    },
+  })),
+];
 
 /** Managers, the staff with `user:read` and `user:manage`, get `status`; agents 403. */
 const managersOnly = (status: number): Record<Actor, number> => ({
@@ -725,6 +760,7 @@ export const MATRIX: readonly MatrixRow[] = [
   ...AGENT_ROWS,
   ...KB_ROWS,
   ...CANNED_ROWS,
+  ...AI_SUGGESTION_ROWS,
   ...(["volume", "response-times", "agents"] as const).map(
     (report): MatrixRow => ({
       method: "GET",
