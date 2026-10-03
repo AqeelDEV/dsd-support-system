@@ -142,6 +142,19 @@ const AGENT_SHOTS: Shot[] = [
       await expect(
         page.getByRole("list", { name: "Conversation" }),
       ).toBeVisible();
+      // Seeded tickets get no automatic draft; ask for one, as an agent would.
+      const assist = page.getByRole("region", { name: "Suggested reply" });
+      const draft = assist.getByTestId("suggestion-draft");
+      if (!(await draft.isVisible())) {
+        await assist
+          .getByRole("button", { name: /^(Generate|Regenerate)$/ })
+          .click();
+      }
+      await expect(draft).toBeVisible({ timeout: 30_000 });
+      // Captures run side by side; wait out any draft another one asked for.
+      await expect(
+        assist.getByText("Drafting from the knowledge base…"),
+      ).toBeHidden({ timeout: 30_000 });
     },
   },
   {
