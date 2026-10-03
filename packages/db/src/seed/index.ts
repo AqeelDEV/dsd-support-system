@@ -6,6 +6,11 @@ import { DEMO_BRAND, DEMO_PASSWORD, generateSeedPlan } from "./generate.js";
 import { hashPassword } from "./password.js";
 import { writeSeedPlan } from "./write.js";
 
+export {
+  type BulkSeedResult,
+  FIRST_BULK_CUSTOMER,
+  seedBulkTickets,
+} from "./bulk.js";
 export { DEMO_PASSWORD, generateSeedPlan, type SeedPlan } from "./generate.js";
 
 export type SeedResult =
