@@ -94,6 +94,12 @@ export const staffMessageSchema = z.object({
   }),
   body: z.string(),
   attachments: z.array(attachmentSchema),
+  aiSuggestionId: z
+    .uuid()
+    .nullable()
+    .describe(
+      "The AI suggestion this reply was based on, which its author approved by sending it; null for everything else",
+    ),
   createdAt: timestamp,
 });
 

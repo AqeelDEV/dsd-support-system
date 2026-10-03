@@ -41,6 +41,14 @@ function pathFor(row: MatrixRow, cell: Cell): string {
   })}${query}`;
 }
 
+/**
+ * The one route that may put staff-written text in front of a customer
+ * (ADR-0006, section 8). Every cell counts customer-visible messages that
+ * a customer didn't write, before and after: a new one from any other
+ * route, or from this one without success, fails the cell.
+ */
+const REPLY_ROUTE = "POST /api/v1/staff/tickets/:ticketId/replies";
+
 const VERBS = {
   GET: "get",
   POST: "post",
@@ -59,6 +67,14 @@ describe("RBAC matrix", () => {
   let app: NestFastifyApplication;
   let fixtures: Fixtures;
   let cell = 0;
+
+  const visibleStaffMessages = async () => {
+    const [row] = await asOwner<{ n: number }>(
+      database,
+      "SELECT count(*)::int AS n FROM messages WHERE visibility = 'public' AND author_type <> 'customer'",
+    );
+    return row?.n ?? 0;
+  };
 
   beforeAll(async () => {
     database = await createSeededDatabase("dsd_test_api_rbac_matrix");
@@ -136,8 +152,13 @@ describe("RBAC matrix", () => {
         for (const [name, value] of Object.entries(form ?? {})) {
           void call.field(name, value);
         }
+        const before = await visibleStaffMessages();
         const response = await (body === undefined ? call : call.send(body));
         expect(response.status).toBe(row.expected[actor]);
+        const replied =
+          `${row.method} ${row.path}` === REPLY_ROUTE &&
+          response.status === 201;
+        expect((await visibleStaffMessages()) - before).toBe(replied ? 1 : 0);
       },
     );
   });

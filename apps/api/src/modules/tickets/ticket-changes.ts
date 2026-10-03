@@ -79,7 +79,11 @@ export class TicketChanges {
     return rows;
   }
 
-  /** A reply or an internal note, by the context's actor, with its files. */
+  /**
+   * A reply or an internal note, by the context's actor, with its files.
+   * A reply based on an AI suggestion, which the caller has checked is
+   * usable, also records that its author approved and sent it.
+   */
   async addMessage(
     tx: Executor,
     context: ChangeContext,
@@ -88,14 +92,16 @@ export class TicketChanges {
       visibility: MessageVisibility;
       body: string;
       files: readonly StoredFile[];
+      aiSuggestionId?: string;
     },
   ): Promise<string> {
-    const { visibility } = message;
+    const { visibility, aiSuggestionId } = message;
     const messageId = await this.messages.insert(tx, {
       ticketId,
       author: context.actor,
       visibility,
       body: message.body,
+      ...(aiSuggestionId === undefined ? {} : { aiSuggestionId }),
     });
     await this.audit.record(tx, context, [
       {
@@ -106,6 +112,18 @@ export class TicketChanges {
         before: null,
         after: { visibility },
       },
+      ...(aiSuggestionId === undefined
+        ? []
+        : [
+            {
+              ticketId,
+              entityType: "message" as const,
+              entityId: messageId,
+              action: "ai_suggestion.used" as const,
+              before: null,
+              after: { aiSuggestionId },
+            },
+          ]),
     ]);
     await this.addFiles(tx, context, { ticketId, messageId }, message.files);
     await this.outbox.add(tx, {

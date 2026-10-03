@@ -150,6 +150,7 @@ export function toStaffMessage(
     },
     body: message.body,
     attachments,
+    aiSuggestionId: message.aiSuggestionId,
     createdAt: iso(message.createdAt),
   };
 }

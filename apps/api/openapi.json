@@ -1737,7 +1737,7 @@
     },
     "/api/v1/staff/tickets/{ticketId}/replies": {
       "post": {
-        "description": "A public reply with up to five files. `status` moves the ticket in the same transaction, through the state machine, and also needs `ticket:status:update`. The first reply records the first response time. A closed ticket refuses replies. Answers with the ticket as it now stands.",
+        "description": "A public reply with up to five files. `status` moves the ticket in the same transaction, through the state machine, and also needs `ticket:status:update`. `aiSuggestionId` names the ready AI suggestion on this ticket the reply was based on, and records you as the agent who approved it. The first reply records the first response time. A closed ticket refuses replies. Answers with the ticket as it now stands.",
         "operationId": "StaffTicketsController_reply",
         "parameters": [
           {
@@ -1777,6 +1777,12 @@
                       "resolved",
                       "closed"
                     ]
+                  },
+                  "aiSuggestionId": {
+                    "description": "The `ready` AI suggestion on this ticket that the reply was based on. Sending records you as the agent who approved it (ADR-0006); the body is whatever you send",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
                   "attachments": {
                     "type": "array",
@@ -1866,6 +1872,16 @@
           },
           "415": {
             "description": "A file isn't an accepted type, or the body isn't multipart/form-data",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`aiSuggestionId` isn't a ready AI suggestion on this ticket",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6761,6 +6777,19 @@
                     "additionalProperties": false
                   }
                 },
+                "aiSuggestionId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The AI suggestion this reply was based on, which its author approved by sending it; null for everything else"
+                },
                 "createdAt": {
                   "type": "string",
                   "format": "date-time",
@@ -6773,6 +6802,7 @@
                 "author",
                 "body",
                 "attachments",
+                "aiSuggestionId",
                 "createdAt"
               ],
               "additionalProperties": false

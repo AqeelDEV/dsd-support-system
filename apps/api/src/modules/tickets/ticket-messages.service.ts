@@ -23,6 +23,7 @@ import {
   assertNotClosed,
   statusAfterCustomerReply,
 } from "./domain/ticket-status.js";
+import { MessagesRepository } from "./messages.repository.js";
 import { staffContext, TicketChanges } from "./ticket-changes.js";
 import {
   scopeOf,
@@ -45,6 +46,7 @@ export class TicketMessagesService {
     private readonly changes: TicketChanges,
     private readonly intake: AttachmentIntake,
     private readonly queries: TicketQueriesService,
+    private readonly messages: MessagesRepository,
   ) {}
 
   /**
@@ -95,7 +97,10 @@ export class TicketMessagesService {
    * same transaction: "send and wait for the customer", "send and resolve".
    * The first one records `first_response_at`. A closed ticket refuses
    * replies; a status change follows the state machine and needs
-   * `ticket:status:update` as well.
+   * `ticket:status:update` as well. A reply based on an AI suggestion names
+   * it, and only a ready suggestion on this ticket is accepted (ADR-0006,
+   * section 8): sending is the agent's approval, and the body is whatever
+   * the agent sends.
    */
   async staffReply(
     principal: StaffPrincipal,
@@ -126,6 +131,21 @@ export class TicketMessagesService {
         assertNotClosed(ticket.status);
         const next = fields.status ?? ticket.status;
         if (next !== ticket.status) assertAgentTransition(ticket.status, next);
+        const { aiSuggestionId } = fields;
+        if (
+          aiSuggestionId !== undefined &&
+          !(await this.messages.isUsableSuggestion(
+            tx,
+            aiSuggestionId,
+            ticket.id,
+          ))
+        ) {
+          throw new ProblemException(
+            422,
+            PROBLEM_TYPES.blank,
+            "That AI suggestion can't be used here: only a ready suggestion on this ticket can.",
+          );
+        }
         const messageId = await this.changes.addMessage(
           tx,
           context,
@@ -134,6 +154,7 @@ export class TicketMessagesService {
             visibility: "public",
             body: fields.body,
             files: stored,
+            ...(aiSuggestionId === undefined ? {} : { aiSuggestionId }),
           },
         );
         await this.tickets.markFirstResponse(tx, ticket.id);

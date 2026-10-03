@@ -41,6 +41,12 @@ export const staffReplyFieldsSchema = z.strictObject({
     .describe(
       "Move the ticket to this status in the same request, for example `pending_customer` to send and wait, or `resolved` to send and resolve",
     ),
+  aiSuggestionId: z
+    .uuid()
+    .optional()
+    .describe(
+      "The `ready` AI suggestion on this ticket that the reply was based on. Sending records you as the agent who approved it (ADR-0006); the body is whatever you send",
+    ),
 });
 
 export const internalNoteFieldsSchema = z.strictObject({ body });

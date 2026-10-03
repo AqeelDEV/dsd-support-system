@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { agents, customers, messages } from "@dsd/db/schema";
+import { agents, aiSuggestions, customers, messages } from "@dsd/db/schema";
 import type { MessageVisibility, ParticipantType } from "@dsd/shared";
 import { and, asc, eq } from "drizzle-orm";
 
@@ -13,6 +13,8 @@ export interface ThreadMessage {
   authorId: string;
   authorName: string | null;
   body: string;
+  /** The AI suggestion an agent's reply was based on. */
+  aiSuggestionId: string | null;
   createdAt: Date;
 }
 
@@ -30,9 +32,17 @@ export class MessagesRepository {
       author: Actor;
       visibility: MessageVisibility;
       body: string;
+      /**
+       * The ready suggestion an agent's reply was based on. Its author is
+       * recorded as the agent who approved it; the database refuses one
+       * without the other, an approver other than the author, and a
+       * suggestion from another ticket.
+       */
+      aiSuggestionId?: string;
     },
   ): Promise<string> {
     const { author } = message;
+    const aiSuggestionId = message.aiSuggestionId ?? null;
     const [row] = await executor
       .insert(messages)
       .values({
@@ -42,6 +52,11 @@ export class MessagesRepository {
         authorAgentId: author.type === "agent" ? author.agentId : null,
         visibility: message.visibility,
         body: message.body,
+        aiSuggestionId,
+        approvedByAgentId:
+          aiSuggestionId !== null && author.type === "agent"
+            ? author.agentId
+            : null,
       })
       .returning({ id: messages.id });
     if (row === undefined) throw new Error("message insert returned nothing");
@@ -67,6 +82,7 @@ export class MessagesRepository {
         agentName: agents.displayName,
         customerName: customers.displayName,
         body: messages.body,
+        aiSuggestionId: messages.aiSuggestionId,
         createdAt: messages.createdAt,
       })
       .from(messages)
@@ -89,7 +105,31 @@ export class MessagesRepository {
       authorId: row.authorAgentId ?? row.authorCustomerId ?? "",
       authorName: row.authorType === "agent" ? row.agentName : row.customerName,
       body: row.body,
+      aiSuggestionId: row.aiSuggestionId,
       createdAt: row.createdAt,
     }));
+  }
+
+  /**
+   * Whether a reply on `ticketId` may be based on this suggestion: only a
+   * `ready` one generated for the same ticket. A ready suggestion never
+   * changes status again, so no lock is needed.
+   */
+  async isUsableSuggestion(
+    executor: Executor,
+    suggestionId: string,
+    ticketId: string,
+  ): Promise<boolean> {
+    const [row] = await executor
+      .select({ id: aiSuggestions.id })
+      .from(aiSuggestions)
+      .where(
+        and(
+          eq(aiSuggestions.id, suggestionId),
+          eq(aiSuggestions.ticketId, ticketId),
+          eq(aiSuggestions.status, "ready"),
+        ),
+      );
+    return row !== undefined;
   }
 }

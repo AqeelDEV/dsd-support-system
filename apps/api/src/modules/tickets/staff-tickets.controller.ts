@@ -105,7 +105,7 @@ export class StaffTicketsController {
   @ApiOperation({
     summary: "Reply to the customer",
     description:
-      "A public reply with up to five files. `status` moves the ticket in the same transaction, through the state machine, and also needs `ticket:status:update`. The first reply records the first response time. A closed ticket refuses replies. Answers with the ticket as it now stands.",
+      "A public reply with up to five files. `status` moves the ticket in the same transaction, through the state machine, and also needs `ticket:status:update`. `aiSuggestionId` names the ready AI suggestion on this ticket the reply was based on, and records you as the agent who approved it. The first reply records the first response time. A closed ticket refuses replies. Answers with the ticket as it now stands.",
   })
   @ApiMultipartBody(staffReplyFieldsSchema)
   @ApiProblem(400, "The body is missing or invalid (`validation-error`)")
@@ -117,6 +117,10 @@ export class StaffTicketsController {
   @ApiProblem(
     409,
     "The ticket is closed (`ticket-closed`), or it can't move to that status (`invalid-status-transition`, with `allowedTransitions`)",
+  )
+  @ApiProblem(
+    422,
+    "`aiSuggestionId` isn't a ready AI suggestion on this ticket",
   )
   @ZodResponse({ status: HttpStatus.CREATED, type: StaffTicket })
   reply(

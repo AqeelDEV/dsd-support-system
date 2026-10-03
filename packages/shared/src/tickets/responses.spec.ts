@@ -33,6 +33,11 @@ const STAFF_ONLY = [
   "allowedActions",
   "allowedTransitions",
   "updatedAt",
+  // AI suggestions are for staff only (ADR-0006).
+  "aiSuggestionId",
+  "aiSuggestion",
+  "draft",
+  "citations",
 ];
 
 describe("customer response schemas", () => {
@@ -67,6 +72,9 @@ describe("customer response schemas", () => {
     expect(customer.filter((name) => !staff.has(name))).toEqual([]);
     expect(propertyNames(z.toJSONSchema(staffMessageSchema))).toContain(
       "visibility",
+    );
+    expect(propertyNames(z.toJSONSchema(staffMessageSchema))).toContain(
+      "aiSuggestionId",
     );
   });
 });

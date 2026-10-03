@@ -456,7 +456,7 @@ export interface paths {
         put?: never;
         /**
          * Reply to the customer
-         * @description A public reply with up to five files. `status` moves the ticket in the same transaction, through the state machine, and also needs `ticket:status:update`. The first reply records the first response time. A closed ticket refuses replies. Answers with the ticket as it now stands.
+         * @description A public reply with up to five files. `status` moves the ticket in the same transaction, through the state machine, and also needs `ticket:status:update`. `aiSuggestionId` names the ready AI suggestion on this ticket the reply was based on, and records you as the agent who approved it. The first reply records the first response time. A closed ticket refuses replies. Answers with the ticket as it now stands.
          */
         post: operations["StaffTicketsController_reply"];
         delete?: never;
@@ -1460,6 +1460,8 @@ export interface components {
                     /** Format: date-time */
                     createdAt: string;
                 }[];
+                /** @description The AI suggestion this reply was based on, which its author approved by sending it; null for everything else */
+                aiSuggestionId: string | null;
                 /** Format: date-time */
                 createdAt: string;
             }[];
@@ -3405,6 +3407,11 @@ export interface operations {
                      */
                     status?: "open" | "pending_customer" | "resolved" | "closed";
                     /**
+                     * Format: uuid
+                     * @description The `ready` AI suggestion on this ticket that the reply was based on. Sending records you as the agent who approved it (ADR-0006); the body is whatever you send
+                     */
+                    aiSuggestionId?: string;
+                    /**
                      * @description Up to 5 files
                      * @default []
                      */
@@ -3481,6 +3488,15 @@ export interface operations {
             };
             /** @description A file isn't an accepted type, or the body isn't multipart/form-data */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description `aiSuggestionId` isn't a ready AI suggestion on this ticket */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
