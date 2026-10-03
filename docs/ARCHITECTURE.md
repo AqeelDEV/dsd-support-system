@@ -269,7 +269,7 @@ sequenceDiagram
     else Enough grounding
         W->>L: Grounded prompt, ticket text delimited as untrusted data
         L-->>W: JSON with the reply and cited source IDs
-        W->>W: Validate schema and citations
+        W->>W: Validate schema, citations and links
         W->>P: Store as ready or rejected, with full provenance
     end
     Ag->>AW: Open the ticket
@@ -305,17 +305,18 @@ A draft is triggered by a new ticket, by a customer's message once the debounce 
   - Knowledge-base markdown is rendered through a sanitiser with an allowlist: no raw HTML, no scripts, safe link protocols only.
   - Search snippets use neutral markers that React turns into `<mark>` elements, instead of HTML from the database.
   - Email templates escape every value.
-  - AI drafts are shown as plain text.
+  - AI drafts are shown as plain text, and a draft with a link or email address that no cited article contains is rejected before anyone sees it.
 - **HTTP headers.**
   - helmet sets the API headers: `nosniff` and `frame-ancestors 'none'` everywhere, and HSTS in production.
-  - Both web apps send a Content Security Policy.
+  - Both web apps send a Content Security Policy, and HSTS from their production builds.
   - The customer app's guest access page adds `Referrer-Policy: no-referrer`.
 - **SQL.**
   - Drizzle parameterises every query.
   - Raw SQL is written only with the `sql` tagged template, which also parameterises values.
   - Nothing is ever concatenated into SQL.
 - **Secrets and logs.**
-  - Configuration comes from environment variables, validated at startup, and the apps refuse to start with bad config.
+  - Configuration comes from environment variables, validated at startup, and the apps refuse to start with bad config, including the published development `AUTH_SECRET` on any non-local origin.
+  - CI runs gitleaks over every commit and `pnpm audit` on every push ([SECURITY.md](SECURITY.md)).
   - pino redacts cookies, authorization headers, passwords and tokens.
   - Message bodies are never logged.
 
@@ -340,7 +341,7 @@ The degraded case is deliberate. Core support work keeps running without Redis. 
 
 ## Deployment
 
-Locally, and for reviewers, the whole stack runs with Docker Compose. The service names and ports below are proposals, which Phase 1 finalises.
+Locally, and for reviewers, the whole stack runs with Docker Compose.
 
 ```mermaid
 flowchart TB
@@ -369,9 +370,10 @@ flowchart TB
     worker --> redis
     worker -->|SMTP| mailpit
     migrate --> pg
+    migrate -->|demo files| s3
 ```
 
-- The `migrate` service runs migrations as `dsd_migrator` and seeds demo data, then exits. The API and worker start after it succeeds and connect as `dsd_api` and `dsd_worker`.
+- The `migrate` service runs migrations as `dsd_migrator` and seeds demo data, including the demo tickets' files in the object store, then exits. The API and worker start after it succeeds and connect as `dsd_api` and `dsd_worker`.
 - The object store and the databases are not needed from the browser. Their ports are published on the host's loopback interface only, so the tests and a host-run API can reach them, and the object store refuses any request without its access key.
 - The web apps have fixed addresses on a fixed subnet, and the API believes `X-Forwarded-For` from those two addresses only. Each web app replaces the header with the browser's real address before Next.js sees the request ([ADR-0010](adr/0010-client-address-behind-the-web-proxy.md)).
 - Nothing depends on a specific cloud provider (NFR-13). Postgres, Redis, any S3-compatible store and any SMTP server are enough to run it anywhere.
@@ -389,12 +391,12 @@ Any instance can serve any request, so the API scales by adding instances behind
 ## Observability
 
 - **Logs.** Structured JSON (pino) with the request ID on every line. Worker logs carry the outbox event ID and job ID, so one customer action can be followed from the HTTP request to the email.
-- **Timing.** A `Server-Timing` header on the queue, ticket view and reply endpoints reports server-side processing time. Phase 10 uses it to measure NFR-1 on a database seeded with 5,000+ tickets.
+- **Timing.** A `Server-Timing` header on the queue, ticket view and reply endpoints reports server-side processing time (staff routes only, so it can't help time a password check). A test reads it on 5,000+ tickets and holds each operation under NFR-1's budget; the measured numbers are in [PERFORMANCE.md](PERFORMANCE.md).
 - **Not in v1.** Metrics and distributed tracing, via OpenTelemetry, are part of the scaling plan.
 
 ## Scaling notes
 
-v1 is sized for one team and one brand. The README's "At 100x scale" section, written in Phase 11, covers the plan in full. In short, the design already allows:
+v1 is sized for one team and one brand. The README's ["At 100x scale"](../README.md#at-100x-scale) section covers the plan in full. In short, the design already allows:
 
 - **Database reads.**
   - Read replicas for the queue and reporting.

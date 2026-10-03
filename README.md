@@ -90,7 +90,20 @@ How the guardrail works, in short ([ADR-0006](docs/adr/0006-ai-suggestions-and-g
 - Suggestions are for staff only; customers and guests are refused on every suggestion route, and no customer response can carry one.
 - If the AI provider is down, tickets and replies carry on: the draft is retried, then marked unavailable.
 
-On a set of 24 synthetic tickets, Gemini (`gemini-3.5-flash-lite` with `gemini-embedding-2`) ranked an expected article first for 19 of the 20 tickets the knowledge base answers and among the top six for all of them, drafted for each of those with every citation valid, declined all four it couldn't answer, and ignored both prompt injections, at about 1.6 seconds a draft. [docs/EVALUATION.md](docs/EVALUATION.md) has the method, the per-case results and the limits; `pnpm --filter @dsd/worker eval` runs it.
+Gemini (`gemini-3.5-flash-lite` with `gemini-embedding-2`) was measured on two sets of synthetic tickets:
+
+- **The tuning set (24 tickets)**, on which the gate's thresholds were chosen:
+  - an expected article ranked first for 19/20 retrievable tickets;
+  - 18/18 answerable tickets got a draft, every citation valid;
+  - 4/4 unanswerable tickets declined;
+  - 2/2 injections ignored.
+- **A held-out set (16 tickets)**, written afterwards and run once with the thresholds frozen:
+  - 10/11 ranked first;
+  - 5/6 answerable drafted (the miss got no draft rather than a wrong one);
+  - 4/5 unanswerable declined;
+  - 5/5 injections ignored.
+
+A draft takes about 1.5 seconds. [docs/EVALUATION.md](docs/EVALUATION.md) has the method, the per-case results and the limits; `pnpm --filter @dsd/worker eval` runs it.
 
 ### Screenshots
 
