@@ -8,6 +8,7 @@ import {
   uniqueEmail,
 } from "../support/env";
 import { emailTo, linkIn } from "../support/mailpit";
+import { accessibilityViolations } from "../support/pages";
 import { openFromQueue, staffState } from "../support/staff";
 
 /*
@@ -143,6 +144,8 @@ test("a ticket the knowledge base doesn't cover gets no draft and no reply", asy
   await expect(
     panel(page).getByRole("button", { name: "Insert into reply" }),
   ).toHaveCount(0);
+  // UI-2 in this state too.
+  expect(await accessibilityViolations(page)).toEqual([]);
 
   // Nothing reached the customer: their thread holds only what they wrote.
   await openGuestLink(customerPage, email);
