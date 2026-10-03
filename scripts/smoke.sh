@@ -313,6 +313,23 @@ else
   fail "the seed stored files (found none)"
 fi
 
+# The README's "try to break it yourself" commands, so they can't go stale:
+# each must be refused by PostgreSQL itself (ADR-0006, section 8).
+# probe <description> <expected error> <role> <sql>
+probe() {
+  local out
+  out=$(docker compose exec -T postgres psql -U "$3" -d dsd -c "$4" 2>&1 || true)
+  if grep -q "$2" <<<"$out"; then pass "$1"; else fail "$1 (got: ${out:0:200})"; fi
+}
+probe "the worker's role can't write a message" "permission denied for table messages" \
+  dsd_worker 'INSERT INTO messages DEFAULT VALUES'
+probe "the worker's role can't read messages" "permission denied for table messages" \
+  dsd_worker 'SELECT body FROM messages LIMIT 1'
+probe "the API's role can't create an AI suggestion" "permission denied for table ai_suggestions" \
+  dsd_api 'INSERT INTO ai_suggestions DEFAULT VALUES'
+probe "the database refuses a reply from a suggestion with no approver" "messages_ai_approval_ck" \
+  dsd_migrator 'INSERT INTO messages (ticket_id, author_type, author_agent_id, visibility, body, ai_suggestion_id) SELECT t.id, $$agent$$, a.id, $$public$$, $$Sent by the AI$$, gen_random_uuid() FROM tickets t, agents a LIMIT 1'
+
 echo "Supporting services"
 expect_status "Mailpit web UI" 200 "$MAILPIT/"
 # Ask from inside the store's container, as the API would, over its own network.
