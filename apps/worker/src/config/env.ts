@@ -5,6 +5,37 @@ const appUrl = z
   .url({ protocol: /^https?$/ })
   .transform((url) => url.replace(/\/+$/, ""));
 
+/**
+ * An optional value where empty means unset: Docker Compose passes an unset
+ * `${VAR:-}` as an empty string.
+ */
+const optional = <Schema extends z.ZodType>(schema: Schema) =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    schema.optional(),
+  );
+
+/** Who drafts AI reply suggestions (ADR-0006, section 2). */
+export const LLM_PROVIDERS = ["mock"] as const;
+/** Who embeds knowledge-base chunks; `none` means keyword retrieval only. */
+export const EMBEDDINGS_PROVIDERS = ["mock", "none"] as const;
+/**
+ * How the offline mock behaves. `grounded` drafts from the sources it is
+ * given; the others make it fail in one specific way, so every failure
+ * path can be tried in tests and in the running stack without a network.
+ */
+export const MOCK_LLM_MODES = [
+  "grounded",
+  "malformed",
+  "unknown-citation",
+  "no-citations",
+  "insufficient",
+  "refuse",
+  "throw",
+  "hang",
+  "compromised",
+] as const;
+
 export const envSchema = z
   .object({
     NODE_ENV: nodeEnvSchema,
@@ -51,6 +82,25 @@ export const envSchema = z
     S3_ACCESS_KEY_ID: z.string().min(1),
     S3_SECRET_ACCESS_KEY: z.string().min(1),
     S3_FORCE_PATH_STYLE: z.stringbool().default(true),
+    /**
+     * AI suggestions (ADR-0006). The defaults run everything offline: the
+     * mock drafts from the retrieved sources and the mock embeddings hash
+     * words, so no API key is needed and no ticket text leaves the system.
+     */
+    LLM_PROVIDER: z.enum(LLM_PROVIDERS).default("mock"),
+    /** The chat model; each provider has a default. */
+    LLM_MODEL: optional(z.string().min(1)),
+    /** How long one draft may take before the attempt fails and is retried. */
+    LLM_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(120_000)
+      .default(30_000),
+    EMBEDDINGS_PROVIDER: z.enum(EMBEDDINGS_PROVIDERS).default("mock"),
+    /** The embedding model; each provider has a default. */
+    EMBEDDINGS_MODEL: optional(z.string().min(1)),
+    MOCK_LLM_MODE: z.enum(MOCK_LLM_MODES).default("grounded"),
   })
   .superRefine((env, context) => {
     if ((env.SMTP_USER === undefined) !== (env.SMTP_PASSWORD === undefined)) {

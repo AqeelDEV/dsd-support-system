@@ -5,6 +5,7 @@ import { Writable } from "node:stream";
 import { asOwner, type TestDatabase } from "@dsd/db/testing";
 
 import { type Env, parseEnv } from "../../src/config/env.js";
+import type { AiModels } from "../../src/ai/providers/types.js";
 import { createContainer, type Container } from "../../src/container.js";
 import { createWorker, type Worker } from "../../src/lifecycle.js";
 import { createLogger, type Logger } from "../../src/logger.js";
@@ -16,7 +17,8 @@ export const MAILPIT_URL =
 /**
  * A worker environment for one test file: its own database (as the
  * worker's role), its own queue prefix in the shared Redis, Mailpit for
- * SMTP and the compose object store.
+ * SMTP and the compose object store. AI runs on the offline mock whatever
+ * a developer's .env says, so tests never call a real provider.
  */
 export function testEnv(
   database: TestDatabase,
@@ -42,6 +44,8 @@ export function testEnv(
     S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? "dsd-dev-access-key",
     S3_SECRET_ACCESS_KEY:
       process.env.S3_SECRET_ACCESS_KEY ?? "dsd-dev-secret-key",
+    LLM_PROVIDER: "mock",
+    EMBEDDINGS_PROVIDER: "mock",
     ...overrides,
   });
 }
@@ -61,13 +65,16 @@ export function capturedLogger(): { logger: Logger; text: () => string } {
   };
 }
 
-/** A whole worker, started, with retries in milliseconds. */
+/**
+ * A whole worker, started, with retries in milliseconds. `ai` swaps the
+ * chat or embedding model, for example for a mock that fails on purpose.
+ */
 export async function startTestWorker(
   env: Env,
-  options: { firstRetryDelayMs?: number } = {},
+  options: { firstRetryDelayMs?: number; ai?: Partial<AiModels> } = {},
 ): Promise<{ worker: Worker; container: Container; logs: () => string }> {
   const { logger, text } = capturedLogger();
-  const container = createContainer(env, logger);
+  const container = createContainer(env, logger, { ai: options.ai });
   const worker = createWorker(env, container, logger, {
     firstRetryDelayMs: options.firstRetryDelayMs ?? 20,
     schedule: false,

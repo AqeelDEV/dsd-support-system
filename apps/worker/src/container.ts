@@ -7,6 +7,9 @@ import {
 } from "@dsd/db";
 import { Redis } from "ioredis";
 
+import { createModels } from "./ai/providers/index.js";
+import type { AiModels } from "./ai/providers/types.js";
+import { aiSettings } from "./ai/settings.js";
 import type { Env } from "./config/env.js";
 import { ObjectStore } from "./infrastructure/object-store.js";
 import type { Logger } from "./logger.js";
@@ -35,6 +38,8 @@ export interface Container {
   readonly producer: Redis;
   readonly store: ObjectStore;
   readonly channels: readonly NotificationChannel[];
+  /** The chat and embedding models AI suggestions use: the offline mock unless configured. */
+  readonly ai: AiModels;
   databaseIsUp(): Promise<boolean>;
   redisIsUp(): Promise<boolean>;
   close(): Promise<void>;
@@ -82,7 +87,16 @@ async function closeRedis(redis: Redis): Promise<void> {
   ]);
 }
 
-export function createContainer(env: Env, logger: Logger): Container {
+/** What tests may swap: the AI models, to make a provider fail in a chosen way. */
+export interface ContainerOverrides {
+  ai?: Partial<AiModels>;
+}
+
+export function createContainer(
+  env: Env,
+  logger: Logger,
+  overrides: ContainerOverrides = {},
+): Container {
   const pool = createPool({
     connectionString: env.DATABASE_URL,
     applicationName: "dsd-worker",
@@ -121,6 +135,7 @@ export function createContainer(env: Env, logger: Logger): Container {
     producer,
     store,
     channels: [email],
+    ai: { ...createModels(aiSettings(env)), ...overrides.ai },
     databaseIsUp: () => pingDatabase(pool, CHECK_TIMEOUT_MS),
     async redisIsUp() {
       const [consumers, jobs] = await Promise.all([
