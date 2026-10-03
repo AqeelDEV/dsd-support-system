@@ -5,7 +5,12 @@ import { Writable } from "node:stream";
 import { asOwner, type TestDatabase } from "@dsd/db/testing";
 
 import { type Env, parseEnv } from "../../src/config/env.js";
-import type { AiModels } from "../../src/ai/providers/types.js";
+import type {
+  AiModels,
+  ChatModel,
+  GenerateRequest,
+  GenerateResult,
+} from "../../src/ai/providers/types.js";
 import { createContainer, type Container } from "../../src/container.js";
 import { createWorker, type Worker } from "../../src/lifecycle.js";
 import { createLogger, type Logger } from "../../src/logger.js";
@@ -82,6 +87,46 @@ export async function startTestWorker(
   });
   await worker.start();
   return { worker, container, logs: text };
+}
+
+/** A chat model that records what it was asked, and can act before it answers. */
+export class SpyChat implements ChatModel {
+  readonly requests: GenerateRequest[] = [];
+  readonly provider: string;
+  readonly model: string;
+
+  constructor(
+    private readonly inner: ChatModel,
+    private readonly beforeAnswer?: () => Promise<void>,
+  ) {
+    this.provider = inner.provider;
+    this.model = inner.model;
+  }
+
+  async generate(request: GenerateRequest): Promise<GenerateResult> {
+    this.requests.push(request);
+    await this.beforeAnswer?.();
+    return this.inner.generate(request);
+  }
+}
+
+/**
+ * Waits until every published article of the seeded knowledge base has
+ * current chunks, which the worker's startup reconcile creates.
+ */
+export async function knowledgeBaseIndexed(
+  database: TestDatabase,
+): Promise<void> {
+  await eventually(async () => {
+    const [row] = await asOwner<{ missing: number }>(
+      database,
+      `SELECT count(*)::int AS missing FROM kb_articles a
+        WHERE a.status = 'published' AND NOT EXISTS (
+          SELECT 1 FROM kb_chunks c WHERE c.article_id = a.id
+             AND c.article_version = a.version AND c.is_current)`,
+    );
+    return row?.missing === 0 ? true : undefined;
+  }, 30_000);
 }
 
 /** A port nothing listens on. */

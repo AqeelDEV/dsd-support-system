@@ -8,11 +8,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { MockChatModel } from "../../src/ai/providers/mock-chat.js";
-import type {
-  ChatModel,
-  GenerateRequest,
-  GenerateResult,
-} from "../../src/ai/providers/types.js";
+import type { ChatModel } from "../../src/ai/providers/types.js";
 import { aiSettings, type MockLlmMode } from "../../src/ai/settings.js";
 import { createSuggestionHandler } from "../../src/ai/suggestions/index.js";
 import { PROMPT_VERSION } from "../../src/ai/suggestions/prompt.js";
@@ -22,32 +18,12 @@ import type { Worker } from "../../src/lifecycle.js";
 import type { OutboxJob } from "../../src/outbox/dispatcher.js";
 import {
   capturedLogger,
-  eventually,
   fixtures,
+  knowledgeBaseIndexed,
+  SpyChat,
   startTestWorker,
   testEnv,
 } from "../support/worker.js";
-
-/** A chat model that records what it was asked, and can act before it answers. */
-class SpyChat implements ChatModel {
-  readonly requests: GenerateRequest[] = [];
-  readonly provider: string;
-  readonly model: string;
-
-  constructor(
-    private readonly inner: ChatModel,
-    private readonly beforeAnswer?: () => Promise<void>,
-  ) {
-    this.provider = inner.provider;
-    this.model = inner.model;
-  }
-
-  async generate(request: GenerateRequest): Promise<GenerateResult> {
-    this.requests.push(request);
-    await this.beforeAnswer?.();
-    return this.inner.generate(request);
-  }
-}
 
 interface SuggestionRow {
   id: string;
@@ -90,16 +66,7 @@ describe("the AI suggestion pipeline", () => {
     database = await createSeededDatabase("dsd_test_worker_ai_pipeline");
     env = testEnv(database);
     ({ worker, container } = await startTestWorker(env));
-    await eventually(async () => {
-      const [row] = await asOwner<{ missing: number }>(
-        database,
-        `SELECT count(*)::int AS missing FROM kb_articles a
-          WHERE a.status = 'published' AND NOT EXISTS (
-            SELECT 1 FROM kb_chunks c WHERE c.article_id = a.id
-               AND c.article_version = a.version AND c.is_current)`,
-      );
-      return row?.missing === 0 ? true : undefined;
-    }, 30_000);
+    await knowledgeBaseIndexed(database);
   });
 
   afterAll(async () => {

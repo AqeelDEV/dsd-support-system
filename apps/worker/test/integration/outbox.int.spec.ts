@@ -120,6 +120,62 @@ describe("outbox dispatcher", () => {
     expect(await pending()).toBe(0);
   });
 
+  it("sends new tickets and customers' messages to ai-suggestions, debounced per ticket, and agents' messages only to notifications", async () => {
+    const customer = await fixtures.customer(database);
+    const created = await fixtures.ticket(database, customer.id);
+    const followedUp = await fixtures.ticket(database, customer.id);
+    const createdEvent = await fixtures.event(
+      database,
+      "ticket.created",
+      { type: "ticket", id: created.id },
+      { ticketId: created.id, customerId: customer.id },
+    );
+    const message = (authorType: "customer" | "agent") =>
+      fixtures.event(
+        database,
+        "message.created",
+        { type: "ticket", id: followedUp.id },
+        {
+          ticketId: followedUp.id,
+          messageId: randomUUID(),
+          authorType,
+          visibility: "public",
+        },
+      );
+    const fromCustomer = await message("customer");
+    const fromAgent = await message("agent");
+
+    await new OutboxDispatcher(pool, queues, logger, {
+      intervalMs: 50,
+      aiDebounceMs: 60_000,
+    }).dispatchOnce();
+
+    const suggestions = queues["ai-suggestions"];
+    const forTicket = await suggestions.getJob(
+      `${createdEvent}.ai-suggestions`,
+    );
+    expect(await forTicket?.getState()).toBe("waiting");
+    expect(forTicket?.opts.deduplication).toEqual({
+      id: `ticket.${created.id}`,
+      replace: true,
+      keepLastIfActive: true,
+    });
+    // A customer's message waits for more of them.
+    const forMessage = await suggestions.getJob(
+      `${fromCustomer}.ai-suggestions`,
+    );
+    expect(await forMessage?.getState()).toBe("delayed");
+    expect(forMessage?.opts.delay).toBe(60_000);
+    expect(forMessage?.opts.deduplication?.id).toBe(`ticket.${followedUp.id}`);
+    // An agent's message is emailed about, but needs no draft.
+    expect(
+      await suggestions.getJob(`${fromAgent}.ai-suggestions`),
+    ).toBeUndefined();
+    expect(
+      await queues.notifications.getJob(`${fromAgent}.notifications`),
+    ).toBeDefined();
+  });
+
   it("adds nothing twice when a row is dispatched again", async () => {
     const customer = await fixtures.customer(database);
     const id = await fixtures.event(
