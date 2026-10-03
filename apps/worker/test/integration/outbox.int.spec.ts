@@ -15,6 +15,7 @@ import {
   type OutboxJob,
   OutboxDispatcher,
 } from "../../src/outbox/dispatcher.js";
+import { RETRY_POLICIES, type WorkQueue } from "../../src/queues/queues.js";
 import {
   capturedLogger,
   closedPort,
@@ -32,10 +33,7 @@ describe("outbox dispatcher", () => {
   let database: TestDatabase;
   let pool: Pool;
   let redis: Redis;
-  let queues: {
-    notifications: Queue<OutboxJob>;
-    maintenance: Queue<OutboxJob>;
-  };
+  let queues: Record<WorkQueue, Queue<OutboxJob>>;
   const { logger } = capturedLogger();
 
   beforeAll(async () => {
@@ -48,16 +46,20 @@ describe("outbox dispatcher", () => {
     });
     redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
     const prefix = env.QUEUE_PREFIX;
-    queues = {
-      notifications: new Queue("notifications", { connection: redis, prefix }),
-      maintenance: new Queue("maintenance", { connection: redis, prefix }),
-    };
+    queues = Object.fromEntries(
+      (Object.keys(RETRY_POLICIES) as WorkQueue[]).map((name) => [
+        name,
+        new Queue<OutboxJob>(name, { connection: redis, prefix }),
+      ]),
+    ) as Record<WorkQueue, Queue<OutboxJob>>;
   });
 
   afterEach(async () => {
     // Each test starts from an empty outbox and empty queues.
     await asOwner(database, "DELETE FROM outbox_events");
-    await queues.notifications.obliterate({ force: true });
+    await Promise.all(
+      Object.values(queues).map((queue) => queue.obliterate({ force: true })),
+    );
   });
 
   afterAll(async () => {
@@ -184,16 +186,12 @@ describe("outbox dispatcher", () => {
     });
     dead.on("error", () => undefined);
     const prefix = `outage-${randomUUID()}`;
-    const unreachable = {
-      notifications: new Queue<OutboxJob>("notifications", {
-        connection: dead,
-        prefix,
-      }),
-      maintenance: new Queue<OutboxJob>("maintenance", {
-        connection: dead,
-        prefix,
-      }),
-    };
+    const unreachable = Object.fromEntries(
+      (Object.keys(RETRY_POLICIES) as WorkQueue[]).map((name) => [
+        name,
+        new Queue<OutboxJob>(name, { connection: dead, prefix }),
+      ]),
+    ) as Record<WorkQueue, Queue<OutboxJob>>;
     try {
       await expect(
         dispatcher({ queues: unreachable }).dispatchOnce(),

@@ -9,23 +9,21 @@ describe("routes", () => {
     expect(Object.keys(ROUTES).sort()).toEqual([...DOMAIN_EVENTS].sort());
   });
 
-  it("sends customer-facing events to notifications and nothing else anywhere yet", () => {
-    const routed = Object.entries(ROUTES)
-      .filter(([, queues]) => queues.length > 0)
-      .map(([event]) => event)
-      .sort();
-    expect(routed).toEqual([
-      "agent.invited",
-      "customer.password_reset_requested",
-      "customer.signup_requested",
-      "guest_access.requested",
-      "message.created",
-      "ticket.created",
-      "ticket.status_changed",
-    ]);
-    for (const queues of Object.values(ROUTES)) {
-      expect(queues.every((queue) => queue === "notifications")).toBe(true);
-    }
+  it("sends customer-facing events to notifications and article changes to indexing", () => {
+    const routed = Object.fromEntries(
+      Object.entries(ROUTES).filter(([, queues]) => queues.length > 0),
+    );
+    expect(routed).toEqual({
+      "agent.invited": ["notifications"],
+      "customer.password_reset_requested": ["notifications"],
+      "customer.signup_requested": ["notifications"],
+      "guest_access.requested": ["notifications"],
+      "message.created": ["notifications"],
+      "ticket.created": ["notifications"],
+      "ticket.status_changed": ["notifications"],
+      "kb.article_published": ["kb-indexing"],
+      "kb.article_unpublished": ["kb-indexing"],
+    });
   });
 
   it("builds job IDs BullMQ accepts", () => {
@@ -39,11 +37,13 @@ describe("routes", () => {
 });
 
 describe("retry policies", () => {
-  it("retries notifications five times, exponentially from 10 s, with jitter", () => {
-    expect(RETRY_POLICIES.notifications).toEqual({
-      attempts: 5,
-      backoff: { type: "exponential", delay: 10_000, jitter: 0.5 },
-    });
+  it("retries notifications and indexing five times, exponentially from 10 s, with jitter", () => {
+    for (const queue of ["notifications", "kb-indexing"] as const) {
+      expect(RETRY_POLICIES[queue]).toEqual({
+        attempts: 5,
+        backoff: { type: "exponential", delay: 10_000, jitter: 0.5 },
+      });
+    }
   });
 
   it("lets tests shorten only the first delay", () => {

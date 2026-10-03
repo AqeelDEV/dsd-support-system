@@ -1,13 +1,13 @@
 import { type Job, Queue, UnrecoverableError, Worker } from "bullmq";
 
+import { KnowledgeIndexer } from "./ai/kb/indexer.js";
+import { articleIdOf, reconcileKnowledgeBase } from "./ai/kb/indexing-jobs.js";
+import { KnowledgeIndexRepository } from "./ai/kb/knowledge-index.repository.js";
 import type { Env } from "./config/env.js";
 import type { Container } from "./container.js";
 import type { Logger } from "./logger.js";
 import { runCleanup } from "./maintenance/cleanup.js";
-import {
-  InvalidEventError,
-  NotificationHandlers,
-} from "./notifications/handlers.js";
+import { NotificationHandlers } from "./notifications/handlers.js";
 import { PgDeliveryStore } from "./notifications/deliveries.repository.js";
 import { Links } from "./notifications/links.js";
 import { NotificationService } from "./notifications/notification-service.js";
@@ -18,6 +18,7 @@ import {
   deadLetter,
   isFinalAttempt,
 } from "./queues/dead-letter.js";
+import { InvalidEventError } from "./queues/errors.js";
 import {
   KEEP_JOBS,
   QUEUES,
@@ -31,10 +32,18 @@ export interface JobOptions {
   firstRetryDelayMs?: number;
   /** Whether to register the nightly clean-up. */
   schedule?: boolean;
+  /** Whether to bring the knowledge-base index up to date at startup. */
+  reconcile?: boolean;
 }
 
 /** Notifications sent at once by one worker process. SMTP is the slow part. */
 const NOTIFICATION_CONCURRENCY = 5;
+
+/**
+ * Articles indexed at once: one, so a backfill embeds articles one after
+ * another and stays inside a provider's free-tier rate limit.
+ */
+const INDEXING_CONCURRENCY = 1;
 
 /** The nightly clean-up, at 03:00 UTC (DATA_MODEL.md, "Data lifecycle"). */
 export const CLEANUP_SCHEDULE = {
@@ -75,6 +84,7 @@ export async function startJobs(
     });
   const queues = {
     notifications: queueFor("notifications"),
+    "kb-indexing": queueFor("kb-indexing"),
     maintenance: queueFor("maintenance"),
   };
   const deadLetters = new Queue<DeadLetter>(QUEUES.deadLetter, {
@@ -91,6 +101,19 @@ export async function startJobs(
     env.TICKET_BRAND_SLUG,
     logger,
   );
+  const knowledge = new KnowledgeIndexRepository(container.db);
+  const indexer = new KnowledgeIndexer(
+    knowledge,
+    container.ai.embeddings,
+    logger,
+  );
+  const reconcile = () =>
+    reconcileKnowledgeBase(
+      knowledge,
+      queues["kb-indexing"],
+      container.ai.embeddings?.model ?? null,
+      logger,
+    );
 
   /**
    * Runs `work`; when it fails for the last time, records the failure and
@@ -139,12 +162,28 @@ export async function startJobs(
       },
     ),
     new Worker(
+      QUEUES.kbIndexing,
+      withDeadLetter(
+        "kb-indexing",
+        async (job) => {
+          await indexer.index(articleIdOf(job.data));
+        },
+        () => Promise.resolve(),
+      ),
+      {
+        connection: container.redis,
+        prefix,
+        concurrency: INDEXING_CONCURRENCY,
+      },
+    ),
+    new Worker(
       QUEUES.maintenance,
       withDeadLetter(
         "maintenance",
         async () => {
           const report = await runCleanup(container.pool, container.store);
           logger.info(report, "clean-up finished");
+          await reconcile();
         },
         () => Promise.resolve(),
       ),
@@ -163,6 +202,17 @@ export async function startJobs(
       { pattern: CLEANUP_SCHEDULE.pattern, tz: "UTC" },
       { name: CLEANUP_SCHEDULE.jobName },
     );
+  }
+
+  if (options.reconcile ?? true) {
+    // A failure here only delays indexing until the nightly run; it must
+    // not stop the worker from sending notifications.
+    await reconcile().catch((error: unknown) => {
+      logger.warn(
+        { reason: error instanceof Error ? error.message : String(error) },
+        "knowledge base reconcile failed; it runs again tonight",
+      );
+    });
   }
 
   const dispatcher = new OutboxDispatcher(container.pool, queues, logger, {

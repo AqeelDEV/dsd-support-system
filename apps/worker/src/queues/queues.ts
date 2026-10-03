@@ -2,12 +2,12 @@ import type { BackoffOptions } from "bullmq";
 
 /*
  * The queues and their retry policies (ADR-0005, section 4). Only queues
- * with a consumer exist; `ai-suggestions` and `kb-indexing` arrive with
- * their workers in Phase 9.
+ * with a consumer exist.
  */
 
 export const QUEUES = {
   notifications: "notifications",
+  kbIndexing: "kb-indexing",
   maintenance: "maintenance",
   deadLetter: "dead-letter",
 } as const;
@@ -24,11 +24,16 @@ export interface RetryPolicy {
 
 /**
  * Exponential backoff from `delay`, with half of each wait randomised, so
- * a recovering SMTP server isn't hit by every failed job at the same
- * instant. Notifications: 10 s, 20 s, 40 s, 80 s between five attempts.
+ * a recovering SMTP server or AI provider isn't hit by every failed job at
+ * the same instant. Notifications and indexing: 10 s, 20 s, 40 s, 80 s
+ * between five attempts.
  */
 export const RETRY_POLICIES: Readonly<Record<WorkQueue, RetryPolicy>> = {
   notifications: {
+    attempts: 5,
+    backoff: { type: "exponential", delay: 10_000, jitter: 0.5 },
+  },
+  "kb-indexing": {
     attempts: 5,
     backoff: { type: "exponential", delay: 10_000, jitter: 0.5 },
   },

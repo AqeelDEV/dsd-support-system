@@ -6,9 +6,8 @@ import type { WorkQueue } from "../queues/queues.js";
  * Which queues each event goes to (ADR-0005, section 2, amended). Only
  * queues that have a consumer are listed. An event with none, such as
  * `ticket.assigned` today, is still marked dispatched, so the outbox
- * doesn't keep it; the AI and knowledge-base queues are added here with
- * their workers in Phase 9, together with a backfill of what was
- * published before.
+ * doesn't keep it. Articles published before the indexing queue existed
+ * are picked up by the worker's reconcile at startup, not by an event.
  */
 export const ROUTES: Readonly<Record<DomainEvent, readonly WorkQueue[]>> = {
   "ticket.created": ["notifications"],
@@ -17,8 +16,8 @@ export const ROUTES: Readonly<Record<DomainEvent, readonly WorkQueue[]>> = {
   "ticket.priority_changed": [],
   "ticket.assigned": [],
   "ticket.escalated": [],
-  "kb.article_published": [],
-  "kb.article_unpublished": [],
+  "kb.article_published": ["kb-indexing"],
+  "kb.article_unpublished": ["kb-indexing"],
   "ai.suggestion_requested": [],
   "customer.signup_requested": ["notifications"],
   "guest_access.requested": ["notifications"],

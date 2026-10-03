@@ -13,6 +13,7 @@ import type { z } from "zod";
 
 import type { Logger } from "../logger.js";
 import type { OutboxJob } from "../outbox/dispatcher.js";
+import { InvalidEventError } from "../queues/errors.js";
 import type { Recipient } from "./channel.js";
 import { createLinkToken, type Links } from "./links.js";
 import type { NotificationService } from "./notification-service.js";
@@ -22,11 +23,6 @@ import {
   type TicketForEmail,
 } from "./notifications.repository.js";
 import type { TicketLink } from "./templates.js";
-
-/** A payload that doesn't match its event's schema can never succeed; retrying won't help. */
-export class InvalidEventError extends Error {
-  override name = "InvalidEventError";
-}
 
 function payloadOf<Schema extends z.ZodType>(
   schema: Schema,
