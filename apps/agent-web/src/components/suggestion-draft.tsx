@@ -18,10 +18,10 @@ export function SuggestionDraft({
 }) {
   const origin = draftOrigin(suggestion);
   return (
-    <div className={cn("space-y-2", stale && "opacity-70")}>
+    <div className="space-y-2">
       {origin.kind === "mock" ? (
         <div
-          className="rounded-md border border-tone-warning/40 bg-tone-warning-soft px-3 py-2 text-xs leading-snug text-tone-warning-fg"
+          className="rounded-md border border-dashed border-border-strong px-3 py-2 text-xs leading-snug text-muted-foreground"
           data-testid="draft-origin"
         >
           <Badge tone="warning" className="mr-1.5">
@@ -36,8 +36,17 @@ export function SuggestionDraft({
           Drafted by {origin.model}
         </p>
       )}
+      {/*
+        Shown in full: drafts are a few short paragraphs, and a box that
+        scrolled would need to take keyboard focus (WCAG 2.1.1) to be read.
+      */}
       <div
-        className="max-h-72 overflow-y-auto rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap"
+        className={cn(
+          "rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap",
+          // Only the draft dims while a newer one is written: its text stays
+          // well above AA contrast, where dimmed muted text wouldn't.
+          stale && "opacity-70",
+        )}
         data-testid="suggestion-draft"
       >
         {suggestion.draft}
