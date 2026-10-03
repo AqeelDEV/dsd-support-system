@@ -12,6 +12,8 @@ import { createZodDto, ZodResponse } from "nestjs-zod";
 import { z } from "zod";
 
 import { Public } from "../../auth/decorators.js";
+import { RateLimit } from "../../auth/guards/rate-limit.guard.js";
+import { RATE_LIMITS } from "../../auth/rate-limit/policies.js";
 import { ApiProblem } from "../../openapi/decorators.js";
 import { KbPublicService } from "./kb-public.service.js";
 
@@ -33,12 +35,17 @@ export class KbPublicController {
   constructor(private readonly kb: KbPublicService) {}
 
   @Get("articles")
+  @RateLimit(RATE_LIMITS.kbArticles)
   @ApiOperation({
     summary: "Browse or search articles",
     description:
       "Without `q`, published articles newest first. With `q`, the best matches first, each with a snippet showing where the words matched. Filter by category slug or tag either way.",
   })
   @ApiProblem(400, "A filter or the cursor is invalid")
+  @ApiProblem(
+    429,
+    "More than 300 in a minute from one address; `Retry-After` says when to try again",
+  )
   @ZodResponse({ status: HttpStatus.OK, type: PublicArticlePage })
   articles(@Query() query: PublicArticleQuery) {
     return this.kb.articles(query);

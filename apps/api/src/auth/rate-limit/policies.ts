@@ -1,5 +1,8 @@
-/** What a counter counts per: an IP address, an email, a ticket or an agent. */
-export type LimitSubject = "ip" | "email" | "ticket" | "agent";
+/**
+ * What a counter counts per: an IP address, an email, a ticket, an agent or
+ * a customer (signed in or a guest).
+ */
+export type LimitSubject = "ip" | "email" | "ticket" | "agent" | "customer";
 
 /** One counter: at most `max` requests per `windowSeconds` for each subject. */
 export interface Limit {
@@ -20,6 +23,7 @@ export interface RateLimitPolicy {
   whenRedisIsDown: "refuse" | "allow";
 }
 
+const MINUTE = 60;
 const MINUTES_10 = 10 * 60;
 const MINUTES_15 = 15 * 60;
 const HOUR = 60 * 60;
@@ -49,7 +53,8 @@ const tokenExchange = (name: string): RateLimitPolicy => ({
 });
 
 /**
- * The limits from ADR-0003, section 10, to be tuned in Phase 10. There is
+ * The limits from ADR-0003, section 10, plus the help centre and customer
+ * replies (ADR-0003, amended in Phase 10). There is
  * no permanent lockout: that would let anyone lock a victim out. The
  * per-email window only slows guessing down.
  */
@@ -75,6 +80,29 @@ export const RATE_LIMITS = {
       { by: "ip", max: 10, windowSeconds: HOUR },
       { by: "email", max: 5, windowSeconds: HOUR },
     ],
+    whenRedisIsDown: "allow",
+  },
+  /**
+   * The help centre's article list and search (FR-4). A search ranks and
+   * highlights with full-text functions, the most expensive public read, so
+   * one address can't flood it. The bar is generous: someone browsing, or a
+   * whole office behind one address, stays far below it. Reading a single
+   * article is a keyed lookup and isn't limited. Allowed while Redis is
+   * down: the help centre matters more than the limit.
+   */
+  kbArticles: {
+    name: "kb-articles",
+    limits: [{ by: "ip", max: 300, windowSeconds: MINUTE }],
+    whenRedisIsDown: "allow",
+  },
+  /**
+   * Customers' and guests' replies. Each one notifies staff and can carry
+   * five files, so one account can't flood a ticket or the queue. Allowed
+   * while Redis is down, so a customer can always answer (NFR-10).
+   */
+  customerReply: {
+    name: "customer-reply",
+    limits: [{ by: "customer", max: 20, windowSeconds: MINUTES_10 }],
     whenRedisIsDown: "allow",
   },
   /**

@@ -42,8 +42,16 @@ function setup(consume: () => Promise<Verdict>) {
     new Reflector(),
     new RateLimitEnforcer(limiter as unknown as RateLimiter),
   );
-  const run = (handler: keyof Routes, body: unknown = {}) => {
-    const request = { ip: "203.0.113.7", body } as unknown as FastifyRequest;
+  const run = (
+    handler: keyof Routes,
+    body: unknown = {},
+    principal?: unknown,
+  ) => {
+    const request = {
+      ip: "203.0.113.7",
+      body,
+      principal,
+    } as unknown as FastifyRequest;
     const context = {
       getHandler: () => Reflect.get(Routes.prototype, handler) as object,
       getClass: () => Routes,
@@ -88,6 +96,34 @@ describe("RateLimitGuard", () => {
     expect(limiter.consume).toHaveBeenCalledWith(RATE_LIMITS.customerLogin, {
       ip: "203.0.113.7",
       email: undefined,
+    });
+  });
+
+  it("counts a signed-in or guest customer by their account", async () => {
+    const { limiter, run } = setup(() => Promise.resolve({ allowed: true }));
+    await run(
+      "submit",
+      {},
+      {
+        realm: "customer",
+        customer: { id: "customer-1" },
+        guestTicketId: null,
+      },
+    );
+    expect(limiter.consume).toHaveBeenCalledWith(open, {
+      ip: "203.0.113.7",
+      email: undefined,
+      customer: "customer-1",
+    });
+  });
+
+  it("never counts staff as a customer", async () => {
+    const { limiter, run } = setup(() => Promise.resolve({ allowed: true }));
+    await run("submit", {}, { realm: "staff", agentId: "agent-1" });
+    expect(limiter.consume).toHaveBeenCalledWith(open, {
+      ip: "203.0.113.7",
+      email: undefined,
+      customer: undefined,
     });
   });
 
@@ -167,6 +203,20 @@ describe("rate-limit policies (ADR-0003, section 10)", () => {
     expect(summary(RATE_LIMITS.aiSuggestionRequest)).toEqual({
       limits: ["ticket 5/600s", "agent 30/3600s"],
       whenRedisIsDown: "refuse",
+    });
+  });
+
+  it("limit the help centre's article list and search to 300 a minute per IP, and let it through without Redis", () => {
+    expect(summary(RATE_LIMITS.kbArticles)).toEqual({
+      limits: ["ip 300/60s"],
+      whenRedisIsDown: "allow",
+    });
+  });
+
+  it("limit customers' replies to 20 per customer in 10 minutes, and let them through without Redis", () => {
+    expect(summary(RATE_LIMITS.customerReply)).toEqual({
+      limits: ["customer 20/600s"],
+      whenRedisIsDown: "allow",
     });
   });
 

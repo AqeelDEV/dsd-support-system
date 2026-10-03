@@ -3216,6 +3216,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description More than 20 replies in 10 minutes; `Retry-After` says when to try again */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description File storage is unavailable; the same request without files still works */
             503: {
                 headers: {
@@ -4657,6 +4666,15 @@ export interface operations {
             };
             /** @description A filter or the cursor is invalid */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description More than 300 in a minute from one address; `Retry-After` says when to try again */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

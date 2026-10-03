@@ -51,9 +51,15 @@ export class RateLimitGuard implements CanActivate {
     if (policy === undefined) return true;
 
     const request = context.switchToHttp().getRequest<FastifyRequest>();
+    // request.ip already accounts for TRUST_PROXY (ADR-0010): behind the web
+    // apps it is the browser's address, never the web app's own.
     await this.enforcer.enforce(policy, {
       ip: request.ip,
       email: emailOf(request),
+      customer:
+        request.principal?.realm === "customer"
+          ? request.principal.customer.id
+          : undefined,
     });
     return true;
   }

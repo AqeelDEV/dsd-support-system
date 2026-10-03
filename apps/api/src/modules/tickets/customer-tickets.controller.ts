@@ -110,6 +110,7 @@ export class CustomerTicketsController {
 
   @Post(":ticketId/messages")
   @HttpCode(HttpStatus.CREATED)
+  @RateLimit(RATE_LIMITS.customerReply)
   @ApiSession("customer", { changesState: true })
   @ApiOperation({
     summary: "Reply to one of my tickets",
@@ -120,6 +121,10 @@ export class CustomerTicketsController {
   @ApiProblem(400, "The body is missing or invalid (`validation-error`)")
   @ApiProblem(404, "No such ticket, or not yours")
   @ApiProblem(409, "The ticket is closed (`ticket-closed`)")
+  @ApiProblem(
+    429,
+    "More than 20 replies in 10 minutes; `Retry-After` says when to try again",
+  )
   @ZodResponse({ status: HttpStatus.CREATED, type: CustomerTicket })
   reply(
     @Param() params: TicketParams,
