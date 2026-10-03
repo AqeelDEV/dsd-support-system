@@ -56,7 +56,7 @@ describe("the confidence gate", () => {
   });
 
   it("uses each embedding model's own tuned bar, and a cautious one for others", () => {
-    expect(thresholdsFor("mock-hash-v1").minVectorSimilarity).toBe(0.3);
+    expect(thresholdsFor("mock-hash-v1").minVectorSimilarity).toBe(0.2);
     expect(thresholdsFor("some-new-model").minVectorSimilarity).toBe(
       UNTUNED_VECTOR_THRESHOLD,
     );

@@ -30,8 +30,8 @@ describe("aiSettings", () => {
         timeoutMs: 30_000,
       },
       thresholds: {
-        minVectorSimilarity: 0.3,
-        minKeywordRank: 0.1,
+        minVectorSimilarity: 0.2,
+        minKeywordRank: 0.5,
         minMatchedTerms: 3,
       },
     });
@@ -48,7 +48,7 @@ describe("aiSettings", () => {
       ).thresholds,
     ).toEqual({
       minVectorSimilarity: 0.42,
-      minKeywordRank: 0.1,
+      minKeywordRank: 0.5,
       minMatchedTerms: 2,
     });
     expect(() =>

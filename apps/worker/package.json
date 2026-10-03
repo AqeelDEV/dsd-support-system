@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --exclude \"**/*.int.spec.ts\"",
-    "dead-letter": "node --env-file-if-exists=../../.env dist/cli/dead-letter.js"
+    "dead-letter": "node --env-file-if-exists=../../.env dist/cli/dead-letter.js",
+    "eval": "node --env-file-if-exists=../../.env dist/cli/eval.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "catalog:",

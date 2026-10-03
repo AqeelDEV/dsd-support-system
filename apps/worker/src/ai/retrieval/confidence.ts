@@ -32,12 +32,16 @@ export interface RetrievalSignals {
  * the evaluation with it.
  */
 export const KEYWORD_THRESHOLDS = {
-  minKeywordRank: 0.1,
+  // A normalised rank of 0.5 is a raw ts_rank_cd of 1. Off-topic tickets
+  // that share a few words with an article stay below it or match too few
+  // of them; every answerable case in the set clears both.
+  minKeywordRank: 0.5,
   minMatchedTerms: 3,
 } as const;
 
 export const VECTOR_THRESHOLDS: Readonly<Record<string, number>> = {
-  "mock-hash-v1": 0.3,
+  // Off-topic cases score at most 0.19 and answerable ones at least 0.22.
+  "mock-hash-v1": 0.2,
 };
 
 export const UNTUNED_VECTOR_THRESHOLD = 0.5;
