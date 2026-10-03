@@ -16,6 +16,7 @@ import {
   SCENARIOS,
   type Scenario,
 } from "./catalog.js";
+import type { SeedFileDetails, SeedFileKind } from "./files.js";
 import { KB_ARTICLES, KB_CATEGORIES } from "./kb-catalog.js";
 
 /**
@@ -84,6 +85,22 @@ export interface PlannedMessage {
   createdAt: Date;
 }
 
+/**
+ * A file the customer sent, stored only when the seed has an object store
+ * (the Compose stack's; tests seed without one). No random draws go into
+ * it, so adding files changed none of the other demo data.
+ */
+export interface PlannedAttachment {
+  key: string;
+  kind: SeedFileKind;
+  filename: string;
+  details: SeedFileDetails;
+  /** The customer's message it came with, or null for the request itself. */
+  messageKey: string | null;
+  customerKey: string;
+  createdAt: Date;
+}
+
 export interface PlannedAudit {
   action: AuditAction;
   actor: Actor;
@@ -113,6 +130,7 @@ export interface PlannedTicket {
   updatedAt: Date;
   messages: PlannedMessage[];
   audit: PlannedAudit[];
+  attachments: PlannedAttachment[];
 }
 
 export interface PlannedStaffAudit {
@@ -461,6 +479,20 @@ function planTicket(context: TicketContext): PlannedTicket {
 
   const ticketKey = `ticket-${index}`;
   const messages: PlannedMessage[] = [];
+  const attachments: PlannedAttachment[] = [];
+  const attach = (messageKey: string | null, time: Date) => {
+    if (scenario.attachment === undefined) return;
+    attachments.push({
+      key: `${ticketKey}-attachment-${String(attachments.length)}`,
+      kind: scenario.attachment.kind,
+      filename: scenario.attachment.filename,
+      details: values,
+      messageKey,
+      customerKey,
+      createdAt: time,
+    });
+  };
+  if (scenario.attachment?.on === "description") attach(null, createdAt);
   const audit: PlannedAudit[] = [];
   const agent = { type: "agent" as const, key: agentKey };
   const customerActor = { type: "customer" as const, key: customerKey };
@@ -559,6 +591,12 @@ function planTicket(context: TicketContext): PlannedTicket {
           fill(scenario.customerFollowUp, values),
           time,
         );
+        if (
+          scenario.attachment?.on === "follow-up" &&
+          attachments.length === 0
+        ) {
+          attach(messages.at(-1)?.key ?? null, time);
+        }
         moveTo("open", customerActor, time);
         break;
       case "escalate": {
@@ -647,5 +685,6 @@ function planTicket(context: TicketContext): PlannedTicket {
     updatedAt: lastEvent,
     messages,
     audit,
+    attachments,
   };
 }

@@ -35,6 +35,7 @@
     "db:check": "node scripts/check-migrations.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "catalog:",
     "@dsd/shared": "workspace:*",
     "@faker-js/faker": "catalog:",
     "@node-rs/argon2": "catalog:",

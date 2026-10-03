@@ -295,6 +295,23 @@ expect_body "the agent reads drafts too" '"status":"draft"' \
 echo "Database"
 tickets=$(docker compose exec -T postgres psql -U postgres -d dsd -tAc "SELECT count(*) FROM tickets" 2>/dev/null | tr -d '[:space:]' || true)
 if [[ $tickets -gt 0 ]] 2>/dev/null; then pass "migrated and seeded ($tickets tickets)"; else fail "migrated and seeded (got '$tickets' tickets)"; fi
+# A file the seed put in the object store, downloaded the way an agent would.
+seeded_file=$(docker compose exec -T postgres psql -U postgres -d dsd -tAF ' ' -c \
+  "SELECT a.ticket_id, a.id, a.filename FROM attachments a JOIN audit_events e ON e.entity_id = a.id WHERE e.request_id LIKE 'seed-%' AND a.content_type = 'application/pdf' ORDER BY a.created_at LIMIT 1" 2>/dev/null | tr -d '\r' || true)
+read -r seeded_ticket seeded_id seeded_name <<<"$seeded_file"
+if [[ -n ${seeded_id:-} ]]; then
+  headers=$(curl --silent --max-time 10 --cookie "$jar" --dump-header - --output "$jar.pdf" \
+    "$AGENT/api/v1/staff/tickets/$seeded_ticket/attachments/$seeded_id" | tr -d '\r' || true)
+  if grep -qi "^content-disposition: attachment; filename\*=UTF-8''$seeded_name" <<<"$headers" &&
+    [[ $(head -c 5 "$jar.pdf") == "%PDF-" ]]; then
+    pass "a seeded file downloads from the object store ($seeded_name)"
+  else
+    fail "a seeded file downloads from the object store (headers: ${headers:0:200})"
+  fi
+  rm -f "$jar.pdf"
+else
+  fail "the seed stored files (found none)"
+fi
 
 echo "Supporting services"
 expect_status "Mailpit web UI" 200 "$MAILPIT/"

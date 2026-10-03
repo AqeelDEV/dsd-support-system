@@ -4,6 +4,7 @@ import { createDb, type Pool } from "../client.js";
 import {
   agentBrandMemberships,
   agents,
+  attachments,
   auditEvents,
   brands,
   cannedResponses,
@@ -13,6 +14,7 @@ import {
   messages,
   tickets,
 } from "../schema/index.js";
+import type { StoredFile } from "./files.js";
 import type { Actor, AgentRef, Json, SeedPlan } from "./generate.js";
 
 /** Replaces `{ $agent: key }` references with the written agents' IDs. */
@@ -55,12 +57,15 @@ function actorColumns(
 /**
  * Writes the plan in one transaction, so a failed seed leaves nothing
  * behind. Runs as `dsd_migrator`. It writes no outbox events: the demo data
- * must never make the worker email anyone.
+ * must never make the worker email anyone. `stored` holds the files already
+ * put in the object store, by planned attachment key; a planned file that
+ * isn't there gets no row.
  */
 export async function writeSeedPlan(
   pool: Pool,
   plan: SeedPlan,
   passwordHash: string,
+  stored: ReadonlyMap<string, StoredFile> = new Map(),
 ): Promise<void> {
   await createDb(pool).transaction(async (tx) => {
     const [brand] = await tx
@@ -189,6 +194,51 @@ export async function writeSeedPlan(
           createdAt: event.createdAt,
         })),
       );
+
+      for (const attachment of ticket.attachments) {
+        const file = stored.get(attachment.key);
+        if (file === undefined) continue;
+        const customerId = idOf(customerIds, attachment.customerKey);
+        const messageId =
+          attachment.messageKey === null
+            ? null
+            : idOf(messageIds, attachment.messageKey);
+        const [written] = await tx
+          .insert(attachments)
+          .values({
+            ticketId: row.id,
+            messageId,
+            uploaderType: "customer",
+            uploaderCustomerId: customerId,
+            objectKey: file.objectKey,
+            filename: attachment.filename,
+            contentType: file.contentType,
+            sizeBytes: file.sizeBytes,
+            sha256: file.sha256,
+            createdAt: attachment.createdAt,
+          })
+          .returning({ id: attachments.id });
+        if (written === undefined)
+          throw new Error("attachment insert returned nothing");
+        // The same history an upload through the API writes.
+        await tx.insert(auditEvents).values({
+          ticketId: row.id,
+          entityType: "attachment",
+          entityId: written.id,
+          action: "attachment.created",
+          actorType: "customer",
+          actorCustomerId: customerId,
+          actorAgentId: null,
+          before: null,
+          after: {
+            messageId,
+            contentType: file.contentType,
+            sizeBytes: file.sizeBytes,
+          },
+          requestId: `seed-${attachment.key}`,
+          createdAt: attachment.createdAt,
+        });
+      }
     }
 
     if (plan.staffAudit.length > 0) {

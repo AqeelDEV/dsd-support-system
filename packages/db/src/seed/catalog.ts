@@ -5,6 +5,8 @@
  * {customer}, {agent}, {product}, {order}, {amount}, {date}, {city}.
  */
 
+import type { SeedFileKind } from "./files.js";
+
 export type Category = "accounts" | "billing" | "delivery" | "troubleshooting";
 
 export interface Scenario {
@@ -19,6 +21,15 @@ export interface Scenario {
   internalNote: string;
   /** The reply that resolves the ticket. */
   resolution: string;
+  /**
+   * A file the customer sends: with the request itself, or with their
+   * follow-up ("I've attached photos...").
+   */
+  attachment?: {
+    kind: SeedFileKind;
+    filename: string;
+    on: "description" | "follow-up";
+  };
 }
 
 /** A fictional product line, so no real brand appears in the demo. */
@@ -77,6 +88,11 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     category: "billing",
     subject: "Charged twice for order {order}",
+    attachment: {
+      kind: "screenshot",
+      filename: "bank-app-payments.png",
+      on: "description",
+    },
     description:
       "My bank statement shows two payments of {amount} for order {order}, placed on {date}. I only placed the order once.",
     agentReply:
@@ -91,6 +107,11 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     category: "billing",
     subject: "Refund for my returned {product} hasn't arrived",
+    attachment: {
+      kind: "receipt",
+      filename: "returns-receipt.pdf",
+      on: "description",
+    },
     description:
       "I returned the {product} from order {order} two weeks ago and the tracking shows it was delivered to your warehouse, but I haven't received the {amount} refund yet.",
     agentReply:
@@ -161,6 +182,11 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     category: "delivery",
     subject: "Received the wrong item",
+    attachment: {
+      kind: "photo",
+      filename: "parcel-label.png",
+      on: "follow-up",
+    },
     description:
       "I ordered a {product} but the box contained a different product. The packing slip does show my order number, {order}.",
     agentReply:
@@ -202,6 +228,7 @@ export const SCENARIOS: readonly Scenario[] = [
   {
     category: "troubleshooting",
     subject: "{product} offline since the latest update",
+    attachment: { kind: "log", filename: "device-log.txt", on: "description" },
     description:
       "Since the update on {date} my {product} shows as offline in the app, even though its light says it's connected.",
     agentReply:

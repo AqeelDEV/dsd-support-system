@@ -767,6 +767,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: 'catalog:'
+        version: 3.1143.0
       '@dsd/shared':
         specifier: workspace:*
         version: link:../shared
