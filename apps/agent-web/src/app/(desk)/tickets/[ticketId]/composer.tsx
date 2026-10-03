@@ -19,8 +19,16 @@ import {
   toast,
 } from "@dsd/ui";
 import { useQuery } from "@tanstack/react-query";
-import { Lock, MessageSquareText, Send } from "lucide-react";
-import { useDeferredValue, useEffect, useId, useRef, useState } from "react";
+import { Lock, MessageSquareText, Send, Sparkles, X } from "lucide-react";
+import {
+  type Ref,
+  useDeferredValue,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
 import { isTyping } from "@/components/shortcuts";
 import { api } from "@/lib/api";
@@ -29,12 +37,28 @@ import { useTicketActions } from "@/lib/tickets";
 
 type Mode = "reply" | "note";
 
+/** What the AI suggestion panel can do to the composer: only fill it. */
+export interface ComposerHandle {
+  insertSuggestion: (draft: string, suggestionId: string) => void;
+}
+
 /**
  * Reply to the customer or leave an internal note (FR-8, FR-10). What can
  * be sent and which statuses a reply may set come from the ticket's
  * `allowedActions` and `allowedTransitions`; the API checks them again.
+ *
+ * A draft inserted from the AI panel becomes ordinary text the agent edits;
+ * the reply then names the suggestion it was based on, so the API records
+ * the agent as its approver (ADR-0006, section 8). The agent can drop that
+ * link, and only ever sends what is in the box.
  */
-export function Composer({ ticket }: { ticket: StaffTicket }) {
+export function Composer({
+  ticket,
+  ref,
+}: {
+  ticket: StaffTicket;
+  ref?: Ref<ComposerHandle>;
+}) {
   const can = useCan();
   const actions = useTicketActions(ticket.id);
   const modes: Mode[] = [
@@ -45,6 +69,7 @@ export function Composer({ ticket }: { ticket: StaffTicket }) {
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [nextStatus, setNextStatus] = useState<TicketStatus | "">("");
+  const [basedOn, setBasedOn] = useState<string>();
   const [error, setError] = useState<string>();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const statusId = useId();
@@ -76,6 +101,22 @@ export function Composer({ ticket }: { ticket: StaffTicket }) {
     };
   });
 
+  const insert = (text: string) => {
+    setBody((current) =>
+      current.trim() === "" ? text : `${current.trimEnd()}\n\n${text}`,
+    );
+    textarea.current?.focus();
+  };
+
+  useImperativeHandle(ref, () => ({
+    insertSuggestion: (draft, suggestionId) => {
+      if (!modes.includes("reply")) return;
+      setMode("reply");
+      setBasedOn(suggestionId);
+      insert(draft);
+    },
+  }));
+
   if (active === undefined) return null;
 
   const send = () => {
@@ -91,6 +132,7 @@ export function Composer({ ticket }: { ticket: StaffTicket }) {
       setBody("");
       setFiles([]);
       setNextStatus("");
+      if (active === "reply") setBasedOn(undefined);
       toast.success(active === "note" ? "Note added" : "Reply sent");
     };
     if (active === "note") {
@@ -101,17 +143,11 @@ export function Composer({ ticket }: { ticket: StaffTicket }) {
           body: text,
           files,
           ...(nextStatus === "" ? {} : { status: nextStatus }),
+          ...(basedOn === undefined ? {} : { aiSuggestionId: basedOn }),
         },
         { onSuccess: done },
       );
     }
-  };
-
-  const insert = (text: string) => {
-    setBody((current) =>
-      current.trim() === "" ? text : `${current.trimEnd()}\n\n${text}`,
-    );
-    textarea.current?.focus();
   };
 
   return (
@@ -193,6 +229,22 @@ export function Composer({ ticket }: { ticket: StaffTicket }) {
             if (event.key === "Escape") event.currentTarget.blur();
           }}
         />
+        {active === "reply" && basedOn !== undefined ? (
+          <p className="flex items-center gap-2 self-start rounded-full bg-muted py-0.5 pr-1 pl-2.5 text-xs text-muted-foreground">
+            <Sparkles aria-hidden="true" className="size-3.5 text-primary" />
+            Based on an AI suggestion. You&apos;re sending it as your reply.
+            <button
+              type="button"
+              aria-label="Don't link this reply to the AI suggestion"
+              className="grid size-5 place-items-center rounded-full hover:bg-background hover:text-foreground"
+              onClick={() => {
+                setBasedOn(undefined);
+              }}
+            >
+              <X aria-hidden="true" className="size-3" />
+            </button>
+          </p>
+        ) : null}
         {error === undefined ? null : (
           <p role="alert" className="text-xs font-medium text-tone-danger-fg">
             {error}

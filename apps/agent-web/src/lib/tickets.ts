@@ -120,16 +120,19 @@ export function useTicketActions(id: string) {
       ({
         body,
         status,
+        aiSuggestionId,
         files,
       }: {
         body: string;
         status?: TicketStatus;
+        /** The AI suggestion the reply was based on, if any (ADR-0006). */
+        aiSuggestionId?: string;
         files: File[];
       }) =>
         ok(
           api.POST("/api/v1/staff/tickets/{ticketId}/replies", {
             ...path(id),
-            body: multipart({ body, status }, files) as never,
+            body: multipart({ body, status, aiSuggestionId }, files) as never,
             ...formDataBody,
           }),
         ),

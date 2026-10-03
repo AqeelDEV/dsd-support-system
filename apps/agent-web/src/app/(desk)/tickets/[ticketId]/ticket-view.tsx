@@ -21,8 +21,9 @@ import {
   ThreadEvent,
   ThreadMessage,
 } from "@dsd/ui";
-import { ArrowLeft, Flame } from "lucide-react";
+import { ArrowLeft, Flame, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useRef } from "react";
 
 import { PRODUCT_NAME } from "@/components/brand";
 import { LoadError } from "@/components/page";
@@ -30,8 +31,8 @@ import { describeEvent } from "@/lib/activity";
 import { attachmentHref } from "@/lib/api";
 import { useAssignable, useAuditTrail, useTicket } from "@/lib/tickets";
 
-import { AssistPanelSlot } from "./assist-panel-slot";
-import { Composer } from "./composer";
+import { AssistPanel } from "./assist-panel";
+import { Composer, type ComposerHandle } from "./composer";
 import { CustomerCard } from "./customer-card";
 import { Properties } from "./properties";
 
@@ -44,6 +45,7 @@ export function TicketView({ ticketId }: { ticketId: string }) {
   const canAudit = ticket.data?.allowedActions.viewAuditTrail ?? false;
   const audit = useAuditTrail(ticketId, canAudit);
   const colleagues = useAssignable(ticket.data !== undefined);
+  const composer = useRef<ComposerHandle>(null);
 
   if (ticket.isPending) return <TicketSkeleton />;
   if (ticket.isError) {
@@ -193,11 +195,19 @@ export function TicketView({ ticketId }: { ticketId: string }) {
                           : (message.author.name ?? "Agent")
                       }
                       tag={
-                        fromCustomer
-                          ? "Customer"
-                          : message.visibility === "internal"
-                            ? undefined
-                            : "Reply"
+                        fromCustomer ? (
+                          "Customer"
+                        ) : message.visibility ===
+                          "internal" ? undefined : message.aiSuggestionId ===
+                          null ? (
+                          "Reply"
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            Reply ·
+                            <Sparkles aria-hidden="true" className="size-3" />
+                            AI-assisted
+                          </span>
+                        )
                       }
                       variant={
                         message.visibility === "internal" ? "note" : "message"
@@ -210,7 +220,7 @@ export function TicketView({ ticketId }: { ticketId: string }) {
                   );
                 })}
               </Thread>
-              <Composer ticket={data} />
+              <Composer ticket={data} ref={composer} />
               {data.allowedActions.reply ||
               data.allowedActions.addNote ? null : (
                 <p className="text-sm text-muted-foreground">
@@ -234,7 +244,12 @@ export function TicketView({ ticketId }: { ticketId: string }) {
           aria-label="Ticket details"
           className="divide-y divide-border border-t border-border bg-card lg:border-t-0 lg:border-l"
         >
-          <AssistPanelSlot ticketId={data.id} />
+          <AssistPanel
+            ticket={data}
+            onInsert={(draft, suggestionId) => {
+              composer.current?.insertSuggestion(draft, suggestionId);
+            }}
+          />
           <Properties ticket={data} />
           <CustomerCard ticket={data} />
           <dl className="grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-1.5 px-4 py-3 text-xs">

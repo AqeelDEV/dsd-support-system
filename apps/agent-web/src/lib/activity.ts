@@ -86,6 +86,12 @@ export function describeEvent(
       };
     case "attachment.created":
       return { text: "Attached a file", tone: "neutral", onRail: false };
+    case "ai_suggestion.used":
+      return {
+        text: "Sent a reply based on an AI suggestion",
+        tone: "neutral",
+        onRail: false,
+      };
     default:
       return { text: event.action, tone: "neutral", onRail: false };
   }

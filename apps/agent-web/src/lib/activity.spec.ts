@@ -64,6 +64,15 @@ describe("describeEvent", () => {
       text: "Added an internal note",
       onRail: false,
     });
+    expect(
+      describeEvent(
+        event("ai_suggestion.used", { aiSuggestionId: "s1" }),
+        names,
+      ),
+    ).toMatchObject({
+      text: "Sent a reply based on an AI suggestion",
+      onRail: false,
+    });
   });
 
   it("never hides an action it doesn't know", () => {
