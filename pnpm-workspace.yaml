@@ -58,7 +58,7 @@ catalog:
   eslint-plugin-jsx-a11y: 6.10.2
   eslint-plugin-react-hooks: 7.1.1
   eslint: 10.11.0
-  fastify: 5.11.3
+  fastify: 5.12.5
   file-type: 22.1.1
   globals: 17.12.0
   husky: 9.1.7
@@ -99,3 +99,12 @@ peerDependencyRules:
     # jsx-a11y works under ESLint 10 (its rules are exercised by the web
     # apps' lint runs) but hasn't widened its declared peer range yet.
     eslint-plugin-jsx-a11y>eslint: "10"
+
+# Security fixes that the packages depending on these haven't picked up,
+# because they pin exact versions: @nestjs/platform-fastify 11 pins fastify
+# 5.11.3 (several advisories fixed in 5.12.2 to 5.12.5) and @nestjs/swagger
+# pins js-yaml 5.3.0 (merge-key CPU use, fixed in 5.4.1). Both stay within
+# the same major version; the API's tests and Swagger UI run on them.
+overrides:
+  fastify: "catalog:"
+  "@nestjs/swagger>js-yaml": 5.4.2
