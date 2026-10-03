@@ -280,6 +280,68 @@ describe("database roles and privileges", () => {
     });
   });
 
+  describe("the worker reads customers' messages for AI drafts, and nothing else (ADR-0006)", () => {
+    it("sees customers' messages through their view, and never a note or an agent's reply", async () => {
+      const owner = await db.pool("dsd_migrator").connect();
+      let ids: { reply: string; note: string; customer: string };
+      try {
+        const brandId = await fixture.brand(owner, "CUST");
+        const customerId = await fixture.customer(owner);
+        const agentId = await fixture.agent(owner);
+        const ticketId = await fixture.ticket(owner, brandId, customerId);
+        const add = async (sql: string, values: unknown[]) =>
+          (await owner.query<{ id: string }>(sql, values)).rows[0]?.id ?? "";
+        ids = {
+          reply: await add(
+            "INSERT INTO messages (ticket_id, author_type, author_agent_id, visibility, body) VALUES ($1, 'agent', $2, 'public', 'Try restarting the hub.') RETURNING id",
+            [ticketId, agentId],
+          ),
+          note: await add(
+            "INSERT INTO messages (ticket_id, author_type, author_agent_id, visibility, body) VALUES ($1, 'agent', $2, 'internal', 'CANARY note for the AI') RETURNING id",
+            [ticketId, agentId],
+          ),
+          customer: await fixture.customerMessage(owner, ticketId, customerId),
+        };
+      } finally {
+        owner.release();
+      }
+      const { rows } = await db
+        .pool("dsd_worker")
+        .query<{ id: string }>(
+          "SELECT id FROM public_customer_messages WHERE id = ANY($1)",
+          [[ids.reply, ids.note, ids.customer]],
+        );
+      expect(rows).toEqual([{ id: ids.customer }]);
+      const notes = await db
+        .pool("dsd_worker")
+        .query(
+          "SELECT 1 FROM public_customer_messages WHERE body LIKE '%CANARY%'",
+        );
+      expect(notes.rows).toEqual([]);
+    });
+
+    it("can't change what the view shows", async () => {
+      const error = await inRolledBackTransaction(
+        db.pool("dsd_worker"),
+        (client) =>
+          expectPgError(
+            client,
+            "CREATE OR REPLACE VIEW public_customer_messages AS SELECT id, ticket_id, body, created_at FROM messages",
+          ),
+      );
+      expect(error.code).toBe(SQLSTATE.insufficientPrivilege);
+    });
+
+    it("is not readable by the API, which reads messages itself", async () => {
+      const error = await inRolledBackTransaction(
+        db.pool("dsd_api"),
+        (client) =>
+          expectPgError(client, "SELECT id FROM public_customer_messages"),
+      );
+      expect(error.code).toBe(SQLSTATE.insufficientPrivilege);
+    });
+  });
+
   describe("session cleanup by the worker", () => {
     it("deletes expired sessions using only the expiry columns", async () => {
       await inRolledBackTransaction(db.pool("dsd_worker"), async (client) => {

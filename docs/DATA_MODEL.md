@@ -508,11 +508,14 @@ Queue pagination is keyset-based (a cursor of the sort key plus `id`), so later 
 
 ## Views
 
-| View                  | Rows and columns                                                                                                                   | `dsd_api` | `dsd_worker` |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------ |
-| `public_reply_bodies` | `id`, `ticket_id`, `body`, `created_at` and `author_agent_id` of messages with `visibility = 'public'` and `author_type = 'agent'` | none      | S            |
+| View                       | Rows and columns                                                                                                                   | `dsd_api` | `dsd_worker` |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------- | ------------ |
+| `public_reply_bodies`      | `id`, `ticket_id`, `body`, `created_at` and `author_agent_id` of messages with `visibility = 'public'` and `author_type = 'agent'` | none      | S            |
+| `public_customer_messages` | `id`, `ticket_id`, `body` and `created_at` of messages with `visibility = 'public'` and `author_type = 'customer'`                 | none      | S            |
 
-- **`public_reply_bodies`** is the only message text the worker can read: notification emails quote an agent's public reply and name its author. It is owned by `dsd_migrator` and isn't `security_invoker`, so it reads `messages` with its owner's rights while the worker has no privilege on `messages` at all. Internal notes and customers' own messages can't reach the worker by any query ([ADR-0006](adr/0006-ai-suggestions-and-guardrail.md), [ADR-0008](adr/0008-data-integrity-and-db-roles.md), amended).
+- **`public_reply_bodies`**: notification emails quote an agent's public reply and name its author.
+- **`public_customer_messages`**: the AI pipeline drafts a reply from what the customer wrote (migration 0006).
+- These two views are the only message text the worker can read. Both are owned by `dsd_migrator` and aren't `security_invoker`, so they read `messages` with their owner's rights while the worker has no privilege on `messages` at all. Internal notes can't reach the worker, an email or a prompt by any query ([ADR-0006](adr/0006-ai-suggestions-and-guardrail.md), [ADR-0008](adr/0008-data-integrity-and-db-roles.md), amended).
 
 ## Database roles and privileges
 
@@ -540,7 +543,7 @@ S = SELECT, I = INSERT, U = UPDATE, D = DELETE. Anything not listed is not grant
 | `ai_suggestion_sources`   | S         | S I                                    |
 | `ai_suggestion_feedback`  | S I U     | none                                   |
 
-`dsd_api` also gets USAGE on `ticket_number_seq`. The worker reads message text only through the `public_reply_bodies` view (see [Views](#views)), never from `messages` itself. The worker's expiry columns are `expires_at` and `idle_expires_at` on `sessions`, and `expires_at` on `auth_tokens`: enough to find and delete expired rows, and nothing that identifies a session or its owner. `dsd_migrator` owns every object and is used only by migrations and seeding.
+`dsd_api` also gets USAGE on `ticket_number_seq`. The worker reads message text only through the `public_reply_bodies` and `public_customer_messages` views (see [Views](#views)), never from `messages` itself. The worker's expiry columns are `expires_at` and `idle_expires_at` on `sessions`, and `expires_at` on `auth_tokens`: enough to find and delete expired rows, and nothing that identifies a session or its owner. `dsd_migrator` owns every object and is used only by migrations and seeding.
 
 ## Data lifecycle
 
