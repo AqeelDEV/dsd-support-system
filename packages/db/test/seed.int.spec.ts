@@ -82,7 +82,7 @@ describe("seed", () => {
       tickets: 60,
       canned: 6,
       categories: 4,
-      articles: 9,
+      articles: 35,
     });
     const { rows } = await db
       .pool("dsd_migrator")
@@ -90,8 +90,8 @@ describe("seed", () => {
         "SELECT status, count(*)::int AS n FROM kb_articles GROUP BY status ORDER BY status",
       );
     expect(rows).toEqual([
-      { status: "draft", n: 1 },
-      { status: "published", n: 8 },
+      { status: "draft", n: 2 },
+      { status: "published", n: 33 },
     ]);
     expect(await count("messages")).toBeGreaterThan(100);
     expect(await count("audit_events")).toBeGreaterThan(
