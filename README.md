@@ -51,7 +51,7 @@ Sign in as `customer@example.com` to see **My requests** with the seeded history
 Open http://localhost:3001 and sign in as `agent@dsd.example`, `supervisor@dsd.example` or `admin@dsd.example`.
 
 - **Queue:** saved views (my tickets, unassigned, all open, awaiting customer, escalated, resolved), filters and sorting kept in the address, background refresh, and the keyboard: `j` and `k` move, `Enter` opens, `?` lists every shortcut.
-- **Ticket:** the conversation with internal notes on an amber surface and status changes on the rail; a composer for replies and notes with canned responses filled in for the ticket (`r`, `n`, `Ctrl+Enter`); status, priority, assignment and escalation; the customer's other tickets; and the full activity history.
+- **Ticket:** the conversation with internal notes on an amber surface and status changes on the rail; a composer for replies and notes with canned responses filled in for the ticket (`r`, `n`, `Ctrl+Enter`); an AI-drafted reply grounded in the knowledge base, to insert and edit (below); status, priority, assignment and escalation; the customer's other tickets; and the full activity history.
 - **Knowledge base:** articles with a live preview that matches the help centre, publishing, and categories. **Canned responses** with a variable picker.
 - **Reports** (volume over time, first-response and resolution times, tickets per agent) and **Team** (invite, change role, deactivate) for supervisors and admins.
 
@@ -67,6 +67,31 @@ Emails are sent by the worker, never by a request: if the mail server is down, t
 
 Customers and staff are separate realms: a customer session is refused by every staff route and the other way round ([ADR-0003](docs/adr/0003-authentication-and-sessions.md), [ADR-0004](docs/adr/0004-authorization-rbac.md)). Because this stack runs on plain `http://localhost`, its cookies leave out the `Secure` flag and the `__Host-` prefix, which browsers refuse there. A real deployment keeps both, and the API refuses to start without them unless every trusted origin is on localhost.
 
+### AI-assisted replies
+
+Raise a request whose answer is in the help centre ("My refund was issued four days ago but it isn't back on my card yet") and open it in the agent app. Within a few seconds the **Suggested reply** panel beside the ticket shows a draft built from the knowledge base, with the articles it cites and the exact text it used. **Insert into reply** puts the draft in the composer; you edit it and send it as your own reply. **Regenerate** asks for a fresh draft, and the thumbs record whether it helped. A request the knowledge base doesn't cover ("Are you hiring in Lisbon?") gets **No grounded suggestion available** instead of a guess.
+
+It runs offline out of the box: a deterministic mock drafts from the retrieved articles, so there is no key to set and no ticket text leaves your machine. To use a real model, put a provider and its key in `.env` and restart the worker; it re-embeds the knowledge base with the new embedding model when it starts:
+
+```bash
+LLM_PROVIDER=gemini
+EMBEDDINGS_PROVIDER=gemini
+GEMINI_API_KEY=your-key
+```
+
+Gemini is the provider this project runs and measures (one key covers drafting and embeddings, and the free tier is enough to try it). Anthropic (`claude-sonnet-5-5` by default) and OpenAI (`LLM_MODEL` required) have adapters too, tested against stand-ins for their APIs but not run live here. `.env.example` lists every setting.
+
+How the guardrail works, in short ([ADR-0006](docs/adr/0006-ai-suggestions-and-guardrail.md)):
+
+- The worker drafts and the API sends, and the two never meet: the worker's code can't import the messages table and its database role can't write to it, and the only route that creates a customer-visible reply needs an agent's session. The RBAC matrix checks on every call that no other route creates one.
+- A reply built from a draft names it; the API accepts only a ready draft on the same ticket, records the sender as its approver and audits it, and the database refuses an approval by anyone but the author.
+- Every draft cites the articles it used, and a citation the model wasn't given throws the draft away. When retrieval finds nothing close enough, the model is never called.
+- Ticket text reaches the model as escaped, delimited data. A ticket that tells the model to promise a refund produces, at worst, a draft for an agent to read.
+- Suggestions are for staff only; customers and guests are refused on every suggestion route, and no customer response can carry one.
+- If the AI provider is down, tickets and replies carry on: the draft is retried, then marked unavailable.
+
+On a set of 24 synthetic tickets, Gemini (`gemini-3.5-flash-lite` with `gemini-embedding-2`) ranked an expected article first for 19 of the 20 tickets the knowledge base answers and among the top six for all of them, drafted for each of those with every citation valid, declined all four it couldn't answer, and ignored both prompt injections, at about 1.6 seconds a draft. [docs/EVALUATION.md](docs/EVALUATION.md) has the method, the per-case results and the limits; `pnpm --filter @dsd/worker eval` runs it.
+
 ### Screenshots
 
 | Help centre                                                                         | Contact support                                                                    |
@@ -74,7 +99,7 @@ Customers and staff are separate realms: a customer session is refused by every 
 | ![The customer app's home page](docs/screenshots/customer-home.png)                 | ![The contact form suggesting articles](docs/screenshots/customer-new-request.png) |
 | **A request on a phone**                                                            | **My requests**                                                                    |
 | ![A request's conversation on a phone](docs/screenshots/customer-thread-mobile.png) | ![The signed-in customer's requests](docs/screenshots/customer-my-requests.png)    |
-| **The agent's queue**                                                               | **A ticket, with notes, history and the customer**                                 |
+| **The agent's queue**                                                               | **A ticket, with an AI-drafted reply, notes and history**                          |
 | ![The agent queue](docs/screenshots/agent-queue.png)                                | ![An agent's ticket view](docs/screenshots/agent-ticket.png)                       |
 | **Reports**                                                                         | **The knowledge-base editor**                                                      |
 | ![The reporting dashboard](docs/screenshots/agent-reports.png)                      | ![Editing an article with a live preview](docs/screenshots/agent-kb-editor.png)    |
@@ -153,5 +178,6 @@ docs/             Requirements, architecture, data model and decision records
 - [Architecture](docs/ARCHITECTURE.md): components, request flows, events and failure behaviour
 - [Data model](docs/DATA_MODEL.md): tables, constraints, indexes and database roles
 - [Decision records](docs/adr/README.md): what was decided, why, and what was rejected
+- [Evaluation](docs/EVALUATION.md): how well AI suggestions retrieve, ground and abstain, on the mock and on Gemini
 - [Traceability](docs/TRACEABILITY.md): every requirement, where it lives and what proves it
 - [Requirements](docs/SRS.md): the specification this system is built against
