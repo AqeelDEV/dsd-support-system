@@ -9137,6 +9137,7 @@
                         "invalid_output",
                         "no_citations",
                         "citation_not_in_retrieved_set",
+                        "link_not_in_sources",
                         "cited_article_unpublished",
                         "model_refused"
                       ]

@@ -34,6 +34,8 @@ export const REJECTION_TEXT: Record<AiRejectionReason, string> = {
   invalid_output: "the model's answer wasn't in the expected form",
   no_citations: "it didn't cite the knowledge base",
   citation_not_in_retrieved_set: "it cited an article it wasn't given",
+  link_not_in_sources:
+    "it contained a link that isn't in the articles it cited",
   cited_article_unpublished: "an article it cited was unpublished meanwhile",
   model_refused: "the model declined to answer",
 };

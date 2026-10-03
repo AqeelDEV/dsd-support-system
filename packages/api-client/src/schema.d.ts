@@ -2044,7 +2044,7 @@ export interface components {
                     current: boolean;
                 }[];
                 /** @description Why the draft was discarded, when `rejected` */
-                rejectionReason: ("invalid_output" | "no_citations" | "citation_not_in_retrieved_set" | "cited_article_unpublished" | "model_refused") | null;
+                rejectionReason: ("invalid_output" | "no_citations" | "citation_not_in_retrieved_set" | "link_not_in_sources" | "cited_article_unpublished" | "model_refused") | null;
                 /** @description The agent who asked for it; null when a new ticket or a customer's message triggered it */
                 requestedBy: {
                     /** Format: uuid */

@@ -1,5 +1,7 @@
 import type { AiRejectionReason } from "@dsd/shared";
 
+import type { PromptSource } from "../providers/types.js";
+import { linksNotIn } from "./links.js";
 import type { ParsedDraft } from "./reply-draft.js";
 
 export type Validation =
@@ -18,14 +20,17 @@ export type Validation =
  * 3. it cites at least one source (`no_citations`);
  * 4. every cited ID is one the prompt gave it
  *    (`citation_not_in_retrieved_set`): a made-up source is treated as a
- *    made-up answer.
+ *    made-up answer;
+ * 5. every link in the reply (a URL, a domain, an email address) appears in
+ *    a source it cites (`link_not_in_sources`): one that doesn't can only
+ *    have come from the ticket, where an attacker writes (`links.ts`).
  *
  * Whether the cited articles are still published is checked against the
  * database afterwards (`cited_article_unpublished`).
  */
 export function validateDraft(
   parsed: ParsedDraft,
-  givenSourceIds: ReadonlySet<string>,
+  sources: readonly PromptSource[],
 ): Validation {
   if (!parsed.ok) return { status: "rejected", reason: "invalid_output" };
   const { draft } = parsed;
@@ -38,8 +43,18 @@ export function validateDraft(
   const cited = [
     ...new Set(draft.citations.map((citation) => citation.sourceId)),
   ];
-  if (cited.some((id) => !givenSourceIds.has(id))) {
+  const given = new Map(sources.map((source) => [source.id, source]));
+  if (cited.some((id) => !given.has(id))) {
     return { status: "rejected", reason: "citation_not_in_retrieved_set" };
+  }
+  const citedText = cited.flatMap((id) => {
+    const source = given.get(id);
+    return source === undefined
+      ? []
+      : [source.title, source.headingPath, source.content];
+  });
+  if (linksNotIn(draft.reply, citedText).length > 0) {
+    return { status: "rejected", reason: "link_not_in_sources" };
   }
   return { status: "ready", reply: draft.reply.trim(), citedSourceIds: cited };
 }

@@ -112,10 +112,7 @@ export class SuggestionDrafter {
     const output = parsed.ok
       ? parsed.draft
       : { raw: result.text.slice(0, MAX_RAW_OUTPUT), problem: parsed.problem };
-    const validation = validateDraft(
-      parsed,
-      new Set(prompt.sources.map((source) => source.id)),
-    );
+    const validation = validateDraft(parsed, prompt.sources);
     if (validation.status !== "ready") {
       return {
         ...called,
