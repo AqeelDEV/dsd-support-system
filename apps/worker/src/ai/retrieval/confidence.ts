@@ -42,6 +42,9 @@ export const KEYWORD_THRESHOLDS = {
 export const VECTOR_THRESHOLDS: Readonly<Record<string, number>> = {
   // Off-topic cases score at most 0.19 and answerable ones at least 0.22.
   "mock-hash-v1": 0.2,
+  // Off-topic cases score at most 0.65 and grounded ones at least 0.74; the
+  // bar sits in the middle of the gap (sweep of 2026-10-03).
+  "gemini-embedding-2": 0.7,
 };
 
 export const UNTUNED_VECTOR_THRESHOLD = 0.5;

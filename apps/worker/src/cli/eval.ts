@@ -51,6 +51,27 @@ const UNUSED = {
 /** Vector thresholds the sweep tries. */
 const CANDIDATES = Array.from({ length: 13 }, (_, index) => 0.2 + index * 0.05);
 
+/**
+ * Runs `work`, and with a real provider retries it after a minute when it
+ * fails: free tiers count embedding inputs per minute, and indexing the
+ * whole knowledge base at once goes over. The worker's queue does the
+ * same with its backoff.
+ */
+async function patiently<T>(
+  work: () => Promise<T>,
+  retry: boolean,
+): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await work();
+    } catch (error) {
+      if (!retry || attempt >= 5) throw error;
+      process.stdout.write("Provider limit reached; waiting a minute\n");
+      await new Promise((resolve) => setTimeout(resolve, 60_000));
+    }
+  }
+}
+
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   return index === -1 ? undefined : process.argv[index + 1];
@@ -77,7 +98,9 @@ async function main(): Promise<void> {
     const articles = await knowledge.outOfDate(
       models.embeddings?.model ?? null,
     );
-    for (const article of articles) await indexer.index(article.id);
+    for (const article of articles) {
+      await patiently(() => indexer.index(article.id), pauseMs > 0);
+    }
     process.stdout.write(`Indexed ${String(articles.length)} articles\n`);
     const [brand] = await asOwner<{ id: string }>(
       database,
