@@ -16,9 +16,16 @@ const optional = <Schema extends z.ZodType>(schema: Schema) =>
   );
 
 /** Who drafts AI reply suggestions (ADR-0006, section 2). */
-export const LLM_PROVIDERS = ["mock"] as const;
+export const LLM_PROVIDERS = ["mock", "gemini"] as const;
 /** Who embeds knowledge-base chunks; `none` means keyword retrieval only. */
-export const EMBEDDINGS_PROVIDERS = ["mock", "none"] as const;
+export const EMBEDDINGS_PROVIDERS = ["mock", "gemini", "none"] as const;
+/** How much a model may reason before it answers, where the provider offers a choice. */
+export const LLM_EFFORTS = ["minimal", "low", "medium", "high"] as const;
+
+/** The key each real provider needs. */
+const API_KEYS: Readonly<Partial<Record<string, "GEMINI_API_KEY">>> = {
+  gemini: "GEMINI_API_KEY",
+};
 /**
  * How the offline mock behaves. `grounded` drafts from the sources it is
  * given; the others make it fail in one specific way, so every failure
@@ -102,6 +109,15 @@ export const envSchema = z
     EMBEDDINGS_MODEL: optional(z.string().min(1)),
     MOCK_LLM_MODE: z.enum(MOCK_LLM_MODES).default("grounded"),
     /**
+     * How much the chat model reasons before it answers. Each provider has
+     * a default (Gemini `low`); set it to try another.
+     */
+    LLM_EFFORT: optional(z.enum(LLM_EFFORTS)),
+    /** One key covers Gemini's chat and embedding models. Needed only when either is in use. */
+    GEMINI_API_KEY: optional(z.string().min(1)),
+    /** Only for pointing the client somewhere else, such as a test server. */
+    GEMINI_BASE_URL: optional(appUrl),
+    /**
      * How long a suggestion waits after a customer's message for more of
      * them, so a burst of short messages gets one draft that reads them all
      * (ADR-0005, section 6).
@@ -123,6 +139,17 @@ export const envSchema = z
         path: ["SMTP_PASSWORD"],
         message: "SMTP_USER and SMTP_PASSWORD go together: set both or neither",
       });
+    }
+    for (const setting of ["LLM_PROVIDER", "EMBEDDINGS_PROVIDER"] as const) {
+      const provider = env[setting];
+      const key = API_KEYS[provider];
+      if (key !== undefined && env[key] === undefined) {
+        context.addIssue({
+          code: "custom",
+          path: [key],
+          message: `${setting}=${provider} needs ${key}`,
+        });
+      }
     }
   });
 

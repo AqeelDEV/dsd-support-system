@@ -8,10 +8,15 @@ packages:
 # drizzle-kit) gets its binary from a platform package; its script only
 # double-checks it. msgpackr-extract (pulled in by bullmq) only builds an
 # optional native speed-up; msgpackr falls back to plain JavaScript.
+# @google/genai's only install script echoes "no-op". protobufjs (pulled
+# in by @google/genai) runs a version check for its command-line tools,
+# which nothing here uses.
 allowBuilds:
+  "@google/genai": false
   "@scarf/scarf": false
   esbuild: false
   msgpackr-extract: false
+  protobufjs: false
 
 # One version of each shared third-party dependency across the workspace.
 catalog:
@@ -26,6 +31,7 @@ catalog:
   "@fastify/multipart": 10.1.2
   "@fastify/static": 10.1.5
   "@fontsource-variable/inter": 5.3.0
+  "@google/genai": 2.26.0
   "@nestjs/common": 11.2.6
   "@nestjs/core": 11.2.6
   "@nestjs/platform-fastify": 11.2.6

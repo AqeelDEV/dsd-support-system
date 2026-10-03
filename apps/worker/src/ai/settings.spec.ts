@@ -22,8 +22,13 @@ describe("aiSettings", () => {
         model: "mock-grounded-v1",
         timeoutMs: 30_000,
         mockMode: "grounded",
+        effort: null,
       },
-      embeddings: { provider: "mock", model: "mock-hash-v1" },
+      embeddings: {
+        provider: "mock",
+        model: "mock-hash-v1",
+        timeoutMs: 30_000,
+      },
       thresholds: {
         minVectorSimilarity: 0.3,
         minKeywordRank: 0.1,
@@ -55,6 +60,37 @@ describe("aiSettings", () => {
     expect(
       aiSettings(parseEnv({ ...REQUIRED, EMBEDDINGS_PROVIDER: "none" }))
         .embeddings,
+    ).toBeNull();
+  });
+
+  it("uses Gemini 3.5 Flash-Lite at low effort and Gemini Embedding 2 by default for Gemini", () => {
+    const settings = aiSettings(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "gemini",
+        EMBEDDINGS_PROVIDER: "gemini",
+        GEMINI_API_KEY: "a-secret-key",
+      }),
+    );
+    expect(settings.chat).toMatchObject({
+      provider: "gemini",
+      model: "gemini-3.5-flash-lite",
+      effort: "low",
+    });
+    expect(settings.embeddings).toMatchObject({
+      provider: "gemini",
+      model: "gemini-embedding-2",
+    });
+    expect(JSON.stringify(settings)).not.toContain("a-secret-key");
+  });
+
+  it("takes the effort from the environment, except for the mock, which doesn't reason", () => {
+    const gemini = { ...REQUIRED, LLM_PROVIDER: "gemini", GEMINI_API_KEY: "k" };
+    expect(
+      aiSettings(parseEnv({ ...gemini, LLM_EFFORT: "minimal" })).chat.effort,
+    ).toBe("minimal");
+    expect(
+      aiSettings(parseEnv({ ...REQUIRED, LLM_EFFORT: "high" })).chat.effort,
     ).toBeNull();
   });
 

@@ -10,6 +10,7 @@ import { type Thresholds, thresholdsFor } from "./retrieval/confidence.js";
 
 export type LlmProvider = Env["LLM_PROVIDER"];
 export type MockLlmMode = Env["MOCK_LLM_MODE"];
+export type LlmEffort = NonNullable<Env["LLM_EFFORT"]>;
 export type EmbeddingsProvider = Exclude<Env["EMBEDDINGS_PROVIDER"], "none">;
 
 export interface ChatSettings {
@@ -17,11 +18,14 @@ export interface ChatSettings {
   model: string;
   timeoutMs: number;
   mockMode: MockLlmMode;
+  /** Null for a provider that offers no choice. */
+  effort: LlmEffort | null;
 }
 
 export interface EmbeddingSettings {
   provider: EmbeddingsProvider;
   model: string;
+  timeoutMs: number;
 }
 
 export interface AiSettings {
@@ -32,13 +36,32 @@ export interface AiSettings {
   thresholds: Thresholds;
 }
 
+/**
+ * Gemini 3.5 Flash-Lite: the cheapest tier that supports constrained JSON
+ * output, with a free tier for evaluation (ADR-0006, amended 2026-10-03).
+ */
 const DEFAULT_CHAT_MODELS: Record<LlmProvider, string> = {
   mock: "mock-grounded-v1",
+  gemini: "gemini-3.5-flash-lite",
 };
 
+/**
+ * Effort when `LLM_EFFORT` is unset. A short grounded draft needs little
+ * reasoning, and the agent is waiting for it.
+ */
+const DEFAULT_EFFORTS: Record<LlmProvider, LlmEffort | null> = {
+  mock: null,
+  gemini: "low",
+};
+
+/** Gemini Embedding 2, asked for 1,024 dimensions so it fits the index (ADR-0006, amended). */
 const DEFAULT_EMBEDDING_MODELS: Record<EmbeddingsProvider, string> = {
   mock: "mock-hash-v1",
+  gemini: "gemini-embedding-2",
 };
+
+/** How long one embedding request may take; a knowledge-base article is a handful of chunks. */
+const EMBEDDING_TIMEOUT_MS = 30_000;
 
 export function aiSettings(env: Env): AiSettings {
   const embeddings =
@@ -49,6 +72,7 @@ export function aiSettings(env: Env): AiSettings {
           model:
             env.EMBEDDINGS_MODEL ??
             DEFAULT_EMBEDDING_MODELS[env.EMBEDDINGS_PROVIDER],
+          timeoutMs: EMBEDDING_TIMEOUT_MS,
         };
   return {
     chat: {
@@ -56,6 +80,11 @@ export function aiSettings(env: Env): AiSettings {
       model: env.LLM_MODEL ?? DEFAULT_CHAT_MODELS[env.LLM_PROVIDER],
       timeoutMs: env.LLM_TIMEOUT_MS,
       mockMode: env.MOCK_LLM_MODE,
+      // The mock doesn't reason, whatever the setting says.
+      effort:
+        env.LLM_PROVIDER === "mock"
+          ? null
+          : (env.LLM_EFFORT ?? DEFAULT_EFFORTS[env.LLM_PROVIDER]),
     },
     embeddings,
     thresholds: thresholdsFor(embeddings?.model ?? null, {

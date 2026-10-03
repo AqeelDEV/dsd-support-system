@@ -60,6 +60,39 @@ describe("parseEnv", () => {
     );
   });
 
+  it("needs a provider's key only when that provider is in use", () => {
+    expect(() => parseEnv({ ...REQUIRED, LLM_PROVIDER: "gemini" })).toThrow(
+      /LLM_PROVIDER=gemini needs GEMINI_API_KEY/,
+    );
+    expect(() =>
+      parseEnv({
+        ...REQUIRED,
+        EMBEDDINGS_PROVIDER: "gemini",
+        GEMINI_API_KEY: "",
+      }),
+    ).toThrow(/EMBEDDINGS_PROVIDER=gemini needs GEMINI_API_KEY/);
+    expect(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "gemini",
+        EMBEDDINGS_PROVIDER: "gemini",
+        GEMINI_API_KEY: "key",
+        LLM_EFFORT: "medium",
+      }),
+    ).toMatchObject({
+      LLM_PROVIDER: "gemini",
+      EMBEDDINGS_PROVIDER: "gemini",
+      LLM_EFFORT: "medium",
+    });
+    // A key nobody uses is no error, so one .env can switch providers.
+    expect(parseEnv({ ...REQUIRED, GEMINI_API_KEY: "key" })).toMatchObject({
+      LLM_PROVIDER: "mock",
+    });
+    expect(() => parseEnv({ ...REQUIRED, LLM_EFFORT: "max" })).toThrow(
+      /LLM_EFFORT/,
+    );
+  });
+
   it("requires the connections, the mail server, the app URLs and the store", () => {
     expect(() => parseEnv({})).toThrow(ConfigError);
     for (const key of Object.keys(REQUIRED)) {

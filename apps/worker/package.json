@@ -20,6 +20,7 @@
     "@aws-sdk/client-s3": "catalog:",
     "@dsd/db": "workspace:*",
     "@dsd/shared": "workspace:*",
+    "@google/genai": "catalog:",
     "bullmq": "catalog:",
     "drizzle-orm": "catalog:",
     "ioredis": "catalog:",

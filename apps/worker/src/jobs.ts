@@ -249,7 +249,17 @@ export async function startJobs(
     aiDebounceMs: env.AI_DEBOUNCE_MS,
   });
   dispatcher.start();
-  logger.info("jobs started");
+  const { chat, embeddings } = container.ai;
+  logger.info(
+    {
+      chat: { provider: chat.provider, model: chat.model },
+      embeddings:
+        embeddings === null
+          ? null
+          : { provider: embeddings.provider, model: embeddings.model },
+    },
+    "jobs started",
+  );
 
   return {
     queues,

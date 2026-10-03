@@ -9,7 +9,6 @@ import { Redis } from "ioredis";
 
 import { createModels } from "./ai/providers/index.js";
 import type { AiModels } from "./ai/providers/types.js";
-import { aiSettings } from "./ai/settings.js";
 import type { Env } from "./config/env.js";
 import { ObjectStore } from "./infrastructure/object-store.js";
 import type { Logger } from "./logger.js";
@@ -135,7 +134,7 @@ export function createContainer(
     producer,
     store,
     channels: [email],
-    ai: { ...createModels(aiSettings(env)), ...overrides.ai },
+    ai: { ...createModels(env), ...overrides.ai },
     databaseIsUp: () => pingDatabase(pool, CHECK_TIMEOUT_MS),
     async redisIsUp() {
       const [consumers, jobs] = await Promise.all([
