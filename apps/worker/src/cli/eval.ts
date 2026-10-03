@@ -3,7 +3,7 @@ import { writeFileSync } from "node:fs";
 import { createDb } from "@dsd/db";
 import { asOwner, createSeededDatabase } from "@dsd/db/testing";
 
-import { EVAL_CASES } from "../ai/eval/cases.js";
+import { EVAL_CASES, type EvalCase, HELD_OUT_CASES } from "../ai/eval/cases.js";
 import {
   evaluate,
   report,
@@ -22,7 +22,7 @@ import { createLogger } from "../logger.js";
  * The evaluation (ADR-0006, section 10; docs/EVALUATION.md):
  *
  *   pnpm --filter @dsd/worker build
- *   pnpm --filter @dsd/worker eval [--sweep] [--out <file.md>]
+ *   pnpm --filter @dsd/worker eval [--set tuning|held-out] [--sweep] [--out <file.md>]
  *
  * It seeds a throwaway database on the development PostgreSQL (the same
  * harness as the tests), indexes the seeded knowledge base with the
@@ -30,6 +30,10 @@ import { createLogger } from "../logger.js";
  * and prints the report. The provider comes from LLM_PROVIDER and
  * EMBEDDINGS_PROVIDER, as for the worker (the mock unless set). Nothing is
  * stored, and the database is dropped at the end.
+ *
+ * It runs the tuning set and the held-out set and reports them apart;
+ * `--set` runs one. The sweep only ever runs the tuning set: thresholds
+ * are chosen there, and the held-out set stays unseen by that choice.
  */
 
 /**
@@ -75,6 +79,21 @@ async function patiently<T>(
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(name);
   return index === -1 ? undefined : process.argv[index + 1];
+}
+
+const SETS: Record<string, { title: string; cases: readonly EvalCase[] }> = {
+  tuning: { title: "Tuning set", cases: EVAL_CASES },
+  "held-out": { title: "Held-out set", cases: HELD_OUT_CASES },
+};
+
+function chosenSets(): (typeof SETS)[string][] {
+  const name = option("--set");
+  if (name === undefined) return Object.values(SETS);
+  const set = SETS[name];
+  if (set === undefined) {
+    throw new Error(`--set must be one of ${Object.keys(SETS).join(", ")}`);
+  }
+  return [set];
 }
 
 async function main(): Promise<void> {
@@ -126,25 +145,33 @@ async function main(): Promise<void> {
         "",
       ].join("\n");
     } else {
-      const results = await evaluate(EVAL_CASES, {
-        db,
-        models,
-        thresholds: settings.thresholds,
-        timeoutMs: settings.chat.timeoutMs,
-        brandId,
-        pauseMs,
-        retries: settings.chat.provider === "mock" ? 0 : 3,
-        onCase: (result, index) => {
-          process.stdout.write(
-            `${String(index + 1).padStart(2)}/${String(EVAL_CASES.length)} ${result.id}: ${result.status}\n`,
-          );
-        },
-      });
-      output = report(
-        `${label} (thresholds: vector ${settings.thresholds.minVectorSimilarity.toFixed(2)}, keyword ${settings.thresholds.minKeywordRank.toFixed(2)} with ${String(settings.thresholds.minMatchedTerms)} terms)`,
-        results,
-        summarise(results),
-      );
+      const thresholds = `thresholds: vector ${settings.thresholds.minVectorSimilarity.toFixed(2)}, keyword ${settings.thresholds.minKeywordRank.toFixed(2)} with ${String(settings.thresholds.minMatchedTerms)} terms`;
+      const sections: string[] = [];
+      for (const set of chosenSets()) {
+        process.stdout.write(`${set.title}\n`);
+        const results = await evaluate(set.cases, {
+          db,
+          models,
+          thresholds: settings.thresholds,
+          timeoutMs: settings.chat.timeoutMs,
+          brandId,
+          pauseMs,
+          retries: settings.chat.provider === "mock" ? 0 : 3,
+          onCase: (result, index) => {
+            process.stdout.write(
+              `${String(index + 1).padStart(2)}/${String(set.cases.length)} ${result.id}: ${result.status}\n`,
+            );
+          },
+        });
+        sections.push(
+          report(
+            `${set.title} (${String(set.cases.length)} cases): ${label} (${thresholds})`,
+            results,
+            summarise(results),
+          ),
+        );
+      }
+      output = sections.join("\n");
     }
     process.stdout.write(`\n${output}\n`);
     const out = option("--out");
