@@ -94,6 +94,43 @@ describe("aiSettings", () => {
     ).toBeNull();
   });
 
+  it("uses Claude Sonnet 5.5 at medium effort by default for Anthropic, and text-embedding-3-small for OpenAI", () => {
+    const settings = aiSettings(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "anthropic",
+        EMBEDDINGS_PROVIDER: "openai",
+        ANTHROPIC_API_KEY: "k",
+        OPENAI_API_KEY: "k",
+      }),
+    );
+    expect(settings.chat).toMatchObject({
+      provider: "anthropic",
+      model: "claude-sonnet-5-5",
+      effort: "medium",
+    });
+    expect(settings.embeddings).toMatchObject({
+      provider: "openai",
+      model: "text-embedding-3-small",
+    });
+  });
+
+  it("sends OpenAI no effort unless one is set", () => {
+    const openai = {
+      ...REQUIRED,
+      LLM_PROVIDER: "openai",
+      OPENAI_API_KEY: "k",
+      LLM_MODEL: "gpt-test",
+    };
+    expect(aiSettings(parseEnv(openai)).chat).toMatchObject({
+      model: "gpt-test",
+      effort: null,
+    });
+    expect(
+      aiSettings(parseEnv({ ...openai, LLM_EFFORT: "low" })).chat.effort,
+    ).toBe("low");
+  });
+
   it("takes model names from the environment", () => {
     const settings = aiSettings(
       parseEnv({

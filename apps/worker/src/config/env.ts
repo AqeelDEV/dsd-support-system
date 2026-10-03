@@ -16,15 +16,26 @@ const optional = <Schema extends z.ZodType>(schema: Schema) =>
   );
 
 /** Who drafts AI reply suggestions (ADR-0006, section 2). */
-export const LLM_PROVIDERS = ["mock", "gemini"] as const;
+export const LLM_PROVIDERS = ["mock", "gemini", "anthropic", "openai"] as const;
 /** Who embeds knowledge-base chunks; `none` means keyword retrieval only. */
-export const EMBEDDINGS_PROVIDERS = ["mock", "gemini", "none"] as const;
+export const EMBEDDINGS_PROVIDERS = [
+  "mock",
+  "gemini",
+  "openai",
+  "none",
+] as const;
 /** How much a model may reason before it answers, where the provider offers a choice. */
 export const LLM_EFFORTS = ["minimal", "low", "medium", "high"] as const;
 
-/** The key each real provider needs. */
-const API_KEYS: Readonly<Partial<Record<string, "GEMINI_API_KEY">>> = {
+/** The key each real provider needs. Anthropic has no embedding model. */
+const API_KEYS: Readonly<
+  Partial<
+    Record<string, "GEMINI_API_KEY" | "ANTHROPIC_API_KEY" | "OPENAI_API_KEY">
+  >
+> = {
   gemini: "GEMINI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
 };
 /**
  * How the offline mock behaves. `grounded` drafts from the sources it is
@@ -109,14 +120,20 @@ export const envSchema = z
     EMBEDDINGS_MODEL: optional(z.string().min(1)),
     MOCK_LLM_MODE: z.enum(MOCK_LLM_MODES).default("grounded"),
     /**
-     * How much the chat model reasons before it answers. Each provider has
-     * a default (Gemini `low`); set it to try another.
+     * How much the chat model reasons before it answers. Gemini defaults to
+     * `low` and Anthropic to `medium`; OpenAI gets none unless it is set,
+     * because its models without reasoning reject the setting.
      */
     LLM_EFFORT: optional(z.enum(LLM_EFFORTS)),
     /** One key covers Gemini's chat and embedding models. Needed only when either is in use. */
     GEMINI_API_KEY: optional(z.string().min(1)),
     /** Only for pointing the client somewhere else, such as a test server. */
     GEMINI_BASE_URL: optional(appUrl),
+    ANTHROPIC_API_KEY: optional(z.string().min(1)),
+    ANTHROPIC_BASE_URL: optional(appUrl),
+    /** One key covers OpenAI's chat and embedding models. */
+    OPENAI_API_KEY: optional(z.string().min(1)),
+    OPENAI_BASE_URL: optional(appUrl),
     /**
      * How long a suggestion waits after a customer's message for more of
      * them, so a burst of short messages gets one draft that reads them all
@@ -150,6 +167,20 @@ export const envSchema = z
           message: `${setting}=${provider} needs ${key}`,
         });
       }
+    }
+    if (env.LLM_PROVIDER === "openai" && env.LLM_MODEL === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["LLM_MODEL"],
+        message: "LLM_PROVIDER=openai needs LLM_MODEL; there is no default",
+      });
+    }
+    if (env.LLM_PROVIDER === "anthropic" && env.LLM_EFFORT === "minimal") {
+      context.addIssue({
+        code: "custom",
+        path: ["LLM_EFFORT"],
+        message: "Anthropic models have no minimal effort; use low",
+      });
     }
   });
 

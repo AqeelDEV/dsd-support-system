@@ -17,6 +17,7 @@
     "dead-letter": "node --env-file-if-exists=../../.env dist/cli/dead-letter.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "catalog:",
     "@aws-sdk/client-s3": "catalog:",
     "@dsd/db": "workspace:*",
     "@dsd/shared": "workspace:*",
@@ -25,6 +26,7 @@
     "drizzle-orm": "catalog:",
     "ioredis": "catalog:",
     "nodemailer": "catalog:",
+    "openai": "catalog:",
     "pino": "catalog:",
     "zod": "catalog:"
   },

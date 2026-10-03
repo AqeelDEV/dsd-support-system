@@ -37,12 +37,17 @@ export interface AiSettings {
 }
 
 /**
- * Gemini 3.5 Flash-Lite: the cheapest tier that supports constrained JSON
- * output, with a free tier for evaluation (ADR-0006, amended 2026-10-03).
+ * The chat model when `LLM_MODEL` is unset (ADR-0006, amended 2026-10-03).
+ * Gemini 3.5 Flash-Lite: the cheapest tier with constrained JSON output,
+ * and a free tier for evaluation. Claude Sonnet 5.5: a short grounded draft
+ * doesn't need Opus, and Sonnet is half the price and faster. OpenAI has
+ * none; the environment check requires `LLM_MODEL` for it.
  */
-const DEFAULT_CHAT_MODELS: Record<LlmProvider, string> = {
+const DEFAULT_CHAT_MODELS: Record<LlmProvider, string | null> = {
   mock: "mock-grounded-v1",
   gemini: "gemini-3.5-flash-lite",
+  anthropic: "claude-sonnet-5-5",
+  openai: null,
 };
 
 /**
@@ -52,13 +57,27 @@ const DEFAULT_CHAT_MODELS: Record<LlmProvider, string> = {
 const DEFAULT_EFFORTS: Record<LlmProvider, LlmEffort | null> = {
   mock: null,
   gemini: "low",
+  // Sonnet 5.5 defaults to high and its levels were recalibrated; medium is
+  // a starting point, untuned until the evaluation runs with a key.
+  anthropic: "medium",
+  openai: null,
 };
 
-/** Gemini Embedding 2, asked for 1,024 dimensions so it fits the index (ADR-0006, amended). */
+/** Each asked for 1,024 dimensions, so they fit the index (ADR-0006, amended). */
 const DEFAULT_EMBEDDING_MODELS: Record<EmbeddingsProvider, string> = {
   mock: "mock-hash-v1",
   gemini: "gemini-embedding-2",
+  openai: "text-embedding-3-small",
 };
+
+function chatModelFor(env: Env): string {
+  const model = env.LLM_MODEL ?? DEFAULT_CHAT_MODELS[env.LLM_PROVIDER];
+  // The environment check already refuses this; here for the type.
+  if (model === null) {
+    throw new Error(`LLM_MODEL is required for ${env.LLM_PROVIDER}`);
+  }
+  return model;
+}
 
 /** How long one embedding request may take; a knowledge-base article is a handful of chunks. */
 const EMBEDDING_TIMEOUT_MS = 30_000;
@@ -77,7 +96,7 @@ export function aiSettings(env: Env): AiSettings {
   return {
     chat: {
       provider: env.LLM_PROVIDER,
-      model: env.LLM_MODEL ?? DEFAULT_CHAT_MODELS[env.LLM_PROVIDER],
+      model: chatModelFor(env),
       timeoutMs: env.LLM_TIMEOUT_MS,
       mockMode: env.MOCK_LLM_MODE,
       // The mock doesn't reason, whatever the setting says.

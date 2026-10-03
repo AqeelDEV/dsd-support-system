@@ -91,6 +91,34 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...REQUIRED, LLM_EFFORT: "max" })).toThrow(
       /LLM_EFFORT/,
     );
+    expect(() => parseEnv({ ...REQUIRED, LLM_PROVIDER: "anthropic" })).toThrow(
+      /LLM_PROVIDER=anthropic needs ANTHROPIC_API_KEY/,
+    );
+    expect(() =>
+      parseEnv({ ...REQUIRED, EMBEDDINGS_PROVIDER: "openai" }),
+    ).toThrow(/EMBEDDINGS_PROVIDER=openai needs OPENAI_API_KEY/);
+  });
+
+  it("requires a model for OpenAI, and refuses an effort Anthropic doesn't offer", () => {
+    expect(() =>
+      parseEnv({ ...REQUIRED, LLM_PROVIDER: "openai", OPENAI_API_KEY: "k" }),
+    ).toThrow(/LLM_PROVIDER=openai needs LLM_MODEL/);
+    expect(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "openai",
+        OPENAI_API_KEY: "k",
+        LLM_MODEL: "gpt-test",
+      }),
+    ).toMatchObject({ LLM_MODEL: "gpt-test" });
+    expect(() =>
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "anthropic",
+        ANTHROPIC_API_KEY: "k",
+        LLM_EFFORT: "minimal",
+      }),
+    ).toThrow(/no minimal effort/);
   });
 
   it("requires the connections, the mail server, the app URLs and the store", () => {

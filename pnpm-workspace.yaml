@@ -20,6 +20,7 @@ allowBuilds:
 
 # One version of each shared third-party dependency across the workspace.
 catalog:
+  "@anthropic-ai/sdk": 0.131.0
   "@aws-sdk/client-s3": 3.1143.0
   "@axe-core/playwright": 4.13.0
   "@commitlint/cli": 21.2.3
@@ -71,6 +72,7 @@ catalog:
   nestjs-zod: 5.5.0
   next: 16.3.7
   nodemailer: 10.0.13
+  openai: 7.27.0
   openapi-fetch: 0.17.0
   openapi-typescript: 7.13.0
   pg: 8.23.0

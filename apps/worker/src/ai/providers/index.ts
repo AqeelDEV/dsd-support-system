@@ -1,8 +1,10 @@
 import type { Env } from "../../config/env.js";
 import { aiSettings } from "../settings.js";
+import { AnthropicChatModel } from "./anthropic.js";
 import { GeminiChatModel, GeminiEmbeddingModel } from "./gemini.js";
 import { MockChatModel } from "./mock-chat.js";
 import { MockEmbeddingModel } from "./mock-embeddings.js";
+import { OpenAiChatModel, OpenAiEmbeddingModel } from "./openai.js";
 import type { AiModels, ChatModel, EmbeddingModel } from "./types.js";
 
 /** A key the environment check has already required for this provider. */
@@ -18,14 +20,29 @@ function keyFor(name: string, key: string | undefined): string {
  */
 export function createModels(env: Env): AiModels {
   const settings = aiSettings(env);
-  const gemini = (model: string, timeoutMs: number) => ({
-    apiKey: keyFor("GEMINI_API_KEY", env.GEMINI_API_KEY),
-    model,
-    timeoutMs,
-    ...(env.GEMINI_BASE_URL === undefined
-      ? {}
-      : { baseUrl: env.GEMINI_BASE_URL }),
-  });
+  const client =
+    (name: string, key: string | undefined, baseUrl: string | undefined) =>
+    (model: string, timeoutMs: number) => ({
+      apiKey: keyFor(name, key),
+      model,
+      timeoutMs,
+      ...(baseUrl === undefined ? {} : { baseUrl }),
+    });
+  const gemini = client(
+    "GEMINI_API_KEY",
+    env.GEMINI_API_KEY,
+    env.GEMINI_BASE_URL,
+  );
+  const anthropic = client(
+    "ANTHROPIC_API_KEY",
+    env.ANTHROPIC_API_KEY,
+    env.ANTHROPIC_BASE_URL,
+  );
+  const openai = client(
+    "OPENAI_API_KEY",
+    env.OPENAI_API_KEY,
+    env.OPENAI_BASE_URL,
+  );
 
   const { chat } = settings;
   let chatModel: ChatModel;
@@ -36,6 +53,18 @@ export function createModels(env: Env): AiModels {
     case "gemini":
       chatModel = new GeminiChatModel(
         gemini(chat.model, chat.timeoutMs),
+        chat.effort,
+      );
+      break;
+    case "anthropic":
+      chatModel = new AnthropicChatModel(
+        anthropic(chat.model, chat.timeoutMs),
+        chat.effort,
+      );
+      break;
+    case "openai":
+      chatModel = new OpenAiChatModel(
+        openai(chat.model, chat.timeoutMs),
         chat.effort,
       );
       break;
@@ -52,6 +81,11 @@ export function createModels(env: Env): AiModels {
     case "gemini":
       embeddingModel = new GeminiEmbeddingModel(
         gemini(embeddings.model, embeddings.timeoutMs),
+      );
+      break;
+    case "openai":
+      embeddingModel = new OpenAiEmbeddingModel(
+        openai(embeddings.model, embeddings.timeoutMs),
       );
       break;
   }

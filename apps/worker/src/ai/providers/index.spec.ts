@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { parseEnv } from "../../config/env.js";
+import { AnthropicChatModel } from "./anthropic.js";
 import { GeminiChatModel, GeminiEmbeddingModel } from "./gemini.js";
 import { createModels } from "./index.js";
 import { MockChatModel } from "./mock-chat.js";
 import { MockEmbeddingModel } from "./mock-embeddings.js";
+import { OpenAiChatModel, OpenAiEmbeddingModel } from "./openai.js";
 
 const REQUIRED = {
   DATABASE_URL: "postgres://dsd_worker:pw@db:5432/dsd",
@@ -47,5 +49,31 @@ describe("createModels", () => {
       }),
     );
     expect(keywordOnly.embeddings).toBeNull();
+  });
+
+  it("builds Anthropic for drafting and OpenAI for either role", () => {
+    const anthropic = createModels(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "anthropic",
+        EMBEDDINGS_PROVIDER: "openai",
+        ANTHROPIC_API_KEY: "key",
+        OPENAI_API_KEY: "key",
+      }),
+    );
+    expect(anthropic.chat).toBeInstanceOf(AnthropicChatModel);
+    expect(anthropic.chat.model).toBe("claude-sonnet-5-5");
+    expect(anthropic.embeddings).toBeInstanceOf(OpenAiEmbeddingModel);
+
+    const openai = createModels(
+      parseEnv({
+        ...REQUIRED,
+        LLM_PROVIDER: "openai",
+        LLM_MODEL: "gpt-test",
+        OPENAI_API_KEY: "key",
+      }),
+    );
+    expect(openai.chat).toBeInstanceOf(OpenAiChatModel);
+    expect(openai.chat.model).toBe("gpt-test");
   });
 });
