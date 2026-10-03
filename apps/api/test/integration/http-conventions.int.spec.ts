@@ -3,6 +3,7 @@ import { PROBLEM_JSON, PROBLEM_TYPES, problemDetailsSchema } from "@dsd/shared";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { REQUEST_TIMEOUT_MS } from "../../src/app.factory.js";
 import { startApp } from "../support/app.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -44,6 +45,14 @@ describe("HTTP conventions", () => {
 
       expect(response.headers["content-type"]).toContain(PROBLEM_JSON);
       expect(problemDetailsSchema.parse(response.body).status).toBe(400);
+    });
+  });
+
+  describe("slow clients", () => {
+    it("gives up on a request that takes longer than five minutes to arrive", () => {
+      const server = app.getHttpAdapter().getInstance();
+      expect(REQUEST_TIMEOUT_MS).toBe(300_000);
+      expect(server.server.requestTimeout).toBe(REQUEST_TIMEOUT_MS);
     });
   });
 

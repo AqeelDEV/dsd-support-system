@@ -21,6 +21,15 @@ export const API_PREFIX = "api/v1";
 export const UNVERSIONED_ROUTES = ["health", "ready"];
 
 /**
+ * The longest a request may take to arrive, body included. Fastify turns
+ * Node's own limit off unless told otherwise, which lets a client hold a
+ * connection open indefinitely by trickling bytes. Five minutes is Node's
+ * default, and enough for five 10 MB files on a slow uplink; a reverse proxy
+ * in front would usually be stricter still.
+ */
+export const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
  * Builds the whole HTTP application: the server, its security headers and
  * error handling, and the routes. `main.ts`, the integration tests and the
  * OpenAPI generator all use this, so tests exercise the real pipeline.
@@ -34,6 +43,7 @@ export async function createApp(
     genReqId: assignRequestId,
     // JSON bodies are small. File uploads get their own limits (ADR-0009).
     bodyLimit: 1024 * 1024,
+    requestTimeout: REQUEST_TIMEOUT_MS,
   });
   // Before anything registers a route, so every route is checked.
   enforceRouteAccess(adapter.getInstance());
