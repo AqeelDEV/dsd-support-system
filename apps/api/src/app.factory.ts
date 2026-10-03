@@ -12,6 +12,7 @@ import { Logger } from "nestjs-pino";
 import { AppModule, type AppModuleOptions } from "./app.module.js";
 import { enforceRouteAccess } from "./auth/route-access.js";
 import { assignRequestId, REQUEST_ID_HEADER } from "./common/request-id.js";
+import { reportServerTiming } from "./common/server-timing.js";
 import type { Env } from "./config/env.js";
 import { buildOpenApiDocument, serveApiDocs } from "./openapi/document.js";
 
@@ -47,6 +48,7 @@ export async function createApp(
   });
   // Before anything registers a route, so every route is checked.
   enforceRouteAccess(adapter.getInstance());
+  reportServerTiming(adapter.getInstance());
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.forRoot(env, options),

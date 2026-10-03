@@ -31,6 +31,7 @@ import { createZodDto, ZodResponse } from "nestjs-zod";
 
 import { Realm, RequirePermissions } from "../../auth/decorators.js";
 import { staffOf } from "../../auth/request-context.js";
+import { ServerTiming } from "../../common/server-timing.js";
 import {
   ApiMultipartBody,
   ApiProblem,
@@ -70,6 +71,7 @@ export class StaffTicketsController {
 
   @Get()
   @RequirePermissions("ticket:read:any")
+  @ServerTiming()
   @ApiSession("staff", { changesState: false })
   @ApiOperation({
     summary: "The queue",
@@ -85,6 +87,7 @@ export class StaffTicketsController {
 
   @Get(":ticketId")
   @RequirePermissions("ticket:read:any")
+  @ServerTiming()
   @ApiSession("staff", { changesState: false })
   @ApiOperation({
     summary: "One ticket",
@@ -100,6 +103,7 @@ export class StaffTicketsController {
 
   @Post(":ticketId/replies")
   @RequirePermissions("ticket:reply")
+  @ServerTiming()
   @HttpCode(HttpStatus.CREATED)
   @ApiSession("staff", { changesState: true })
   @ApiOperation({
