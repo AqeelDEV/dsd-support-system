@@ -51,6 +51,8 @@ if [[ -n "$first_nonce" && "$first_nonce" != "$(nonce_of "$CUSTOMER/")" ]]; then
 else
   fail "every page response gets a new nonce (got '$first_nonce' twice)"
 fi
+expect_body "customer pages send HSTS from the production build" "^[Ss]trict-[Tt]ransport-[Ss]ecurity: max-age=31536000; includeSubDomains" "$CUSTOMER/" --dump-header - --output /dev/null
+expect_body "agent pages send HSTS from the production build" "^[Ss]trict-[Tt]ransport-[Ss]ecurity: max-age=31536000; includeSubDomains" "$AGENT/sign-in" --dump-header - --output /dev/null
 expect_body "the guest access page sends no referrer" "^[Rr]eferrer-[Pp]olicy: no-referrer" "$CUSTOMER/access" --dump-header - --output /dev/null
 expect_status "healthcheck" 200 "$CUSTOMER/healthz"
 expect_body "proxy reaches the API (problem details from the API)" '"detail":"Cannot GET /api/v1/customer/no-such-route"' "$CUSTOMER/api/v1/customer/no-such-route"

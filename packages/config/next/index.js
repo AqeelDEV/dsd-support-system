@@ -16,6 +16,24 @@ const securityHeaders = [
 ];
 
 /**
+ * HSTS for production builds: browsers then refuse plain HTTP for this host
+ * for a year. They ignore the header on a plain-HTTP response (RFC 6797,
+ * section 8.1), so the local Compose stack on http://localhost is
+ * unaffected, and `next dev` never sends it.
+ */
+const strictTransportSecurity = {
+  key: "Strict-Transport-Security",
+  value: "max-age=31536000; includeSubDomains",
+};
+
+/** The headers every page gets in this environment. */
+export function pageHeaders(nodeEnv = process.env.NODE_ENV) {
+  return nodeEnv === "production"
+    ? [...securityHeaders, strictTransportSecurity]
+    : securityHeaders;
+}
+
+/**
  * The Next.js config both web apps share.
  *
  * @param {{ appDir: string }} options `appDir` is the app's own directory.
@@ -36,7 +54,7 @@ export function createNextConfig({ appDir }) {
     // (ADR-0009) must not be replaced by the page policy.
     headers() {
       return Promise.resolve([
-        { source: "/:path((?!api/).*)", headers: securityHeaders },
+        { source: "/:path((?!api/).*)", headers: pageHeaders() },
       ]);
     },
   };
