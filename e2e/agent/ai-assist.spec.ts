@@ -48,6 +48,11 @@ test("a grounded draft cites the knowledge base and reaches the customer only as
   const assist = panel(page);
   const draft = assist.getByTestId("suggestion-draft");
   await expect(draft).toContainText("3 to 5 working days", { timeout: 30_000 });
+  // The stack runs the offline mock: its drafts say so, plainly.
+  await expect(assist.getByTestId("draft-origin")).toContainText("Mock draft");
+  await expect(assist.getByTestId("draft-origin")).toContainText(
+    "not an AI model",
+  );
   const source = assist
     .getByRole("list", { name: "Sources" })
     .getByRole("link", { name: /How long refunds take/ });

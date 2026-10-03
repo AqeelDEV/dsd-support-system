@@ -29,6 +29,20 @@ export const REQUEST_PATIENCE_MS = 90_000;
  */
 export const AUTO_DRAFT_WINDOW_MS = 2 * 60_000;
 
+/**
+ * Who wrote a draft. The offline mock (the default, so the stack runs with
+ * no key) only stitches together sentences from the cited articles, and an
+ * agent must never take its text for a model's judgement, so the panel
+ * labels it plainly. A real provider's draft names its model.
+ */
+export function draftOrigin(
+  suggestion: Pick<AiSuggestion, "provider" | "model">,
+): { kind: "mock" } | { kind: "model"; model: string } {
+  return suggestion.provider === "mock"
+    ? { kind: "mock" }
+    : { kind: "model", model: suggestion.model };
+}
+
 /** Why a draft was discarded, in an agent's words. */
 export const REJECTION_TEXT: Record<AiRejectionReason, string> = {
   invalid_output: "the model's answer wasn't in the expected form",

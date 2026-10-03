@@ -3,6 +3,7 @@ import type { AiSuggestion } from "@dsd/shared";
 import { describe, expect, it } from "vitest";
 
 import {
+  draftOrigin,
   expectsAutomaticDraft,
   panelState,
   requestRefusal,
@@ -122,5 +123,22 @@ describe("requestRefusal", () => {
     expect(requestRefusal(new Error("network"))).toBe(
       "The request didn't go through. Try again.",
     );
+  });
+});
+
+describe("draftOrigin", () => {
+  it("marks the offline mock's drafts as mock, whatever it calls its model", () => {
+    expect(
+      draftOrigin({ provider: "mock", model: "mock-grounded-v1" }),
+    ).toEqual({ kind: "mock" });
+    expect(
+      draftOrigin({ provider: "mock", model: "gemini-lookalike" }),
+    ).toEqual({ kind: "mock" });
+  });
+
+  it("names a real provider's model", () => {
+    expect(
+      draftOrigin({ provider: "gemini", model: "gemini-3.5-flash-lite" }),
+    ).toEqual({ kind: "model", model: "gemini-3.5-flash-lite" });
   });
 });

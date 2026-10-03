@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 
+import { SuggestionDraft } from "@/components/suggestion-draft";
 import { useCan } from "@/lib/session";
 import {
   panelState,
@@ -192,13 +193,8 @@ function Suggestion({
   switch (suggestion.status) {
     case "ready":
       return (
-        <div className={cn("space-y-3", stale && "opacity-70")}>
-          <div
-            className="max-h-72 overflow-y-auto rounded-md border border-border bg-muted/40 px-3 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap"
-            data-testid="suggestion-draft"
-          >
-            {suggestion.draft}
-          </div>
+        <div className="space-y-3">
+          <SuggestionDraft suggestion={suggestion} stale={stale} />
           <Actions
             suggestion={suggestion}
             ticketId={ticketId}
