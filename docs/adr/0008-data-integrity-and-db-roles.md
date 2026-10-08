@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
-- Amended: 2026-10-02 (see [Amendments](#amendments))
+- Amended: 2026-10-02, 2026-10-03 and 2026-10-08 (see [Amendments](#amendments))
 - Requirements: FR-10, FR-18, FR-21, NFR-6
 
 ## Context
@@ -62,7 +62,7 @@ Actions recorded:
 
 - tickets: created, status changed, priority changed, assignment changed, escalated;
 - messages: public message and internal note added, attachment added, AI suggestion used in a reply;
-- agents: invited, role changed, deactivated, reactivated;
+- agents: created by the first-run bootstrap, invited, role changed, deactivated, reactivated;
 - knowledge base: article published, unpublished, archived.
 
 Message bodies are not copied into audit rows. The message row is itself the immutable record.
@@ -135,3 +135,7 @@ Database tests in `packages/db/test/`, run against real Postgres:
 ### 2026-10-03, Phase 10
 
 1. **The API reads `ai_suggestions` and no longer inserts into it** (migration 0007). Migration 0003 granted `dsd_api` INSERT on the table, which no API code ever used: the worker writes suggestions, and the API lists them for staff and records the one a reply used on the message. Without the grant, even a compromised API can't plant a suggestion for an agent to send, so every draft comes from the pipeline that grounds and validates it. The privilege matrix in DATA_MODEL.md says `S`, and the privilege test tries the insert as `dsd_api`.
+
+### 2026-10-08, deployment
+
+1. **`dsd_migrator` also runs the first-run bootstrap (section 5).** A real deployment runs `bootstrap` after the migrations instead of the demo seed: it creates the `dsd` brand and one admin in one transaction, and does nothing once the brand exists. It is a one-off command like the seed, so it uses the same role, and still no running service does. The admin's creation is recorded as `agent.created` with a `system` actor (section 3), because no agent invited them. A database holding the demo staff accounts is refused, so a deployment can't go live with the README's public password.

@@ -543,7 +543,7 @@ S = SELECT, I = INSERT, U = UPDATE, D = DELETE. Anything not listed is not grant
 | `ai_suggestion_sources`   | S         | S I                                    |
 | `ai_suggestion_feedback`  | S I U     | none                                   |
 
-`dsd_api` also gets USAGE on `ticket_number_seq`. It reads `ai_suggestions` and never writes one: suggestions are the worker's output, and a reply records the one it used on the message (migration 0007 took away an INSERT grant nothing used). The worker reads message text only through the `public_reply_bodies` and `public_customer_messages` views (see [Views](#views)), never from `messages` itself. The worker's expiry columns are `expires_at` and `idle_expires_at` on `sessions`, and `expires_at` on `auth_tokens`: enough to find and delete expired rows, and nothing that identifies a session or its owner. `dsd_migrator` owns every object and is used only by migrations and seeding.
+`dsd_api` also gets USAGE on `ticket_number_seq`. It reads `ai_suggestions` and never writes one: suggestions are the worker's output, and a reply records the one it used on the message (migration 0007 took away an INSERT grant nothing used). The worker reads message text only through the `public_reply_bodies` and `public_customer_messages` views (see [Views](#views)), never from `messages` itself. The worker's expiry columns are `expires_at` and `idle_expires_at` on `sessions`, and `expires_at` on `auth_tokens`: enough to find and delete expired rows, and nothing that identifies a session or its owner. `dsd_migrator` owns every object and is used only by migrations, the demo seed and, on a real deployment, the first-run bootstrap ([ADR-0008](adr/0008-data-integrity-and-db-roles.md), amended).
 
 ## Data lifecycle
 

@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = [
   "message.created",
   "attachment.created",
   "ai_suggestion.used",
+  "agent.created",
   "agent.invited",
   "agent.role_changed",
   "agent.deactivated",
