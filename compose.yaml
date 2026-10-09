@@ -266,12 +266,16 @@ services:
         - "fetch('http://127.0.0.1:3001/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 
 # A fixed subnet, so the web apps can have the fixed addresses the API
-# trusts. It sits outside Docker's default address pools.
+# trusts. It sits outside Docker's default address pools. Docker hands the
+# other services addresses from ip_range only, so none of them can take .10
+# or .11 first: the web apps start last, after the API is healthy, and with
+# a few more services ahead of them their address would already be gone.
 networks:
   default:
     ipam:
       config:
         - subnet: 10.250.73.0/24
+          ip_range: 10.250.73.128/25
 
 volumes:
   postgres-data:

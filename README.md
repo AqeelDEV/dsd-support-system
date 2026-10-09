@@ -406,6 +406,15 @@ net start winnat
 
 This briefly drops networking for WSL and running containers. If a port stays reserved, choose another one in `.env` instead: `POSTGRES_PORT`, `REDIS_PORT`, `S3_PORT`, `API_PORT`, `CUSTOMER_WEB_PORT` or `AGENT_WEB_PORT`. The tests follow `POSTGRES_PORT`, `REDIS_PORT` and `S3_PORT` automatically; a host-run API or worker reads the URLs in `.env`, so change those to match.
 
+### `getaddrinfo ENOTFOUND postgres` after an update
+
+When an update changes the network's address settings in `compose.yaml`, the next `docker compose up` on a machine that already has the stack recreates the `dsd-support_default` network. The containers Compose moves onto the new network can lose their service names, so the API or the worker can't find `postgres`, `redis` or `seaweedfs`. Take the stack down once and start it again; without `-v` the data is kept:
+
+```bash
+docker compose down
+docker compose up --build --wait
+```
+
 ## Repository layout
 
 ```text
