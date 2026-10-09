@@ -154,7 +154,7 @@ Details: [ARCHITECTURE.md](docs/ARCHITECTURE.md) (components, request flows, eve
 
 Where this differs from the brief's suggested stack, and why: Drizzle rather than Prisma, PostgreSQL 18 rather than 16 (`uuidv7()` keys and skip scan), SeaweedFS rather than MinIO, a worker without NestJS, and TypeScript 6 with NestJS 11, because typescript-eslint, `@nestjs/swagger` and `nestjs-zod` didn't yet support TypeScript 7 or NestJS 12. Each is recorded in [ADR-0001](docs/adr/0001-technology-stack.md).
 
-**AWS was optional in the brief, so nothing here depends on it, and moving there is configuration, not code** (NFR-13). Storage speaks the S3 API, so `S3_ENDPOINT` and credentials point at Amazon S3. Email goes over SMTP behind the notification interface, so `SMTP_*` points at Amazon SES's SMTP endpoint. `DATABASE_URL` and `REDIS_URL` point at RDS for PostgreSQL (pgvector is supported) and ElastiCache. The containers run as they are on ECS.
+**AWS was optional in the brief, so nothing here depends on it, and moving there is configuration, not code** (NFR-13). Storage speaks the S3 API, so `S3_ENDPOINT` and credentials point at Amazon S3. Email goes over SMTP behind the notification interface, so `SMTP_*` points at Amazon SES's SMTP endpoint. `DATABASE_URL` and `REDIS_URL` point at RDS for PostgreSQL (pgvector is supported) and ElastiCache. The containers run as they are on ECS. The live deployment starts smaller, with the whole stack on one server: see [Deploying to AWS](#deploying-to-aws).
 
 ## At 100x scale
 
@@ -263,6 +263,108 @@ The tests run against real PostgreSQL, Redis and the S3-compatible store from th
 
 CI runs the same checks on every push: format, lint, typecheck, build, OpenAPI, schema, `pnpm audit`, commit messages, and the tests; then the full Compose stack with the smoke test and the browser tests; and a gitleaks scan of every commit. Commits follow [Conventional Commits](https://www.conventionalcommits.org/), checked by a git hook and again in CI.
 
+## Deploying to AWS
+
+Production runs the same stack on one server. [ADR-0014](docs/adr/0014-deployment-on-aws.md) has the reasons, the cost (about $26 to $29 a month) and the trade-offs.
+
+- **The server.** One EC2 t4g.medium (Graviton, Ubuntu 24.04) in ap-south-1 with an Elastic IP. It runs [`deploy/compose.production.yaml`](deploy/compose.production.yaml), which has no development defaults: every secret is required, and only Caddy publishes ports.
+- **The front door.** [Caddy](deploy/Caddyfile) gets Let's Encrypt certificates for `support.dsddocs.com` (customers) and `agents.dsddocs.com` (staff).
+- **Access.** Only TCP 80 and 443 are open. There is no SSH: setup and deploys run through AWS Systems Manager.
+- **Secrets.** They live in SSM Parameter Store, and each deploy renders them into an env file only root can read.
+- **Email and AI.** Amazon SES sends as `info@dsddocs.com`, signed with DKIM, from a custom MAIL FROM domain, over STARTTLS that the worker requires. Gemini writes the AI drafts.
+- **Backups and alarms.** Daily EBS snapshots are kept 7 days, and each is copied to eu-central-1. CloudWatch alarms recover or reboot the instance and notify an SNS topic.
+
+**Bootstrap replaces the demo seed.** The production migrate service runs the migrations and then `node dist/cli/bootstrap.js`. It creates the `dsd` brand and one admin from Parameter Store, and on any later run does nothing. It refuses a database holding the demo accounts, so their public password never reaches production.
+
+### Resources
+
+| Resource                      | Name                      | What it's for                                                                                            |
+| ----------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| EC2 instance and Elastic IP   | `dsd-support-prod`        | 40 GB encrypted gp3 tagged `Backup=daily`; IMDSv2 required with a hop limit of 1; termination protection |
+| Security group                | `dsd-support-prod-web`    | Inbound TCP 80 and 443 only                                                                              |
+| IAM role and instance profile | `dsd-support-prod-ec2`    | Systems Manager, and reading `/dsd-support/prod/` in Parameter Store                                     |
+| SES domain identity           | `dsddocs.com`             | Easy DKIM (2048-bit) and MAIL FROM `bounce.dsddocs.com`                                                  |
+| IAM user                      | `ses-smtp-support`        | The SMTP credentials; its only permission is sending as `info@dsddocs.com`                               |
+| Data Lifecycle Manager policy | daily snapshots           | 22:00 UTC, 7 kept, each copied to eu-central-1 for 7 days                                                |
+| CloudWatch alarms             | system and instance check | Recover onto new hardware, or reboot; both notify the SNS topic                                          |
+| SNS topic                     | `dsd-support-prod-alerts` | Alarm emails                                                                                             |
+
+### Parameters
+
+All under `/dsd-support/prod/` in ap-south-1, read by `deploy.sh` with the instance's role:
+
+- **SecureString:**
+  - `POSTGRES_PASSWORD`, `DSD_MIGRATOR_PASSWORD`, `DSD_API_PASSWORD`, `DSD_WORKER_PASSWORD`;
+  - `AUTH_SECRET`;
+  - `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`;
+  - `SMTP_USER`, `SMTP_PASSWORD`;
+  - `GEMINI_API_KEY`;
+  - `BOOTSTRAP_ADMIN_PASSWORD`.
+- **String:** `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_NAME`.
+
+The database passwords are hex, because they sit inside a `DATABASE_URL`. A value can only hold `[A-Za-z0-9 @._+/=:,-]`; `deploy.sh` stops on anything else and names the parameter without showing it.
+
+### DNS records
+
+| Type  | Name                 | Value                                       |
+| ----- | -------------------- | ------------------------------------------- |
+| A     | `support`            | the Elastic IP                              |
+| A     | `agents`             | the Elastic IP                              |
+| CNAME | `<token>._domainkey` | `<token>.dkim.amazonses.com`, three of them |
+| MX    | `bounce`             | `10 feedback-smtp.ap-south-1.amazonses.com` |
+| TXT   | `bounce`             | `v=spf1 include:amazonses.com ~all`         |
+
+The domain's own MX, SPF and DMARC records stay as they are. `deploy.sh` starts Caddy only once both names resolve to the server on 1.1.1.1 and 8.8.8.8, so a certificate is never requested too early.
+
+### First deploy
+
+Once the instance shows as a managed node in Systems Manager, send it the setup and the first deploy (bash):
+
+```bash
+SHA=$(git rev-parse origin/main)
+cat > first-deploy.json <<EOF
+{
+  "executionTimeout": ["5400"],
+  "commands": [
+    "set -e",
+    "install -d -m 700 /srv/dsd-support",
+    "git clone -q https://github.com/AqeelDEV/dsd-support-system.git /srv/dsd-support/app",
+    "git -C /srv/dsd-support/app checkout -q --detach $SHA",
+    "bash /srv/dsd-support/app/deploy/setup-server.sh",
+    "/srv/dsd-support/app/deploy/deploy.sh $SHA"
+  ]
+}
+EOF
+aws ssm send-command --region ap-south-1 --instance-ids "$INSTANCE_ID" \
+  --document-name AWS-RunShellScript --parameters file://first-deploy.json
+```
+
+- **What runs.** [`setup-server.sh`](deploy/setup-server.sh) installs Docker, the AWS CLI, swap and daily security updates. [`deploy.sh`](deploy/deploy.sh) then:
+  - writes the env file;
+  - builds the images on the server;
+  - starts the stack, and Caddy once DNS is right;
+  - checks the API's `/ready` and both names over HTTPS.
+- **Its log** is in `/var/log/dsd-deploy-<time>.log`.
+- **The first admin** signs in with `BOOTSTRAP_ADMIN_EMAIL` and the password in Parameter Store.
+
+### Later deploys, rollback and restore
+
+- **A deploy** is `/srv/dsd-support/app/deploy/deploy.sh <sha>` through `aws ssm send-command`. It refuses a commit that isn't on `main`.
+- **Rolling back** is deploying an older commit. Migrations only move forward, so each one stays compatible with the code before it.
+- **Restoring the server** from a snapshot keeps its address and role:
+
+  ```bash
+  aws ec2 create-replace-root-volume-task --region ap-south-1 --instance-id "$INSTANCE_ID" --snapshot-id <snapshot>
+  ```
+
+- **If the region is lost:** register an image from the eu-central-1 copy, launch it there, and point the A records at it.
+- **Until SES grants production access**, email reaches only:
+  - addresses verified in SES;
+  - the SES mailbox simulator;
+  - addresses at `dsddocs.com`.
+
+  Other emails retry and then land in the dead-letter queue, and tickets are unaffected.
+
 ## Known limitations
 
 - **One brand, one language.** The data model carries `brand_id` everywhere and staff queries filter by brand, but there is no brand administration, and full-text search uses the English configuration.
@@ -320,6 +422,7 @@ packages/
   config/         TypeScript, ESLint and Next.js presets
 e2e/              Playwright browser tests of both apps
 scripts/          The smoke test and the guardrail check
+deploy/           Production: the Compose file, the Caddyfile, and the server setup and deploy scripts
 docs/             Requirements, architecture, data model, decisions, security, performance, evaluation
 ```
 
