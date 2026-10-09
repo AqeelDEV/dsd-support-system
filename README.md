@@ -372,7 +372,7 @@ aws ssm send-command --region ap-south-1 --instance-ids "$INSTANCE_ID" \
 - **No queue search.** The queue filters and sorts but has no free-text search.
 - **Small AI evaluation.** 40 synthetic tickets, written by the builder; Anthropic and OpenAI are contract-tested, not measured.
 - **No antivirus scan** of uploads; files are checked by type and never rendered, but a malicious PDF can still be downloaded and opened.
-- **Staff can't reset their own password**; an admin re-invites them.
+- **Staff can't change or reset a password**, and an admin can't do it for them: a re-invite is refused once the account has a password. Customers can reset theirs by email.
 - **`pnpm dev` runs only the web apps**; the API and worker run built, and the browser tests need production builds.
 - **Local cookies** were tested in Chromium; Safari wasn't available on the Windows machine this was built on.
 
