@@ -1,0 +1,28 @@
+# The production front door (ADR-0014). Caddy gets and renews a Let's
+# Encrypt certificate for each name, redirects HTTP to HTTPS, and hands each
+# name to its web app. Certificates are kept in the caddy-data volume.
+#
+# Caddy ignores any X-Forwarded-For a client sends and sets it to the
+# connecting address, which is the one hop the web apps trust (ADR-0010).
+
+{
+	# Only TCP 80 and 443 are open, so HTTP/3 over UDP isn't offered.
+	servers {
+		protocols h1 h2
+	}
+}
+
+(common) {
+	encode zstd gzip
+	header -Server
+}
+
+support.dsddocs.com {
+	import common
+	reverse_proxy customer-web:3000
+}
+
+agents.dsddocs.com {
+	import common
+	reverse_proxy agent-web:3001
+}

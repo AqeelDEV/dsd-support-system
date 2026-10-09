@@ -1,0 +1,279 @@
+# The production stack: everything on one server behind Caddy (ADR-0014).
+#
+#   docker compose --env-file /srv/dsd-support/.env \
+#     -f deploy/compose.production.yaml up -d --build --wait
+#
+# deploy/deploy.sh renders that env file from AWS SSM Parameter Store and
+# runs this for you. Unlike compose.yaml there are no development defaults:
+# every secret is written ${VAR:?}, so Compose refuses to start when one is
+# missing instead of falling back to a value printed in this repository.
+#
+# Only Caddy publishes ports. The API, the data stores and the two web apps
+# are reachable on the Compose network alone, and there is no Mailpit:
+# email goes out through Amazon SES.
+
+name: dsd-support-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+x-db-passwords: &db-passwords
+  DSD_MIGRATOR_PASSWORD: ${DSD_MIGRATOR_PASSWORD:?}
+  DSD_API_PASSWORD: ${DSD_API_PASSWORD:?}
+  DSD_WORKER_PASSWORD: ${DSD_WORKER_PASSWORD:?}
+
+x-object-store: &object-store
+  S3_ENDPOINT: http://seaweedfs:8333
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+
+x-node-healthcheck: &node-healthcheck
+  interval: 10s
+  timeout: 3s
+  retries: 30
+  start_period: 20s
+
+services:
+  # The front door: HTTPS with certificates from Let's Encrypt, kept in the
+  # caddy-data volume so a redeploy never asks for new ones.
+  caddy:
+    image: caddy:2.11.4-alpine
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      # The folder, not the file: a deploy replaces the Caddyfile, and a
+      # single-file mount would keep showing the old one.
+      - .:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        # Fixed, so the web apps can trust exactly this proxy (TRUST_PROXY).
+        ipv4_address: 10.250.73.5
+    depends_on:
+      customer-web:
+        condition: service_healthy
+      agent-web:
+        condition: service_healthy
+    healthcheck:
+      # Caddy's admin API answers on the container's loopback only.
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:2019/config/]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg18-trixie
+    environment:
+      <<: *db-passwords
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      DSD_DATABASE: dsd
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ../docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, postgres, -d, dsd]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:8.10.2
+    # Queues need durability and must never have keys evicted.
+    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    logging: *logging
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    command:
+      - mini
+      - -dir=/data
+      - -bucket=dsd-attachments
+      - -admin.ui=false
+      - -master.telemetry=false
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8333/healthz]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+    logging: *logging
+
+  # Runs once per `up`: migrations, then the first-run bootstrap (the DSD
+  # brand and its first admin). Never the demo seed, whose accounts share a
+  # password printed in the README; bootstrap refuses a database holding
+  # them. The API and worker start only after this succeeds.
+  migrate:
+    build:
+      context: ..
+      target: migrate
+    command: [sh, -c, "node dist/cli/migrate.js && node dist/cli/bootstrap.js"]
+    environment:
+      DATABASE_URL: postgres://dsd_migrator:${DSD_MIGRATOR_PASSWORD:?}@postgres:5432/dsd
+      BOOTSTRAP_SUPPORT_EMAIL: info@dsddocs.com
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:?}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:?}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    logging: *logging
+
+  api:
+    build:
+      context: ..
+      target: api
+    environment:
+      <<: *object-store
+      NODE_ENV: production
+      PORT: "4000"
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://dsd_api:${DSD_API_PASSWORD:?}@postgres:5432/dsd
+      REDIS_URL: redis://redis:6379
+      # The two public origins, and nothing else, may send state-changing
+      # requests (CSRF). COOKIE_SECURE is left out on purpose: its default
+      # keeps cookies Secure and __Host- prefixed.
+      TRUSTED_ORIGINS: https://support.dsddocs.com,https://agents.dsddocs.com
+      AUTH_SECRET: ${AUTH_SECRET:?}
+      # Only the two web apps' X-Forwarded-For is believed (ADR-0010).
+      TRUST_PROXY: 10.250.73.10,10.250.73.11
+      REPORTING_TIMEZONE: Asia/Dubai
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+    restart: unless-stopped
+    logging: *logging
+
+  worker:
+    build:
+      context: ..
+      target: worker
+    environment:
+      <<: *object-store
+      NODE_ENV: production
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://dsd_worker:${DSD_WORKER_PASSWORD:?}@postgres:5432/dsd
+      REDIS_URL: redis://redis:6379
+      # Amazon SES in this region. The connection must upgrade with STARTTLS
+      # before the credentials are sent.
+      SMTP_HOST: email-smtp.ap-south-1.amazonaws.com
+      SMTP_PORT: "587"
+      SMTP_SECURE: "false"
+      SMTP_REQUIRE_TLS: "true"
+      SMTP_USER: ${SMTP_USER:?}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?}
+      # Links in emails open the apps at their public addresses.
+      CUSTOMER_APP_URL: https://support.dsddocs.com
+      AGENT_APP_URL: https://agents.dsddocs.com
+      LLM_PROVIDER: gemini
+      EMBEDDINGS_PROVIDER: gemini
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  customer-web:
+    build:
+      context: ..
+      target: customer-web
+    environment:
+      API_INTERNAL_URL: http://api:4000
+      # Caddy is the only proxy in front of the app; the browser's address
+      # is the one Caddy reports (ADR-0010).
+      TRUST_PROXY: 10.250.73.5
+    networks:
+      default:
+        ipv4_address: 10.250.73.10
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+    restart: unless-stopped
+    logging: *logging
+
+  agent-web:
+    build:
+      context: ..
+      target: agent-web
+    environment:
+      API_INTERNAL_URL: http://api:4000
+      TRUST_PROXY: 10.250.73.5
+    networks:
+      default:
+        ipv4_address: 10.250.73.11
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      <<: *node-healthcheck
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+    restart: unless-stopped
+    logging: *logging
+
+# A fixed subnet, so Caddy and the web apps have the fixed addresses that
+# the apps and the API trust.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.250.73.0/24
+
+volumes:
+  postgres-data:
+  redis-data:
+  seaweedfs-data:
+  caddy-data:
+  caddy-config:
