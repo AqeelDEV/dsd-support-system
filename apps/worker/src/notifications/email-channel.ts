@@ -23,13 +23,19 @@ export class EmailChannel implements NotificationChannel {
   constructor(
     env: Pick<
       Env,
-      "SMTP_HOST" | "SMTP_PORT" | "SMTP_SECURE" | "SMTP_USER" | "SMTP_PASSWORD"
+      | "SMTP_HOST"
+      | "SMTP_PORT"
+      | "SMTP_SECURE"
+      | "SMTP_REQUIRE_TLS"
+      | "SMTP_USER"
+      | "SMTP_PASSWORD"
     >,
   ) {
     this.transport = createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_SECURE,
+      requireTLS: env.SMTP_REQUIRE_TLS,
       auth:
         env.SMTP_USER === undefined || env.SMTP_PASSWORD === undefined
           ? undefined

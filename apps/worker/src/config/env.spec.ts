@@ -25,6 +25,7 @@ describe("parseEnv", () => {
       OUTBOX_POLL_INTERVAL_MS: 500,
       SMTP_PORT: 587,
       SMTP_SECURE: false,
+      SMTP_REQUIRE_TLS: false,
       TICKET_BRAND_SLUG: "dsd",
       S3_REGION: "us-east-1",
       S3_BUCKET: "dsd-attachments",
@@ -153,6 +154,18 @@ describe("parseEnv", () => {
         new RegExp(key),
       );
     }
+  });
+
+  it("requires STARTTLS only when told to", () => {
+    expect(parseEnv({ ...REQUIRED, SMTP_REQUIRE_TLS: "true" })).toMatchObject({
+      SMTP_REQUIRE_TLS: true,
+    });
+    expect(parseEnv({ ...REQUIRED, SMTP_REQUIRE_TLS: "false" })).toMatchObject({
+      SMTP_REQUIRE_TLS: false,
+    });
+    expect(() =>
+      parseEnv({ ...REQUIRED, SMTP_REQUIRE_TLS: "sometimes" }),
+    ).toThrow(/SMTP_REQUIRE_TLS/);
   });
 
   it("takes SMTP credentials as a pair or not at all", () => {

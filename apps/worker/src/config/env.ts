@@ -89,6 +89,13 @@ export const envSchema = z
     SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(587),
     /** True for implicit TLS (usually port 465); STARTTLS is used when offered either way. */
     SMTP_SECURE: z.stringbool().default(false),
+    /**
+     * Refuse to send unless the connection upgrades with STARTTLS first, so
+     * the credentials and emails never cross in clear, even if something on
+     * the way strips the server's offer. Off by default for Mailpit, which
+     * offers no TLS; turn it on for a real provider on port 587.
+     */
+    SMTP_REQUIRE_TLS: z.stringbool().default(false),
     SMTP_USER: z.string().min(1).optional(),
     SMTP_PASSWORD: z.string().min(1).optional(),
     /** Where links in customer emails point: the customer app. */
