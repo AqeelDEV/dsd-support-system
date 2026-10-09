@@ -82,6 +82,8 @@ export {
   ProblemAlert,
 } from "./surfaces";
 export { Thread, ThreadEvent, ThreadMessage } from "./thread";
+export { THEME_COOKIE, themeAttribute } from "./theme";
+export { ThemeMenu } from "./theme-menu";
 export {
   describeProblem,
   type ProblemLike,

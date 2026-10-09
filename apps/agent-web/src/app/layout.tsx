@@ -1,7 +1,9 @@
 import "@fontsource-variable/inter";
 import "./globals.css";
 
+import { THEME_COOKIE, themeAttribute } from "@dsd/ui";
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
@@ -25,8 +27,9 @@ export default async function RootLayout({
 }) {
   // Rendered per request so each page carries the proxy's script nonce (ADR-0013).
   await connection();
+  const theme = themeAttribute((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang="en">
+    <html lang="en" data-theme={theme}>
       <body className="min-h-dvh text-sm">
         <a
           href="#main"

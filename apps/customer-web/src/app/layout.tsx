@@ -1,7 +1,9 @@
 import "@fontsource-variable/inter";
 import "./globals.css";
 
+import { THEME_COOKIE, themeAttribute } from "@dsd/ui";
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
@@ -30,8 +32,9 @@ export default async function RootLayout({
   // proxy's CSP header (ADR-0013). A page prerendered at build time would
   // carry no nonce, and the browser would block its scripts.
   await connection();
+  const theme = themeAttribute((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang="en">
+    <html lang="en" data-theme={theme}>
       <body className="flex min-h-dvh flex-col text-md">
         <a
           href="#main"

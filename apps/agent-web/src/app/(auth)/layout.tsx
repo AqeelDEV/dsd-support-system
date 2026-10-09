@@ -1,3 +1,4 @@
+import { ThemeMenu } from "@dsd/ui";
 import type { ReactNode } from "react";
 
 import { Wordmark } from "@/components/brand";
@@ -7,7 +8,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <main
       id="main"
-      className="flex min-h-dvh flex-col items-center px-4 pt-[12vh] pb-12"
+      className="relative flex min-h-dvh flex-col items-center px-4 pt-[12vh] pb-12"
     >
       <Wordmark href="/sign-in" />
       <div className="mt-8 w-full max-w-sm rounded-xl border border-border bg-card px-6 py-7">
@@ -17,6 +18,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         For DSD support staff. Customers can get help at the customer help
         centre.
       </p>
+      {/* Last in the tab order, so the form comes first. */}
+      <ThemeMenu className="absolute top-3 right-3" />
     </main>
   );
 }

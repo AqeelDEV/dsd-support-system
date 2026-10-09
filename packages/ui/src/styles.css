@@ -8,6 +8,23 @@
  * this package so the classes used by its components are generated.
  */
 
+/*
+ * Dark follows the system's setting unless the viewer picked a theme in the
+ * theme menu: each app's root layout then puts data-theme="light" or "dark"
+ * on <html> from the theme cookie, so the first paint is already right. The
+ * dark tokens below and any `dark:` utility both use this variant.
+ */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:not([data-theme="light"], [data-theme="light"] *)) {
+      @slot;
+    }
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -152,8 +169,8 @@
     0 1px 2px oklch(0.2 0.02 262 / 0.06), 0 8px 24px oklch(0.2 0.02 262 / 0.12);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+:root {
+  @variant dark {
     --background: oklch(0.16 0.008 262);
     --foreground: oklch(0.95 0.004 258);
     --card: oklch(0.2 0.009 262);
@@ -205,9 +222,14 @@
     border-color: var(--color-border);
   }
 
+  /* Native controls and scrollbars follow the chosen theme too. */
   html {
-    color-scheme: light dark;
     -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+
+    @variant dark {
+      color-scheme: dark;
+    }
   }
 
   body {

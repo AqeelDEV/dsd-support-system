@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
+  ThemeMenu,
   toast,
 } from "@dsd/ui";
 import {
@@ -108,6 +109,7 @@ export function SiteHeader() {
               Contact support
             </Link>
           )}
+          <ThemeMenu size="icon-lg" />
           {session.isPending ? (
             <Skeleton className="hidden size-8 rounded-full sm:block" />
           ) : account === undefined ? (

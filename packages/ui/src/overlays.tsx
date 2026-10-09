@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import {
   Dialog as DialogPrimitive,
   DropdownMenu as MenuPrimitive,
@@ -167,6 +167,9 @@ export function DropdownMenuContent({
   );
 }
 
+const menuItem =
+  "flex h-8 cursor-default items-center gap-2 rounded-md px-2 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted [&_svg]:size-4 [&_svg]:text-muted-foreground";
+
 export function DropdownMenuItem({
   className,
   destructive = false,
@@ -175,12 +178,30 @@ export function DropdownMenuItem({
   return (
     <MenuPrimitive.Item
       className={cn(
-        "flex h-8 cursor-default items-center gap-2 rounded-md px-2 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted [&_svg]:size-4 [&_svg]:text-muted-foreground",
+        menuItem,
         destructive && "text-tone-danger-fg [&_svg]:text-tone-danger-fg",
         className,
       )}
       {...props}
     />
+  );
+}
+
+export const DropdownMenuRadioGroup = MenuPrimitive.RadioGroup;
+
+/** One choice of several in a menu; the chosen one carries a tick. */
+export function DropdownMenuRadioItem({
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof MenuPrimitive.RadioItem>) {
+  return (
+    <MenuPrimitive.RadioItem className={cn(menuItem, className)} {...props}>
+      {children}
+      <MenuPrimitive.ItemIndicator className="ml-auto flex">
+        <Check aria-hidden="true" />
+      </MenuPrimitive.ItemIndicator>
+    </MenuPrimitive.RadioItem>
   );
 }
 

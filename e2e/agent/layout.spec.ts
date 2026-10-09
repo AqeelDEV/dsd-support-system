@@ -81,6 +81,21 @@ test("the phone menu opens the sections", async ({ page }) => {
   await expect(page).toHaveURL(/\/reports/);
 });
 
+test("the theme menu is in the sidebar and in the phone bar", async ({
+  page,
+}) => {
+  await page.goto("/queue");
+  await settled(page);
+  await page.getByRole("button", { name: "Theme" }).click();
+  await page.getByRole("menuitemradio", { name: "Dark" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Theme" }).click();
+  await page.getByRole("menuitemradio", { name: "System" }).click();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+});
+
 test("the sign-in page is accessible", async ({ browser }) => {
   const context = await freshContext(browser, AGENT_URL);
   const page = await context.newPage();

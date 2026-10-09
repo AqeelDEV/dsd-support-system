@@ -19,6 +19,7 @@ import {
   ROLE_LABELS,
   SheetContent,
   Spinner,
+  ThemeMenu,
   toast,
 } from "@dsd/ui";
 import {
@@ -117,12 +118,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Wordmark />
           </div>
           <Nav items={nav} pathname={pathname} />
-          <div className="mt-auto border-t border-border p-2">
-            <UserMenu
-              onShortcuts={() => {
-                setShortcuts(true);
-              }}
-            />
+          <div className="mt-auto flex items-center gap-1 border-t border-border p-2">
+            <div className="min-w-0 flex-1">
+              <UserMenu
+                onShortcuts={() => {
+                  setShortcuts(true);
+                }}
+              />
+            </div>
+            <ThemeMenu />
           </div>
         </div>
       </aside>
@@ -163,6 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </SheetContent>
           </Dialog>
           <Wordmark />
+          <ThemeMenu className="ml-auto" />
         </div>
         <main id="main" className="flex min-w-0 flex-1 flex-col">
           {children}
