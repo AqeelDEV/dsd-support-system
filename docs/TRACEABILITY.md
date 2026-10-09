@@ -464,3 +464,19 @@ Proven:
 | worker `email-channel` integration test                                      | With STARTTLS required, a send to a server that doesn't offer it is refused and nothing arrives                          |
 | `docker compose --env-file <dummy> -f deploy/compose.production.yaml config` | The file is valid, and a missing secret stops Compose                                                                    |
 | shellcheck 0.10.0 on both scripts                                            | No findings at style level                                                                                               |
+
+### Theme menu
+
+Built:
+
+- `packages/ui`: `ThemeMenu` (System, Light or Dark), and one `dark` variant for the tokens and utilities. The choice is a `dsd_theme` cookie that both root layouts render into `<html data-theme>` ([ADR-0013](adr/0013-web-apps.md), amendment 7).
+- The menu in the customer app's header, the agent app's sidebar and phone bar, and on the agent sign-in page.
+
+Proven:
+
+| Check                               | Proves                                                                                                                                          |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| unit: `theme` (ui)                  | Only `light`, `dark` and `system` are read from the cookie; it is site-wide, `SameSite=Lax`, `Secure` over HTTPS, and deleted for System        |
+| e2e: `theme` (customer)             | Light overrides a dark system and the server renders it after a reload; System hands it back and deletes the cookie; Dark from the phone header |
+| e2e: `layout` (agent)               | The menu works from the sidebar and from the phone bar                                                                                          |
+| e2e: `a11y`, `layout`, `responsive` | With the button on every page: axe clean in light and dark, and no sideways scrolling at 390 px                                                 |

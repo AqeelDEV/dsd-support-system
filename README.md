@@ -51,6 +51,8 @@ Two more staff accounts test the edges: `former.agent@dsd.example` has been deac
 
 What each person sees comes from the API: sections from the permissions `/me` reports, and every control on a ticket from its `allowedActions`. An agent who types `/reports` into the address bar is told they don't have access, because the API refuses it.
 
+**Light or dark.** Both apps follow the system's setting. The theme button (in the customer app's header, beside the account menu in the agent app) picks Light or Dark instead, and System goes back to following it.
+
 **Emails.** Every email goes to Mailpit (http://localhost:8025): acknowledgements, replies, status changes, sign-up, password reset and invites. The worker sends them, never a request, so if the mail server is down tickets and replies still go through and the emails follow; a job that keeps failing lands in a dead-letter queue (`docker compose exec worker node dist/cli/dead-letter.js list`, then `replay --all`).
 
 **Swagger UI** (http://localhost:4000/api/docs) documents every route. Sign in with "Try it out" on a `login` route and it adds the CSRF token to later requests.

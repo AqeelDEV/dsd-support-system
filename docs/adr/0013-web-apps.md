@@ -1,7 +1,7 @@
 # ADR-0013: The web apps: visual direction, data flow and page security
 
 - Status: Accepted
-- Amended: 2026-10-02 (see [Amendments](#amendments))
+- Amended: 2026-10-02 and 2026-10-09 (see [Amendments](#amendments))
 - Date: 2026-10-02
 - Requirements: UI-1, UI-2, FR-1 to FR-4, FR-7 to FR-15, FR-16, NFR-7, NFR-12
 
@@ -117,3 +117,7 @@ Headings are semibold with slightly negative tracking. Nothing is bold for empha
 4. **The AI slot.** `AssistPanelSlot` at the top of the ticket's side rail is where the Phase 9 suggestion panel goes. It renders nothing until then, so nothing is presented as a feature that isn't built; the component's comment states the guardrail the panel must keep (it only fills the composer).
 5. **Knowledge-base editing.** The preview uses the help centre's `Markdown`. After a save the editor shows what the API stored, and says so when the sanitiser removed something, including on a new article's first save (carried through the address as `?markup=removed`).
 6. **Browser tests across both apps.** Staff tests start from sessions the global setup saves once per role. A context that must be signed out is created with an explicitly empty session: `browser.newContext()` inherits the file's session, and an invite accepted in such a context revoked the shared supervisor session.
+
+### 2026-10-09, a theme menu
+
+7. **Light, dark or the system's.** Both apps follow the system's light or dark setting unless the viewer picks one in the theme menu: in the customer app's header, beside the account menu in the agent app's sidebar (in the top bar on a phone), and on the agent sign-in page. The choice is kept in a cookie, `dsd_theme`, rather than local storage, because each root layout reads it and renders `<html data-theme>`: the first paint is already in the chosen theme, with no inline script to run before it under the nonce CSP (section 4). The dark token values and any `dark:` utility use one Tailwind variant, so they can't disagree, and "System" deletes the cookie. On localhost both apps share the cookie, because cookies ignore the port; in production they are on separate hosts.
