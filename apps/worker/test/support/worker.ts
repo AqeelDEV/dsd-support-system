@@ -339,4 +339,29 @@ export const fixtures = {
     );
     return row?.id ?? "";
   },
+
+  /**
+   * Several outbox events in one statement, so the dispatcher sees all of
+   * them at once, as it does when the API writes them in one transaction.
+   */
+  async events(
+    database: TestDatabase,
+    events: {
+      type: string;
+      aggregate: { type: string; id: string };
+      payload: Record<string, unknown>;
+    }[],
+  ): Promise<void> {
+    await asOwner(
+      database,
+      `INSERT INTO outbox_events (event_type, aggregate_type, aggregate_id, payload)
+       SELECT * FROM unnest($1::text[], $2::text[], $3::uuid[], $4::jsonb[])`,
+      [
+        events.map((event) => event.type),
+        events.map((event) => event.aggregate.type),
+        events.map((event) => event.aggregate.id),
+        events.map((event) => JSON.stringify(event.payload)),
+      ],
+    );
+  },
 };

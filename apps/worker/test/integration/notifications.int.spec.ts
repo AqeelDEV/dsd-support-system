@@ -124,29 +124,30 @@ describe("ticket notifications", () => {
       body: reply,
       author: { agentId },
     });
-    // Written together by the API, in the reply's transaction.
-    await fixtures.event(
-      database,
-      "message.created",
-      { type: "ticket", id: ticket.id },
+    // Written together by the API, in the reply's transaction. Two separate
+    // inserts would let the worker send the reply before the status exists.
+    await fixtures.events(database, [
       {
-        ticketId: ticket.id,
-        messageId,
-        authorType: "agent",
-        visibility: "public",
+        type: "message.created",
+        aggregate: { type: "ticket", id: ticket.id },
+        payload: {
+          ticketId: ticket.id,
+          messageId,
+          authorType: "agent",
+          visibility: "public",
+        },
       },
-    );
-    await fixtures.event(
-      database,
-      "ticket.status_changed",
-      { type: "ticket", id: ticket.id },
       {
-        ticketId: ticket.id,
-        fromStatus: "open",
-        toStatus: "pending_customer",
-        messageId,
+        type: "ticket.status_changed",
+        aggregate: { type: "ticket", id: ticket.id },
+        payload: {
+          ticketId: ticket.id,
+          fromStatus: "open",
+          toStatus: "pending_customer",
+          messageId,
+        },
       },
-    );
+    ]);
 
     const emails = await inbox(customer.email, 1);
     expect(emails).toHaveLength(1);
